@@ -171,7 +171,10 @@ class _DailyScreenState extends State<DailyScreen> with AutomaticKeepAliveClient
       );
       
       final success = await _adService.showRewardedAd();
-      
+      await _firebaseService.logAdWatched(
+        success ? 'rewarded_tomorrow_preview_success' : 'rewarded_tomorrow_preview_failed',
+      );
+
       // Reklam loading'i kapat
       if (mounted) Navigator.of(context).pop();
       

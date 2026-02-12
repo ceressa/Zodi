@@ -1,5 +1,6 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
+
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,13 +9,21 @@ class AdService {
   factory AdService() => _instance;
   AdService._internal();
 
-  // Interstitial ad tracking
+  static const String _firstOpenDateKey = 'first_open_date';
+  static const String _lastInterstitialShownAtKey = 'last_interstitial_shown_at';
+  static const String _interstitialShownTodayKey = 'interstitial_shown_today';
+
+  static const int _newUserDays = 3;
+  static const int _newUserMaxInterstitialsPerDay = 2;
+  static const int _regularMaxInterstitialsPerDay = 3;
+  static const int _newUserScreensBetweenInterstitials = 4;
+  static const int _regularScreensBetweenInterstitials = 3;
+  static const int _minMinutesBetweenInterstitials = 4;
+
   int _screenNavigationCount = 0;
   int _interstitialShownToday = 0;
-  DateTime? _lastInterstitialDate;
-  
-  static const int _maxInterstitialsPerDay = 3;
-  static const int _screensBetweenInterstitials = 3;
+  DateTime? _lastInterstitialShownAt;
+  DateTime? _firstOpenDate;
 
   // Test Ad Unit IDs - Production'da gerçek ID'lerle değiştir
   static String get bannerAdUnitId {
@@ -47,7 +56,7 @@ class AdService {
   BannerAd? _bannerAd;
   RewardedAd? _rewardedAd;
   InterstitialAd? _interstitialAd;
-  
+
   bool _isBannerAdReady = false;
   bool _isRewardedAdReady = false;
   bool _isInterstitialAdReady = false;
@@ -57,66 +66,111 @@ class AdService {
     await _loadInterstitialTracking();
   }
 
-  // Interstitial tracking yükle
   Future<void> _loadInterstitialTracking() async {
     final prefs = await SharedPreferences.getInstance();
-    final lastDateStr = prefs.getString('last_interstitial_date');
-    
-    if (lastDateStr != null) {
-      _lastInterstitialDate = DateTime.parse(lastDateStr);
-      
-      // Yeni gün mü kontrol et
-      final now = DateTime.now();
-      if (_lastInterstitialDate!.day != now.day ||
-          _lastInterstitialDate!.month != now.month ||
-          _lastInterstitialDate!.year != now.year) {
-        // Yeni gün, sayacı sıfırla
-        _interstitialShownToday = 0;
-        await prefs.setInt('interstitial_shown_today', 0);
-      } else {
-        _interstitialShownToday = prefs.getInt('interstitial_shown_today') ?? 0;
-      }
+
+    final firstOpenStr = prefs.getString(_firstOpenDateKey);
+    if (firstOpenStr == null) {
+      _firstOpenDate = DateTime.now();
+      await prefs.setString(_firstOpenDateKey, _firstOpenDate!.toIso8601String());
+    } else {
+      _firstOpenDate = DateTime.parse(firstOpenStr);
+    }
+
+    final lastShownAtStr = prefs.getString(_lastInterstitialShownAtKey);
+    if (lastShownAtStr != null) {
+      _lastInterstitialShownAt = DateTime.parse(lastShownAtStr);
+    }
+
+    await _resetDailyCounterIfNeeded();
+    _interstitialShownToday = prefs.getInt(_interstitialShownTodayKey) ?? 0;
+  }
+
+  Future<void> _resetDailyCounterIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+
+    if (_lastInterstitialShownAt == null) {
+      _interstitialShownToday = prefs.getInt(_interstitialShownTodayKey) ?? 0;
+      return;
+    }
+
+    final isDifferentDay = _lastInterstitialShownAt!.day != now.day ||
+        _lastInterstitialShownAt!.month != now.month ||
+        _lastInterstitialShownAt!.year != now.year;
+
+    if (isDifferentDay) {
+      _interstitialShownToday = 0;
+      await prefs.setInt(_interstitialShownTodayKey, 0);
     }
   }
 
-  // Ekran navigasyonunu kaydet
+  int _daysSinceInstall() {
+    if (_firstOpenDate == null) {
+      return 999;
+    }
+    return DateTime.now().difference(_firstOpenDate!).inDays;
+  }
+
+  bool _isNewUser() => _daysSinceInstall() < _newUserDays;
+
+  int _maxInterstitialsPerDay() {
+    return _isNewUser()
+        ? _newUserMaxInterstitialsPerDay
+        : _regularMaxInterstitialsPerDay;
+  }
+
+  int _screensBetweenInterstitials() {
+    return _isNewUser()
+        ? _newUserScreensBetweenInterstitials
+        : _regularScreensBetweenInterstitials;
+  }
+
   void trackScreenNavigation() {
     _screenNavigationCount++;
     print('📱 Screen navigation count: $_screenNavigationCount');
   }
 
-  // Interstitial gösterilmeli mi?
-  bool shouldShowInterstitial() {
-    // Günlük limit kontrolü
-    if (_interstitialShownToday >= _maxInterstitialsPerDay) {
-      print('❌ Daily interstitial limit reached: $_interstitialShownToday/$_maxInterstitialsPerDay');
+  Future<bool> shouldShowInterstitial() async {
+    await _resetDailyCounterIfNeeded();
+
+    final maxPerDay = _maxInterstitialsPerDay();
+    final screensThreshold = _screensBetweenInterstitials();
+
+    if (_interstitialShownToday >= maxPerDay) {
+      print('❌ Daily interstitial limit reached: $_interstitialShownToday/$maxPerDay');
       return false;
     }
 
-    // Ekran sayısı kontrolü
-    if (_screenNavigationCount < _screensBetweenInterstitials) {
-      print('❌ Not enough screens: $_screenNavigationCount/$_screensBetweenInterstitials');
+    if (_screenNavigationCount < screensThreshold) {
+      print('❌ Not enough screens: $_screenNavigationCount/$screensThreshold');
       return false;
     }
 
-    print('✅ Should show interstitial');
+    if (_lastInterstitialShownAt != null) {
+      final minutesSinceLast = DateTime.now().difference(_lastInterstitialShownAt!).inMinutes;
+      if (minutesSinceLast < _minMinutesBetweenInterstitials) {
+        print('❌ Cooldown active: $minutesSinceLast/$_minMinutesBetweenInterstitials minutes');
+        return false;
+      }
+    }
+
+    print('✅ Should show interstitial (newUser=${_isNewUser()}, daily=$_interstitialShownToday/$maxPerDay)');
     return true;
   }
 
-  // Interstitial gösterildi olarak işaretle
   Future<void> _markInterstitialShown() async {
     _screenNavigationCount = 0;
     _interstitialShownToday++;
-    _lastInterstitialDate = DateTime.now();
+    _lastInterstitialShownAt = DateTime.now();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('interstitial_shown_today', _interstitialShownToday);
-    await prefs.setString('last_interstitial_date', _lastInterstitialDate!.toIso8601String());
-    
-    print('✅ Interstitial marked as shown. Today: $_interstitialShownToday/$_maxInterstitialsPerDay');
+    await prefs.setInt(_interstitialShownTodayKey, _interstitialShownToday);
+    await prefs.setString(_lastInterstitialShownAtKey, _lastInterstitialShownAt!.toIso8601String());
+
+    print('✅ Interstitial marked as shown. Today: $_interstitialShownToday/${_maxInterstitialsPerDay()}');
   }
 
-  // Banner Ad
   void loadBannerAd() {
     print('📱 AdService: Starting to load banner ad...');
     _bannerAd = BannerAd(
@@ -151,7 +205,6 @@ class AdService {
   BannerAd? get bannerAd => _isBannerAdReady ? _bannerAd : null;
   bool get isBannerAdReady => _isBannerAdReady;
 
-  // Rewarded Ad
   void loadRewardedAd() {
     print('📺 Loading rewarded ad...');
     RewardedAd.load(
@@ -173,17 +226,16 @@ class AdService {
 
   Future<bool> showRewardedAd() async {
     print('🎬 showRewardedAd called - isReady: $_isRewardedAdReady, ad: ${_rewardedAd != null}');
-    
+
     if (!_isRewardedAdReady || _rewardedAd == null) {
       print('❌ Rewarded ad not ready - loading new ad');
-      loadRewardedAd(); // Yeni reklam yükle
+      loadRewardedAd();
       return false;
     }
 
     final Completer<bool> completer = Completer<bool>();
     bool rewarded = false;
-    
-    print('📺 Setting up ad callbacks...');
+
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) {
         print('✅ Ad showed full screen content');
@@ -193,9 +245,8 @@ class AdService {
         ad.dispose();
         _isRewardedAdReady = false;
         _rewardedAd = null;
-        loadRewardedAd(); // Yeni reklam yükle
+        loadRewardedAd();
         if (!completer.isCompleted) {
-          print('🔄 Completing future with: $rewarded');
           completer.complete(rewarded);
         }
       },
@@ -206,36 +257,30 @@ class AdService {
         _rewardedAd = null;
         loadRewardedAd();
         if (!completer.isCompleted) {
-          print('🔄 Completing future with: false (error)');
           completer.complete(false);
         }
       },
     );
 
     try {
-      print('📺 Calling show() on rewarded ad...');
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
-          print('🎉🎉🎉 USER EARNED REWARD: ${reward.amount} ${reward.type}');
+          print('🎉 USER EARNED REWARD: ${reward.amount} ${reward.type}');
           rewarded = true;
         },
       );
-      print('📺 show() method completed');
     } catch (e) {
       print('❌ Exception while showing ad: $e');
       if (!completer.isCompleted) {
-        print('🔄 Completing future with: false (exception)');
         completer.complete(false);
       }
     }
 
-    print('⏳ Waiting for ad to complete...');
     final result = await completer.future;
     print('✅ Ad flow completed with result: $result');
     return result;
   }
 
-  // Interstitial Ad
   void loadInterstitialAd() {
     print('📱 AdService: Loading interstitial ad...');
     InterstitialAd.load(
@@ -258,12 +303,12 @@ class AdService {
   Future<bool> showInterstitialAd() async {
     if (!_isInterstitialAdReady || _interstitialAd == null) {
       print('❌ Interstitial ad not ready');
-      loadInterstitialAd(); // Yeni reklam yükle
+      loadInterstitialAd();
       return false;
     }
 
     final completer = Completer<bool>();
-    
+
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) {
         print('✅ Interstitial ad showed');
@@ -274,7 +319,7 @@ class AdService {
         _isInterstitialAdReady = false;
         _interstitialAd = null;
         _markInterstitialShown();
-        loadInterstitialAd(); // Yeni reklam yükle
+        loadInterstitialAd();
         if (!completer.isCompleted) completer.complete(true);
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
@@ -291,13 +336,12 @@ class AdService {
     return completer.future;
   }
 
-  // Akıllı interstitial gösterme
-  Future<void> showInterstitialIfNeeded() async {
-    if (!shouldShowInterstitial()) {
-      return;
+  Future<bool> showInterstitialIfNeeded() async {
+    if (!await shouldShowInterstitial()) {
+      return false;
     }
 
-    await showInterstitialAd();
+    return showInterstitialAd();
   }
 
   void dispose() {
