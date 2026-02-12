@@ -109,7 +109,7 @@ class _TarotScreenState extends State<TarotScreen> {
       ),
     );
 
-    final success = await _adService.showRewardedAd();
+    final success = await _adService.showRewardedAd(placement: 'tarot_three_card_unlock');
     await _firebaseService.logAdWatched(
       success ? 'rewarded_tarot_three_card_unlock_success' : 'rewarded_tarot_three_card_unlock_failed',
     );

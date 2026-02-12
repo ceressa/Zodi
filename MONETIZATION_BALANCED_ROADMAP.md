@@ -61,3 +61,9 @@ Bu doküman Zodi için **orta agresif, retention dostu** gelir modelinin yol har
 
 ## Başarı Ölçütü
 - Gelir artarken retention’de anlamlı bozulma olmaması.
+
+
+## Faz Durumu (Güncel)
+- ✅ Faz 1 — Ad Ops hazırlığı: ad unit'ler dart-define ile production override destekli hale getirildi.
+- ✅ Faz 2 — Rewarded Economy: günlük limit + cooldown eklendi, placement bazlı rewarded gösterim aktif.
+- ✅ Faz 3 — Premium Dönüşüm: Premium ekranına aylık/yıllık/ömür boyu plan seçimi eklendi.
