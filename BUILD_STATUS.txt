@@ -1,0 +1,10 @@
+﻿ BUILD STATUS - 2026-02-07 22:34
+
+ Flutter: 3.38.9
+ Dependencies: Yüklendi
+ Analyze: Hatasız
+ Logo: Eklendi
+ Firebase: Hazır
+ Kişiselleştirme: Aktif
+
+Sonraki Adım: flutter run

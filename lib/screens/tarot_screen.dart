@@ -1,0 +1,645 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import '../constants/colors.dart';
+import '../providers/auth_provider.dart';
+import '../services/tarot_service.dart';
+import '../services/gemini_service.dart';
+import '../services/firebase_service.dart';
+import '../models/tarot_card.dart';
+import '../widgets/tarot_card_widget.dart';
+import '../widgets/shimmer_loading.dart';
+import '../widgets/premium_lock_overlay.dart';
+
+class TarotScreen extends StatefulWidget {
+  const TarotScreen({super.key});
+
+  @override
+  State<TarotScreen> createState() => _TarotScreenState();
+}
+
+class _TarotScreenState extends State<TarotScreen> {
+  late TarotService _tarotService;
+  final FirebaseService _firebaseService = FirebaseService();
+  TarotReading? _dailyReading;
+  TarotReading? _threeCardReading;
+  bool _isLoadingDaily = false;
+  bool _isLoadingThree = false;
+  String? _error;
+  int _selectedTab = 0; // 0: Günlük, 1: Üç Kart
+
+  @override
+  void initState() {
+    super.initState();
+    _tarotService = TarotService(
+      geminiService: GeminiService(),
+      firebaseService: _firebaseService,
+    );
+    _loadDailyCard();
+  }
+
+  Future<void> _loadDailyCard() async {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.userId == null || authProvider.userProfile == null) return;
+
+    setState(() {
+      _isLoadingDaily = true;
+      _error = null;
+    });
+
+    try {
+      final reading = await _tarotService.getDailyCard(
+        authProvider.userId!,
+        authProvider.userProfile!.zodiacSign,
+      );
+
+      if (mounted) {
+        setState(() {
+          _dailyReading = reading;
+          _isLoadingDaily = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Tarot kartı çekilirken bir hata oluştu';
+          _isLoadingDaily = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadThreeCardSpread() async {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.userId == null || authProvider.userProfile == null) return;
+
+    // Premium kontrolü
+    if (!authProvider.isPremium) {
+      _showPremiumDialog();
+      return;
+    }
+
+    setState(() {
+      _isLoadingThree = true;
+      _error = null;
+    });
+
+    try {
+      final reading = await _tarotService.getThreeCardSpread(
+        authProvider.userId!,
+        authProvider.userProfile!.zodiacSign,
+      );
+
+      if (mounted) {
+        setState(() {
+          _threeCardReading = reading;
+          _isLoadingThree = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Tarot yayılımı oluşturulurken bir hata oluştu';
+          _isLoadingThree = false;
+        });
+      }
+    }
+  }
+
+  void _showPremiumDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Premium Özellik'),
+        content: const Text(
+          'Üç kart yayılımı premium kullanıcılar için özel bir özelliktir. '
+          'Premium üyeliğe geçerek bu ve daha fazla özelliğe erişebilirsiniz.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/premium');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentPurple,
+            ),
+            child: const Text('Premium\'a Geç'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _shareReading(TarotReading reading) async {
+    try {
+      String shareText = '🔮 Zodi Tarot Falım\n\n';
+      
+      if (reading.cards.length == 1) {
+        // Günlük kart
+        final card = reading.cards.first;
+        shareText += '📜 ${card.name}${card.reversed ? ' (Ters)' : ''}\n';
+        shareText += '✨ ${card.basicMeaning}\n\n';
+      } else {
+        // Üç kart yayılımı
+        shareText += '📜 Geçmiş: ${reading.cards[0].name}\n';
+        shareText += '📜 Şimdi: ${reading.cards[1].name}\n';
+        shareText += '📜 Gelecek: ${reading.cards[2].name}\n\n';
+      }
+      
+      shareText += '💫 Zodi\'nin Yorumu:\n${reading.interpretation}\n\n';
+      shareText += '🌟 Zodi ile senin de falına bak!';
+      
+      await Share.share(
+        shareText,
+        subject: 'Zodi Tarot Falım',
+      );
+      
+      // Analytics
+      _firebaseService.analytics.logEvent(
+        name: 'tarot_shared',
+        parameters: {
+          'card_count': reading.cards.length,
+          'reading_type': reading.cards.length == 1 ? 'daily' : 'three_card',
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Paylaşım başarısız: $e'),
+            backgroundColor: AppColors.negative,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final authProvider = context.watch<AuthProvider>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tarot Falı'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          // Tab seçici
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardDark : AppColors.cardLight,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildTabButton(
+                    'Günlük Kart',
+                    0,
+                    Icons.auto_awesome,
+                  ),
+                ),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      _buildTabButton(
+                        'Üç Kart',
+                        1,
+                        Icons.view_carousel,
+                      ),
+                      if (!authProvider.isPremium)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.gold,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'PRO',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // İçerik
+          Expanded(
+            child: _selectedTab == 0
+                ? _buildDailyCardView()
+                : _buildThreeCardView(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton(String label, int index, IconData icon) {
+    final isSelected = _selectedTab == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedTab = index);
+        if (index == 1 && _threeCardReading == null && !_isLoadingThree) {
+          _loadThreeCardSpread();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.accentPurple.withOpacity(0.2)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected
+                  ? AppColors.accentPurple
+                  : (isDark ? Colors.white60 : Colors.black54),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected
+                    ? AppColors.accentPurple
+                    : (isDark ? Colors.white60 : Colors.black54),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDailyCardView() {
+    if (_isLoadingDaily) {
+      return const Center(
+        child: ShimmerLoading(
+          width: 200,
+          height: 320,
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: AppColors.warning),
+            const SizedBox(height: 16),
+            Text(_error!),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadDailyCard,
+              child: const Text('Tekrar Dene'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_dailyReading == null) {
+      return const Center(child: Text('Kart yükleniyor...'));
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const Text(
+            'Bugünün Kartın',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Bugün senin için özel bir mesaj var',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Kart
+          TarotCardWidget(
+            card: _dailyReading!.cards.first,
+            showFlipAnimation: true,
+          ),
+
+          const SizedBox(height: 32),
+
+          // Yorum
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.cardDark
+                  : AppColors.cardLight,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.accentPurple.withOpacity(0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome,
+                      color: AppColors.gold,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Zodi\'nin Yorumu',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _dailyReading!.interpretation,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Paylaş butonu
+          ElevatedButton.icon(
+            onPressed: () => _shareReading(_dailyReading!),
+            icon: const Icon(Icons.share),
+            label: const Text('Paylaş'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentPurple,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 32,
+                vertical: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThreeCardView() {
+    final authProvider = context.watch<AuthProvider>();
+
+    if (!authProvider.isPremium) {
+      return PremiumLockOverlay(
+        title: 'Üç Kart Yayılımı',
+        description:
+            'Geçmiş, şimdi ve gelecek için üç kart çekerek daha detaylı bir okuma yapın.',
+        onUnlock: () => Navigator.pushNamed(context, '/premium'),
+      );
+    }
+
+    if (_isLoadingThree) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ShimmerLoading(width: 200, height: 320),
+            SizedBox(height: 16),
+            Text('Kartlar karılıyor...'),
+          ],
+        ),
+      );
+    }
+
+    if (_threeCardReading == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.view_carousel,
+              size: 80,
+              color: AppColors.accentPurple,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Üç Kart Yayılımı',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Geçmiş, şimdi ve gelecek için\nüç kart çekin',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _loadThreeCardSpread,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Kartları Çek'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentPurple,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          const Text(
+            'Üç Kart Yayılımı',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Üç kart
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    const Text(
+                      'Geçmiş',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Transform.scale(
+                      scale: 0.7,
+                      child: TarotCardWidget(
+                        card: _threeCardReading!.cards[0],
+                        showFlipAnimation: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    const Text(
+                      'Şimdi',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Transform.scale(
+                      scale: 0.7,
+                      child: TarotCardWidget(
+                        card: _threeCardReading!.cards[1],
+                        showFlipAnimation: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    const Text(
+                      'Gelecek',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Transform.scale(
+                      scale: 0.7,
+                      child: TarotCardWidget(
+                        card: _threeCardReading!.cards[2],
+                        showFlipAnimation: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+
+          // Yorum
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.cardDark
+                  : AppColors.cardLight,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.accentPurple.withOpacity(0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome,
+                      color: AppColors.gold,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Zodi\'nin Yorumu',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _threeCardReading!.interpretation,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Paylaş butonu
+          ElevatedButton.icon(
+            onPressed: () => _shareReading(_threeCardReading!),
+            icon: const Icon(Icons.share),
+            label: const Text('Paylaş'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentPurple,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 32,
+                vertical: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

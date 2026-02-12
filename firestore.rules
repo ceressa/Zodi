@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection - kullanıcı sadece kendi verisini okuyabilir/yazabilir
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Interactions subcollection
+      match /interactions/{interactionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Feedback collection - kullanıcılar sadece yazabilir, okuyamaz
+    match /feedback/{feedbackId} {
+      allow create: if request.auth != null;
+      allow read: if false; // Sadece admin okuyabilir
+      allow update, delete: if false;
+    }
+    
+    // Analytics collection - sadece yazma
+    match /analytics/{docId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+  }
+}
