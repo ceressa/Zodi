@@ -33,6 +33,16 @@ class AdService {
       int.fromEnvironment('ADS_MAX_REWARDED_PER_DAY', defaultValue: 5);
   static int get _minMinutesBetweenRewarded =>
       int.fromEnvironment('ADS_MIN_MINUTES_BETWEEN_REWARDED', defaultValue: 2);
+  static const int _newUserDays = 3;
+  static const int _newUserMaxInterstitialsPerDay = 2;
+  static const int _regularMaxInterstitialsPerDay = 3;
+  static const int _newUserScreensBetweenInterstitials = 4;
+  static const int _regularScreensBetweenInterstitials = 3;
+  static const int _minMinutesBetweenInterstitials = 4;
+  static const int _minMinutesAfterSessionStartForInterstitial = 2;
+
+  static const int _maxRewardedPerDay = 5;
+  static const int _minMinutesBetweenRewarded = 2;
 
   int _screenNavigationCount = 0;
   int _interstitialShownToday = 0;
@@ -77,6 +87,12 @@ class AdService {
           if (configured.isNotEmpty) return configured;
           break;
       }
+      const configured = String.fromEnvironment('ADMOB_BANNER_ANDROID', defaultValue: '');
+      if (androidEnv == 'ADMOB_BANNER_ANDROID' && configured.isNotEmpty) return configured;
+      const configuredRewarded = String.fromEnvironment('ADMOB_REWARDED_ANDROID', defaultValue: '');
+      if (androidEnv == 'ADMOB_REWARDED_ANDROID' && configuredRewarded.isNotEmpty) return configuredRewarded;
+      const configuredInterstitial = String.fromEnvironment('ADMOB_INTERSTITIAL_ANDROID', defaultValue: '');
+      if (androidEnv == 'ADMOB_INTERSTITIAL_ANDROID' && configuredInterstitial.isNotEmpty) return configuredInterstitial;
       return androidTest;
     }
 
@@ -95,6 +111,12 @@ class AdService {
           if (configured.isNotEmpty) return configured;
           break;
       }
+      const configured = String.fromEnvironment('ADMOB_BANNER_IOS', defaultValue: '');
+      if (iosEnv == 'ADMOB_BANNER_IOS' && configured.isNotEmpty) return configured;
+      const configuredRewarded = String.fromEnvironment('ADMOB_REWARDED_IOS', defaultValue: '');
+      if (iosEnv == 'ADMOB_REWARDED_IOS' && configuredRewarded.isNotEmpty) return configuredRewarded;
+      const configuredInterstitial = String.fromEnvironment('ADMOB_INTERSTITIAL_IOS', defaultValue: '');
+      if (iosEnv == 'ADMOB_INTERSTITIAL_IOS' && configuredInterstitial.isNotEmpty) return configuredInterstitial;
       return iosTest;
     }
 
@@ -210,6 +232,17 @@ class AdService {
 
   int _daysSinceInstall() {
     if (_firstOpenDate == null) return 999;
+  String get audienceSegment {
+    final days = _daysSinceInstall();
+    if (days < _newUserDays) return 'new_user';
+    if (days < 14) return 'warming';
+    return 'regular';
+  }
+
+  int _daysSinceInstall() {
+    if (_firstOpenDate == null) {
+      return 999;
+    }
     return DateTime.now().difference(_firstOpenDate!).inDays;
   }
 
@@ -228,6 +261,7 @@ class AdService {
 
     if (_rewardedShownToday >= _maxRewardedPerDay) {
       _lastRewardedDecision = 'blocked_daily_limit';
+      print('❌ Rewarded daily limit reached: $_rewardedShownToday/$_maxRewardedPerDay');
       return false;
     }
 
@@ -235,6 +269,7 @@ class AdService {
       final mins = DateTime.now().difference(_lastRewardedShownAt!).inMinutes;
       if (mins < _minMinutesBetweenRewarded) {
         _lastRewardedDecision = 'blocked_cooldown';
+        print('❌ Rewarded cooldown active: $mins/$_minMinutesBetweenRewarded minutes');
         return false;
       }
     }
@@ -263,6 +298,7 @@ class AdService {
     final screensThreshold = _screensBetweenInterstitials();
 
     if (_interstitialShownToday >= maxPerDay) {
+
       _lastInterstitialDecision = 'blocked_daily_limit';
       return false;
     }
@@ -282,11 +318,35 @@ class AdService {
       final minutesSinceLast = DateTime.now().difference(_lastInterstitialShownAt!).inMinutes;
       if (minutesSinceLast < _minMinutesBetweenInterstitials) {
         _lastInterstitialDecision = 'blocked_cooldown';
+
+      print('❌ Daily interstitial limit reached: $_interstitialShownToday/$maxPerDay');
+      return false;
+    }
+
+    if (_screenNavigationCount < screensThreshold) {
+      print('❌ Not enough screens: $_screenNavigationCount/$screensThreshold');
+      return false;
+    }
+
+    final sessionMinutes = DateTime.now().difference(_sessionStartedAt).inMinutes;
+    if (sessionMinutes < _minMinutesAfterSessionStartForInterstitial) {
+      print('❌ Session warmup active: $sessionMinutes/$_minMinutesAfterSessionStartForInterstitial minutes');
+      return false;
+    }
+
+    if (_lastInterstitialShownAt != null) {
+      final minutesSinceLast = DateTime.now().difference(_lastInterstitialShownAt!).inMinutes;
+      if (minutesSinceLast < _minMinutesBetweenInterstitials) {
+        print('❌ Cooldown active: $minutesSinceLast/$_minMinutesBetweenInterstitials minutes');
         return false;
       }
     }
 
+
     _lastInterstitialDecision = 'eligible';
+
+    print('✅ Should show interstitial (newUser=${_isNewUser()}, daily=$_interstitialShownToday/$maxPerDay)');
+
     return true;
   }
 
@@ -298,6 +358,8 @@ class AdService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_interstitialShownTodayKey, _interstitialShownToday);
     await prefs.setString(_lastInterstitialShownAtKey, _lastInterstitialShownAt!.toIso8601String());
+
+    print('✅ Interstitial marked as shown. Today: $_interstitialShownToday/${_maxInterstitialsPerDay()}');
   }
 
   void loadBannerAd() {
@@ -310,6 +372,7 @@ class AdService {
           _isBannerAdReady = true;
         },
         onAdFailedToLoad: (ad, error) {
+          print('❌ Banner ad failed to load: ${error.message}');
           _isBannerAdReady = false;
           ad.dispose();
           _bannerAd = null;
@@ -356,6 +419,7 @@ class AdService {
       onAdShowedFullScreenContent: (ad) {
         _markRewardedShown();
         _lastRewardedDecision = 'shown';
+        print('✅ Rewarded ad showed (placement: $placement)');
       },
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
@@ -440,6 +504,9 @@ class AdService {
 
   Future<bool> showInterstitialIfNeeded() async {
     if (!await shouldShowInterstitial()) return false;
+    if (!await shouldShowInterstitial()) {
+      return false;
+    }
     return showInterstitialAd();
   }
 
