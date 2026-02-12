@@ -71,6 +71,14 @@ class _HomeScreenState extends State<HomeScreen> {
         outcome: shown ? 'shown' : _adService.lastInterstitialDecision,
         audienceSegment: _adService.audienceSegment,
       );
+      if (shown) {
+        await _firebaseService.logAdWatched(
+          'interstitial_navigation',
+          placement: 'home_tab_navigation',
+          outcome: 'shown',
+          audienceSegment: _adService.audienceSegment,
+        );
+      }
     }
   }
 
