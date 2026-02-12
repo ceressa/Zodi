@@ -81,6 +81,19 @@ class AdService {
     required String iosEnv,
   }) {
     if (Platform.isAndroid) {
+      if (androidEnv == 'ADMOB_BANNER_ANDROID') {
+        const configuredBanner = String.fromEnvironment('ADMOB_BANNER_ANDROID', defaultValue: '');
+        if (configuredBanner.isNotEmpty) return configuredBanner;
+      }
+      if (androidEnv == 'ADMOB_REWARDED_ANDROID') {
+        const configuredRewarded = String.fromEnvironment('ADMOB_REWARDED_ANDROID', defaultValue: '');
+        if (configuredRewarded.isNotEmpty) return configuredRewarded;
+      }
+      if (androidEnv == 'ADMOB_INTERSTITIAL_ANDROID') {
+        const configuredInterstitial =
+            String.fromEnvironment('ADMOB_INTERSTITIAL_ANDROID', defaultValue: '');
+        if (configuredInterstitial.isNotEmpty) return configuredInterstitial;
+      }
       switch (androidEnv) {
         case 'ADMOB_BANNER_ANDROID':
           const configured = String.fromEnvironment('ADMOB_BANNER_ANDROID', defaultValue: '');
@@ -106,6 +119,19 @@ class AdService {
     }
 
     if (Platform.isIOS) {
+      if (iosEnv == 'ADMOB_BANNER_IOS') {
+        const configuredBanner = String.fromEnvironment('ADMOB_BANNER_IOS', defaultValue: '');
+        if (configuredBanner.isNotEmpty) return configuredBanner;
+      }
+      if (iosEnv == 'ADMOB_REWARDED_IOS') {
+        const configuredRewarded = String.fromEnvironment('ADMOB_REWARDED_IOS', defaultValue: '');
+        if (configuredRewarded.isNotEmpty) return configuredRewarded;
+      }
+      if (iosEnv == 'ADMOB_INTERSTITIAL_IOS') {
+        const configuredInterstitial =
+            String.fromEnvironment('ADMOB_INTERSTITIAL_IOS', defaultValue: '');
+        if (configuredInterstitial.isNotEmpty) return configuredInterstitial;
+      }
       switch (iosEnv) {
         case 'ADMOB_BANNER_IOS':
           const configured = String.fromEnvironment('ADMOB_BANNER_IOS', defaultValue: '');
@@ -257,6 +283,7 @@ class AdService {
     if (days < _newUserDays) return _newUserScreensBetweenInterstitials;
     if (days < _warmingDays) return _warmingScreensBetweenInterstitials;
     return _regularScreensBetweenInterstitials;
+
   String get audienceSegment {
     final days = _daysSinceInstall();
     if (days < _newUserDays) return 'new_user';
@@ -286,6 +313,7 @@ class AdService {
 
     if (_rewardedShownToday >= _maxRewardedPerDay) {
       _lastRewardedDecision = 'blocked_daily_limit';
+
       print('❌ Rewarded daily limit reached: $_rewardedShownToday/$_maxRewardedPerDay');
       return false;
     }
@@ -332,6 +360,11 @@ class AdService {
       return false;
     }
 
+    if (_screenNavigationCount < screensThreshold) {
+      _lastInterstitialDecision = 'blocked_navigation_threshold';
+      return false;
+    }
+
     final sessionMinutes = DateTime.now().difference(_sessionStartedAt).inMinutes;
     if (sessionMinutes < _minMinutesAfterSessionStartForInterstitial) {
       _lastInterstitialDecision = 'blocked_session_warmup';
@@ -369,7 +402,6 @@ class AdService {
     }
 
     _lastInterstitialDecision = 'eligible';
-
     _lastInterstitialDecision = 'eligible';
 
     print('✅ Should show interstitial (newUser=${_isNewUser()}, daily=$_interstitialShownToday/$maxPerDay)');
