@@ -20,10 +20,16 @@ class AdService {
       int.fromEnvironment('ADS_NEW_USER_MAX_INTERSTITIALS_PER_DAY', defaultValue: 2);
   static int get _regularMaxInterstitialsPerDay =>
       int.fromEnvironment('ADS_REGULAR_MAX_INTERSTITIALS_PER_DAY', defaultValue: 3);
+  static int get _warmingDays =>
+      int.fromEnvironment('ADS_WARMING_DAYS', defaultValue: 14);
+  static int get _warmingMaxInterstitialsPerDay =>
+      int.fromEnvironment('ADS_WARMING_MAX_INTERSTITIALS_PER_DAY', defaultValue: 3);
   static int get _newUserScreensBetweenInterstitials =>
       int.fromEnvironment('ADS_NEW_USER_SCREENS_BETWEEN_INTERSTITIALS', defaultValue: 4);
   static int get _regularScreensBetweenInterstitials =>
       int.fromEnvironment('ADS_REGULAR_SCREENS_BETWEEN_INTERSTITIALS', defaultValue: 3);
+  static int get _warmingScreensBetweenInterstitials =>
+      int.fromEnvironment('ADS_WARMING_SCREENS_BETWEEN_INTERSTITIALS', defaultValue: 3);
   static int get _minMinutesBetweenInterstitials =>
       int.fromEnvironment('ADS_MIN_MINUTES_BETWEEN_INTERSTITIALS', defaultValue: 4);
   static int get _minMinutesAfterSessionStartForInterstitial =>
@@ -33,6 +39,7 @@ class AdService {
       int.fromEnvironment('ADS_MAX_REWARDED_PER_DAY', defaultValue: 5);
   static int get _minMinutesBetweenRewarded =>
       int.fromEnvironment('ADS_MIN_MINUTES_BETWEEN_REWARDED', defaultValue: 2);
+
   static const int _newUserDays = 3;
   static const int _newUserMaxInterstitialsPerDay = 2;
   static const int _regularMaxInterstitialsPerDay = 3;
@@ -62,6 +69,7 @@ class AdService {
   String get audienceSegment {
     final days = _daysSinceInstall();
     if (days < _newUserDays) return 'new_user';
+    if (days < _warmingDays) return 'warming';
     if (days < 14) return 'warming';
     return 'regular';
   }
@@ -87,6 +95,7 @@ class AdService {
           if (configured.isNotEmpty) return configured;
           break;
       }
+
       const configured = String.fromEnvironment('ADMOB_BANNER_ANDROID', defaultValue: '');
       if (androidEnv == 'ADMOB_BANNER_ANDROID' && configured.isNotEmpty) return configured;
       const configuredRewarded = String.fromEnvironment('ADMOB_REWARDED_ANDROID', defaultValue: '');
@@ -232,6 +241,22 @@ class AdService {
 
   int _daysSinceInstall() {
     if (_firstOpenDate == null) return 999;
+    return DateTime.now().difference(_firstOpenDate!).inDays;
+  }
+
+
+  int _maxInterstitialsPerDay() {
+    final days = _daysSinceInstall();
+    if (days < _newUserDays) return _newUserMaxInterstitialsPerDay;
+    if (days < _warmingDays) return _warmingMaxInterstitialsPerDay;
+    return _regularMaxInterstitialsPerDay;
+  }
+
+  int _screensBetweenInterstitials() {
+    final days = _daysSinceInstall();
+    if (days < _newUserDays) return _newUserScreensBetweenInterstitials;
+    if (days < _warmingDays) return _warmingScreensBetweenInterstitials;
+    return _regularScreensBetweenInterstitials;
   String get audienceSegment {
     final days = _daysSinceInstall();
     if (days < _newUserDays) return 'new_user';
@@ -298,7 +323,6 @@ class AdService {
     final screensThreshold = _screensBetweenInterstitials();
 
     if (_interstitialShownToday >= maxPerDay) {
-
       _lastInterstitialDecision = 'blocked_daily_limit';
       return false;
     }
@@ -330,6 +354,7 @@ class AdService {
 
     final sessionMinutes = DateTime.now().difference(_sessionStartedAt).inMinutes;
     if (sessionMinutes < _minMinutesAfterSessionStartForInterstitial) {
+      _lastInterstitialDecision = 'blocked_session_warmup';
       print('❌ Session warmup active: $sessionMinutes/$_minMinutesAfterSessionStartForInterstitial minutes');
       return false;
     }
@@ -337,11 +362,13 @@ class AdService {
     if (_lastInterstitialShownAt != null) {
       final minutesSinceLast = DateTime.now().difference(_lastInterstitialShownAt!).inMinutes;
       if (minutesSinceLast < _minMinutesBetweenInterstitials) {
+        _lastInterstitialDecision = 'blocked_cooldown';
         print('❌ Cooldown active: $minutesSinceLast/$_minMinutesBetweenInterstitials minutes');
         return false;
       }
     }
 
+    _lastInterstitialDecision = 'eligible';
 
     _lastInterstitialDecision = 'eligible';
 
@@ -358,7 +385,6 @@ class AdService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_interstitialShownTodayKey, _interstitialShownToday);
     await prefs.setString(_lastInterstitialShownAtKey, _lastInterstitialShownAt!.toIso8601String());
-
     print('✅ Interstitial marked as shown. Today: $_interstitialShownToday/${_maxInterstitialsPerDay()}');
   }
 
