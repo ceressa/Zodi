@@ -306,13 +306,19 @@ Yanıtı şu JSON formatında ver:
       final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
       final jsonStr = jsonMatch?.group(1) ?? text;
       
-      final result = jsonDecode(jsonStr);
-      
+      final result = Map<String, dynamic>.from(jsonDecode(jsonStr) as Map);
+
+      // Never trust AI for sign calculation fields: enforce astronomical values.
+      // Gemini is used only for text analysis/personality copy.
+      result['sunSign'] = calculatedSunSign;
+      result['risingSign'] = calculatedRisingSign;
+      result['moonSign'] = calculatedMoonSign;
+
       // Add astronomical data to result
       result['sunDegree'] = calculation['sunDegree'];
       result['ascendantDegree'] = calculation['ascendantDegree'];
       result['moonDegree'] = calculation['moonDegree'];
-      
+
       return result;
     } catch (e) {
       debugPrint('❌ Error in calculateRisingSign: $e');
