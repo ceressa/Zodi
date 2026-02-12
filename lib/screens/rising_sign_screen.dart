@@ -551,6 +551,10 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
                     ),
                   ),
                 ),
+
+                const SizedBox(height: 16),
+
+                _buildCalculationDisclaimer(isDark),
                 
                 // Results
                 if (horoscopeProvider.risingSignResult != null) ...[
@@ -641,6 +645,53 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildCalculationDisclaimer(bool isDark) {
+    return AnimatedCard(
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 8),
+          iconColor: AppColors.accentPurple,
+          collapsedIconColor: AppColors.accentPurple,
+          leading: const Icon(Icons.info_outline, color: AppColors.accentPurple),
+          title: Text(
+            'Hesaplama Metodolojisi',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? AppColors.textPrimary : AppColors.textDark,
+            ),
+          ),
+          subtitle: Text(
+            'Bu sonuçları nasıl hesaplıyoruz?',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? AppColors.textSecondary : AppColors.textMuted,
+            ),
+          ),
+          children: [
+            Text(
+              '• Güneş, Ay ve Yükselen hesapları Swiss Ephemeris (astronomik efemeris) ile yapılır.\n'
+              '• Hesaplama sistemi Tropical Zodyak + Placidus ev sistemidir.\n'
+              "• Doğum saati Türkiye saatine (Europe/Istanbul) göre UTC'ye çevrilerek hesaplanır.\n"
+              '• Doğum yeri şehir bazlı koordinatlarla eşleştirilir; şehir bulunamazsa Ankara referans alınır.\n'
+              '• Kişilik yorumlarını yapay zeka üretir, ancak burç sonuçları (Güneş/Ay/Yükselen) astronomik hesaplardan gelir.\n\n'
+              'Not: Farklı sitelerde Sidereal/Lahiri veya farklı ev sistemi kullanılırsa sonuçlar değişebilir.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: isDark ? AppColors.textSecondary : AppColors.textMuted,
+              ),
+            ),
+          ],
         ),
       ),
     );
