@@ -269,10 +269,20 @@ class FirebaseService {
     await _analytics.logEvent(name: 'dream_interpretation');
   }
 
-  Future<void> logAdWatched(String adType) async {
+  Future<void> logAdWatched(
+    String adType, {
+    String? placement,
+    String? outcome,
+    String? audienceSegment,
+  }) async {
     await _analytics.logEvent(
       name: 'ad_watched',
-      parameters: {'ad_type': adType},
+      parameters: {
+        'ad_type': adType,
+        if (placement != null) 'placement': placement,
+        if (outcome != null) 'outcome': outcome,
+        if (audienceSegment != null) 'audience_segment': audienceSegment,
+      },
     );
   }
 

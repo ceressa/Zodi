@@ -21,6 +21,7 @@ class AdService {
   static const int _newUserScreensBetweenInterstitials = 4;
   static const int _regularScreensBetweenInterstitials = 3;
   static const int _minMinutesBetweenInterstitials = 4;
+  static const int _minMinutesAfterSessionStartForInterstitial = 2;
 
   static const int _maxRewardedPerDay = 5;
   static const int _minMinutesBetweenRewarded = 2;
@@ -32,6 +33,7 @@ class AdService {
 
   int _rewardedShownToday = 0;
   DateTime? _lastRewardedShownAt;
+  DateTime _sessionStartedAt = DateTime.now();
 
   static String _resolveAdUnit({
     required String androidTest,
@@ -93,6 +95,7 @@ class AdService {
   bool _isInterstitialAdReady = false;
 
   Future<void> initialize() async {
+    _sessionStartedAt = DateTime.now();
     await MobileAds.instance.initialize();
     await _loadInterstitialTracking();
     await _loadRewardedTracking();
@@ -168,6 +171,13 @@ class AdService {
     }
   }
 
+  String get audienceSegment {
+    final days = _daysSinceInstall();
+    if (days < _newUserDays) return 'new_user';
+    if (days < 14) return 'warming';
+    return 'regular';
+  }
+
   int _daysSinceInstall() {
     if (_firstOpenDate == null) {
       return 999;
@@ -231,6 +241,12 @@ class AdService {
 
     if (_screenNavigationCount < screensThreshold) {
       print('❌ Not enough screens: $_screenNavigationCount/$screensThreshold');
+      return false;
+    }
+
+    final sessionMinutes = DateTime.now().difference(_sessionStartedAt).inMinutes;
+    if (sessionMinutes < _minMinutesAfterSessionStartForInterstitial) {
+      print('❌ Session warmup active: $sessionMinutes/$_minMinutesAfterSessionStartForInterstitial minutes');
       return false;
     }
 
