@@ -53,6 +53,27 @@ class AppColors {
     end: Alignment.bottomRight,
   );
   
+
+  static const homePastelLightGradient = LinearGradient(
+    colors: [
+      Color(0xFFF7F3FF),
+      Color(0xFFF1F8FF),
+      Color(0xFFECFEFF),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const homePastelDarkGradient = LinearGradient(
+    colors: [
+      Color(0xFF141B36),
+      Color(0xFF1B2347),
+      Color(0xFF1A2C4A),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   // Status colors
   static const gold = Color(0xFFFBBF24);
   static const positive = Color(0xFF10B981);

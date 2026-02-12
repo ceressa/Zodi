@@ -48,6 +48,9 @@ app.*.map.json
 .env.local
 .env.*.local
 
+# Node.js dependencies
+node_modules/
+
 # Firebase
 firebase_options.dart
 google-services.json

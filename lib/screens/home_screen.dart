@@ -6,6 +6,7 @@ import '../constants/colors.dart';
 import '../constants/strings.dart';
 import '../services/ad_service.dart';
 import '../services/streak_service.dart';
+import '../services/firebase_service.dart';
 import '../models/streak_data.dart';
 import '../widgets/compact_streak_badge.dart';
 import 'daily_screen.dart';
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   final AdService _adService = AdService();
   final StreakService _streakService = StreakService();
+  final FirebaseService _firebaseService = FirebaseService();
   StreakData? _streakData;
 
   @override
@@ -62,7 +64,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _adService.trackScreenNavigation();
       
       // Gerekirse interstitial göster
-      await _adService.showInterstitialIfNeeded();
+      final shown = await _adService.showInterstitialIfNeeded();
+      await _firebaseService.logAdWatched(
+        'interstitial_navigation',
+        placement: 'home_tab_navigation',
+        outcome: shown ? 'shown' : _adService.lastInterstitialDecision,
+        audienceSegment: _adService.audienceSegment,
+      );
     }
   }
 
@@ -75,7 +83,9 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBody: true, // Alt menünün arkasının görünmesi için
       body: Container(
         decoration: BoxDecoration(
-          color: isDark ? AppColors.bgDark : AppColors.bgLight,
+          gradient: isDark
+              ? AppColors.homePastelDarkGradient
+              : AppColors.homePastelLightGradient,
         ),
         child: Column(
           children: [
@@ -111,13 +121,23 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: 15,
       ),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark.withOpacity(0.8) : Colors.white.withOpacity(0.8),
+        gradient: isDark
+            ? const LinearGradient(
+                colors: [Color(0xCC1A1F3A), Color(0xCC252B48)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xF2FFFFFF), Color(0xF2F8F5FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: isDark ? Colors.black.withOpacity(0.2) : const Color(0x338B5CF6),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -172,11 +192,21 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        gradient: AppColors.purpleGradient,
+        gradient: isDark
+            ? const LinearGradient(
+                colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFFB794F6), Color(0xFF93C5FD)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: AppColors.accentPurple.withOpacity(0.3),
+            color: AppColors.accentPurple.withOpacity(isDark ? 0.3 : 0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -194,12 +224,15 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
+        color: isDark ? const Color(0xD91A1F3A) : const Color(0xE6FFFFFF),
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: isDark ? const Color(0x334A5A8A) : const Color(0x338B5CF6),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 20,
+            color: isDark ? Colors.black.withOpacity(0.22) : const Color(0x228B5CF6),
+            blurRadius: 22,
             offset: const Offset(0, 10),
           ),
         ],
@@ -227,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: 200.ms,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.accentPurple.withOpacity(0.1) : Colors.transparent,
+          color: isActive ? AppColors.accentPurple.withOpacity(0.16) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -235,7 +268,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Icon(
               isActive ? activeIcon : icon,
-              color: isActive ? AppColors.accentPurple : AppColors.textMuted,
+              color: isActive
+                  ? AppColors.accentPurple
+                  : Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.textTertiary
+                      : const Color(0xFF7C83A3),
               size: 28,
             ),
             const SizedBox(height: 6),

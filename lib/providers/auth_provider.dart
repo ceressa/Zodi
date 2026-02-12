@@ -113,7 +113,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> upgradeToPremium() async {
+  Future<void> upgradeToPremium({String subscriptionType = 'lifetime'}) async {
     await _storage.saveIsPremium(true);
     _isPremium = true;
     
@@ -127,13 +127,13 @@ class AuthProvider with ChangeNotifier {
           .doc(_firebaseService.currentUser!.uid)
           .update({
         'premiumStartDate': DateTime.now().toIso8601String(),
-        'subscriptionType': 'lifetime', // veya 'monthly', 'yearly'
+        'subscriptionType': subscriptionType
       });
       
       // Analytics event
       await _firebaseService.analytics.logEvent(
         name: 'premium_purchased',
-        parameters: {'user_id': _firebaseService.currentUser!.uid},
+        parameters: {'user_id': _firebaseService.currentUser!.uid, 'subscription_type': subscriptionType},
       );
     }
     

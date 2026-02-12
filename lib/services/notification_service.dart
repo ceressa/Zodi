@@ -73,15 +73,22 @@ class NotificationService {
   Future<bool> requestPermissions() async {
     final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
-    
+
     if (androidPlugin != null) {
       final granted = await androidPlugin.requestNotificationsPermission();
-      return granted ?? false;
+      if (granted != null) {
+        return granted;
+      }
+
+      // Android 12 and lower versions return null because runtime notification
+      // permission does not exist. In that case fall back to current setting.
+      final isEnabled = await androidPlugin.areNotificationsEnabled();
+      return isEnabled ?? true;
     }
 
     final iosPlugin = _notifications.resolvePlatformSpecificImplementation<
         IOSFlutterLocalNotificationsPlugin>();
-    
+
     if (iosPlugin != null) {
       final granted = await iosPlugin.requestPermissions(
         alert: true,
