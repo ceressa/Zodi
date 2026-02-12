@@ -360,6 +360,17 @@ class AdService {
       return false;
     }
 
+    final sessionMinutes = DateTime.now().difference(_sessionStartedAt).inMinutes;
+    if (sessionMinutes < _minMinutesAfterSessionStartForInterstitial) {
+      _lastInterstitialDecision = 'blocked_session_warmup';
+      return false;
+    }
+
+    if (_screenNavigationCount < screensThreshold) {
+      _lastInterstitialDecision = 'blocked_navigation_threshold';
+      return false;
+    }
+
     if (_screenNavigationCount < screensThreshold) {
       _lastInterstitialDecision = 'blocked_navigation_threshold';
       return false;

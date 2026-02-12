@@ -54,47 +54,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleNotifications(bool value, AuthProvider authProvider) async {
-    if (value) {
-      // Request permissions first
-      final granted = await _notificationService.requestPermissions();
-      if (!granted) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Bildirim izni verilmedi. Lütfen ayarlardan izin verin.'),
-              backgroundColor: AppColors.negative,
-            ),
-          );
+    try {
+      if (value) {
+        // Request permissions first
+        final granted = await _notificationService.requestPermissions();
+        if (!granted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Bildirim izni verilmedi. Lütfen ayarlardan izin verin.'),
+                backgroundColor: AppColors.negative,
+              ),
+            );
+          }
+          return;
         }
-        return;
+
+        // Schedule notification
+        await _notificationService.scheduleDaily(
+          time: _notificationTime,
+          zodiacSign: authProvider.selectedZodiac?.displayName ?? 'Koç',
+        );
+
+        // Generate preview
+        await _generatePreview(authProvider);
+      } else {
+        // Cancel notifications
+        await _notificationService.cancelAll();
+        setState(() {
+          _notificationPreview = null;
+        });
       }
 
-      // Schedule notification
-      await _notificationService.scheduleDaily(
-        time: _notificationTime,
-        zodiacSign: authProvider.selectedZodiac?.displayName ?? 'Koç',
-      );
-
-      // Generate preview
-      await _generatePreview(authProvider);
-    } else {
-      // Cancel notifications
-      await _notificationService.cancelAll();
       setState(() {
-        _notificationPreview = null;
+        _notificationsEnabled = value;
       });
+
+      final timeValue = '${_notificationTime.hour}:${_notificationTime.minute}';
+
+      // Save to storage and Firebase
+      await _storageService.setNotificationsEnabled(value);
+      await _storageService.setNotificationTime(timeValue);
+      await _firebaseService.updateNotificationSettings(
+        enabled: value,
+        time: timeValue,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bildirim ayarları güncellenirken bir hata oluştu.'),
+            backgroundColor: AppColors.negative,
+          ),
+        );
+      }
     }
-
-    setState(() {
-      _notificationsEnabled = value;
-    });
-
-    // Save to storage and Firebase
-    await _storageService.setNotificationsEnabled(value);
-    await _firebaseService.updateNotificationSettings(
-      enabled: value,
-      time: '${_notificationTime.hour}:${_notificationTime.minute}',
-    );
   }
 
   Future<void> _selectNotificationTime(AuthProvider authProvider) async {
@@ -296,18 +310,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           
-          // Time Picker (only show if notifications enabled)
+          const SizedBox(height: 12),
+          _SettingItem(
+            icon: Icons.access_time,
+            title: 'Bildirim Saati',
+            subtitle: _notificationsEnabled
+                ? '${_notificationTime.hour.toString().padLeft(2, '0')}:${_notificationTime.minute.toString().padLeft(2, '0')}'
+                : '${_notificationTime.hour.toString().padLeft(2, '0')}:${_notificationTime.minute.toString().padLeft(2, '0')} (bildirim kapalıyken de değiştirilebilir)',
+            onTap: () => _selectNotificationTime(authProvider),
+          ),
+
           if (_notificationsEnabled) ...[
             const SizedBox(height: 12),
-            _SettingItem(
-              icon: Icons.access_time,
-              title: 'Bildirim Saati',
-              subtitle: '${_notificationTime.hour.toString().padLeft(2, '0')}:${_notificationTime.minute.toString().padLeft(2, '0')}',
-              onTap: () => _selectNotificationTime(authProvider),
-            ),
-            
             // Notification Preview
-            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -433,7 +448,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ],
-          
+
           const SizedBox(height: 24),
           
           // Other Settings Section
