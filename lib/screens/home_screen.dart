@@ -65,6 +65,13 @@ class _HomeScreenState extends State<HomeScreen> {
       
       // Gerekirse interstitial göster
       final shown = await _adService.showInterstitialIfNeeded();
+
+      await _firebaseService.logAdWatched(
+        'interstitial_navigation',
+        placement: 'home_tab_navigation',
+        outcome: shown ? 'shown' : _adService.lastInterstitialDecision,
+        audienceSegment: _adService.audienceSegment,
+      );
       if (shown) {
         await _firebaseService.logAdWatched(
           'interstitial_navigation',

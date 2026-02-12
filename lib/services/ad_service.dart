@@ -15,6 +15,24 @@ class AdService {
   static const String _rewardedShownTodayKey = 'rewarded_shown_today';
   static const String _lastRewardedShownAtKey = 'last_rewarded_shown_at';
 
+  static int get _newUserDays => int.fromEnvironment('ADS_NEW_USER_DAYS', defaultValue: 3);
+  static int get _newUserMaxInterstitialsPerDay =>
+      int.fromEnvironment('ADS_NEW_USER_MAX_INTERSTITIALS_PER_DAY', defaultValue: 2);
+  static int get _regularMaxInterstitialsPerDay =>
+      int.fromEnvironment('ADS_REGULAR_MAX_INTERSTITIALS_PER_DAY', defaultValue: 3);
+  static int get _newUserScreensBetweenInterstitials =>
+      int.fromEnvironment('ADS_NEW_USER_SCREENS_BETWEEN_INTERSTITIALS', defaultValue: 4);
+  static int get _regularScreensBetweenInterstitials =>
+      int.fromEnvironment('ADS_REGULAR_SCREENS_BETWEEN_INTERSTITIALS', defaultValue: 3);
+  static int get _minMinutesBetweenInterstitials =>
+      int.fromEnvironment('ADS_MIN_MINUTES_BETWEEN_INTERSTITIALS', defaultValue: 4);
+  static int get _minMinutesAfterSessionStartForInterstitial =>
+      int.fromEnvironment('ADS_MIN_MINUTES_AFTER_SESSION_START_FOR_INTERSTITIAL', defaultValue: 2);
+
+  static int get _maxRewardedPerDay =>
+      int.fromEnvironment('ADS_MAX_REWARDED_PER_DAY', defaultValue: 5);
+  static int get _minMinutesBetweenRewarded =>
+      int.fromEnvironment('ADS_MIN_MINUTES_BETWEEN_REWARDED', defaultValue: 2);
   static const int _newUserDays = 3;
   static const int _newUserMaxInterstitialsPerDay = 2;
   static const int _regularMaxInterstitialsPerDay = 3;
@@ -35,6 +53,19 @@ class AdService {
   DateTime? _lastRewardedShownAt;
   DateTime _sessionStartedAt = DateTime.now();
 
+  String _lastInterstitialDecision = 'not_checked';
+  String _lastRewardedDecision = 'not_checked';
+
+  String get lastInterstitialDecision => _lastInterstitialDecision;
+  String get lastRewardedDecision => _lastRewardedDecision;
+
+  String get audienceSegment {
+    final days = _daysSinceInstall();
+    if (days < _newUserDays) return 'new_user';
+    if (days < 14) return 'warming';
+    return 'regular';
+  }
+
   static String _resolveAdUnit({
     required String androidTest,
     required String iosTest,
@@ -42,6 +73,20 @@ class AdService {
     required String iosEnv,
   }) {
     if (Platform.isAndroid) {
+      switch (androidEnv) {
+        case 'ADMOB_BANNER_ANDROID':
+          const configured = String.fromEnvironment('ADMOB_BANNER_ANDROID', defaultValue: '');
+          if (configured.isNotEmpty) return configured;
+          break;
+        case 'ADMOB_REWARDED_ANDROID':
+          const configured = String.fromEnvironment('ADMOB_REWARDED_ANDROID', defaultValue: '');
+          if (configured.isNotEmpty) return configured;
+          break;
+        case 'ADMOB_INTERSTITIAL_ANDROID':
+          const configured = String.fromEnvironment('ADMOB_INTERSTITIAL_ANDROID', defaultValue: '');
+          if (configured.isNotEmpty) return configured;
+          break;
+      }
       const configured = String.fromEnvironment('ADMOB_BANNER_ANDROID', defaultValue: '');
       if (androidEnv == 'ADMOB_BANNER_ANDROID' && configured.isNotEmpty) return configured;
       const configuredRewarded = String.fromEnvironment('ADMOB_REWARDED_ANDROID', defaultValue: '');
@@ -52,6 +97,20 @@ class AdService {
     }
 
     if (Platform.isIOS) {
+      switch (iosEnv) {
+        case 'ADMOB_BANNER_IOS':
+          const configured = String.fromEnvironment('ADMOB_BANNER_IOS', defaultValue: '');
+          if (configured.isNotEmpty) return configured;
+          break;
+        case 'ADMOB_REWARDED_IOS':
+          const configured = String.fromEnvironment('ADMOB_REWARDED_IOS', defaultValue: '');
+          if (configured.isNotEmpty) return configured;
+          break;
+        case 'ADMOB_INTERSTITIAL_IOS':
+          const configured = String.fromEnvironment('ADMOB_INTERSTITIAL_IOS', defaultValue: '');
+          if (configured.isNotEmpty) return configured;
+          break;
+      }
       const configured = String.fromEnvironment('ADMOB_BANNER_IOS', defaultValue: '');
       if (iosEnv == 'ADMOB_BANNER_IOS' && configured.isNotEmpty) return configured;
       const configuredRewarded = String.fromEnvironment('ADMOB_REWARDED_IOS', defaultValue: '');
@@ -171,6 +230,8 @@ class AdService {
     }
   }
 
+  int _daysSinceInstall() {
+    if (_firstOpenDate == null) return 999;
   String get audienceSegment {
     final days = _daysSinceInstall();
     if (days < _newUserDays) return 'new_user';
@@ -199,6 +260,7 @@ class AdService {
     await _resetRewardedCounterIfNeeded();
 
     if (_rewardedShownToday >= _maxRewardedPerDay) {
+      _lastRewardedDecision = 'blocked_daily_limit';
       print('❌ Rewarded daily limit reached: $_rewardedShownToday/$_maxRewardedPerDay');
       return false;
     }
@@ -206,11 +268,13 @@ class AdService {
     if (_lastRewardedShownAt != null) {
       final mins = DateTime.now().difference(_lastRewardedShownAt!).inMinutes;
       if (mins < _minMinutesBetweenRewarded) {
+        _lastRewardedDecision = 'blocked_cooldown';
         print('❌ Rewarded cooldown active: $mins/$_minMinutesBetweenRewarded minutes');
         return false;
       }
     }
 
+    _lastRewardedDecision = 'eligible';
     return true;
   }
 
@@ -225,7 +289,6 @@ class AdService {
 
   void trackScreenNavigation() {
     _screenNavigationCount++;
-    print('📱 Screen navigation count: $_screenNavigationCount');
   }
 
   Future<bool> shouldShowInterstitial() async {
@@ -235,6 +298,27 @@ class AdService {
     final screensThreshold = _screensBetweenInterstitials();
 
     if (_interstitialShownToday >= maxPerDay) {
+
+      _lastInterstitialDecision = 'blocked_daily_limit';
+      return false;
+    }
+
+    if (_screenNavigationCount < screensThreshold) {
+      _lastInterstitialDecision = 'blocked_navigation_threshold';
+      return false;
+    }
+
+    final sessionMinutes = DateTime.now().difference(_sessionStartedAt).inMinutes;
+    if (sessionMinutes < _minMinutesAfterSessionStartForInterstitial) {
+      _lastInterstitialDecision = 'blocked_session_warmup';
+      return false;
+    }
+
+    if (_lastInterstitialShownAt != null) {
+      final minutesSinceLast = DateTime.now().difference(_lastInterstitialShownAt!).inMinutes;
+      if (minutesSinceLast < _minMinutesBetweenInterstitials) {
+        _lastInterstitialDecision = 'blocked_cooldown';
+
       print('❌ Daily interstitial limit reached: $_interstitialShownToday/$maxPerDay');
       return false;
     }
@@ -258,7 +342,11 @@ class AdService {
       }
     }
 
+
+    _lastInterstitialDecision = 'eligible';
+
     print('✅ Should show interstitial (newUser=${_isNewUser()}, daily=$_interstitialShownToday/$maxPerDay)');
+
     return true;
   }
 
@@ -275,14 +363,12 @@ class AdService {
   }
 
   void loadBannerAd() {
-    print('📱 AdService: Starting to load banner ad...');
     _bannerAd = BannerAd(
       adUnitId: bannerAdUnitId,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          print('✅ Banner ad loaded successfully');
           _isBannerAdReady = true;
         },
         onAdFailedToLoad: (ad, error) {
@@ -309,7 +395,6 @@ class AdService {
           _isRewardedAdReady = true;
         },
         onAdFailedToLoad: (error) {
-          print('❌ Rewarded ad failed to load: $error');
           _isRewardedAdReady = false;
         },
       ),
@@ -322,6 +407,7 @@ class AdService {
     }
 
     if (!_isRewardedAdReady || _rewardedAd == null) {
+      _lastRewardedDecision = 'not_ready';
       loadRewardedAd();
       return false;
     }
@@ -332,6 +418,7 @@ class AdService {
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) {
         _markRewardedShown();
+        _lastRewardedDecision = 'shown';
         print('✅ Rewarded ad showed (placement: $placement)');
       },
       onAdDismissedFullScreenContent: (ad) {
@@ -339,6 +426,7 @@ class AdService {
         _isRewardedAdReady = false;
         _rewardedAd = null;
         loadRewardedAd();
+        _lastRewardedDecision = rewarded ? 'completed' : 'dismissed_without_reward';
         if (!completer.isCompleted) completer.complete(rewarded);
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
@@ -346,6 +434,7 @@ class AdService {
         _isRewardedAdReady = false;
         _rewardedAd = null;
         loadRewardedAd();
+        _lastRewardedDecision = 'failed_to_show';
         if (!completer.isCompleted) completer.complete(false);
       },
     );
@@ -357,6 +446,7 @@ class AdService {
         },
       );
     } catch (_) {
+      _lastRewardedDecision = 'exception';
       if (!completer.isCompleted) completer.complete(false);
     }
 
@@ -373,7 +463,6 @@ class AdService {
           _isInterstitialAdReady = true;
         },
         onAdFailedToLoad: (error) {
-          print('❌ Interstitial ad failed to load: ${error.message}');
           _isInterstitialAdReady = false;
         },
       ),
@@ -382,6 +471,7 @@ class AdService {
 
   Future<bool> showInterstitialAd() async {
     if (!_isInterstitialAdReady || _interstitialAd == null) {
+      _lastInterstitialDecision = 'not_ready';
       loadInterstitialAd();
       return false;
     }
@@ -393,6 +483,7 @@ class AdService {
         ad.dispose();
         _isInterstitialAdReady = false;
         _interstitialAd = null;
+        _lastInterstitialDecision = 'shown';
         _markInterstitialShown();
         loadInterstitialAd();
         if (!completer.isCompleted) completer.complete(true);
@@ -402,6 +493,7 @@ class AdService {
         _isInterstitialAdReady = false;
         _interstitialAd = null;
         loadInterstitialAd();
+        _lastInterstitialDecision = 'failed_to_show';
         if (!completer.isCompleted) completer.complete(false);
       },
     );
@@ -411,6 +503,7 @@ class AdService {
   }
 
   Future<bool> showInterstitialIfNeeded() async {
+    if (!await shouldShowInterstitial()) return false;
     if (!await shouldShowInterstitial()) {
       return false;
     }

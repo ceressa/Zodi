@@ -68,3 +68,6 @@ Bu doküman Zodi için **orta agresif, retention dostu** gelir modelinin yol har
 - ✅ Faz 2 — Rewarded Economy: günlük limit + cooldown eklendi, placement bazlı rewarded gösterim aktif.
 - ✅ Faz 3 — Premium Dönüşüm: Premium ekranına aylık/yıllık/ömür boyu plan seçimi eklendi.
 - 🟡 Faz 4 — Segment Bazlı Kişiselleştirme: ad event'lerine audience segment eklendi, session warmup koruması aktif.
+- 🟡 Faz 5 — Otomasyon: reklam eşikleri dart-define ile uzaktan yönetilebilir hale getirildi (build-time config).
+
+
