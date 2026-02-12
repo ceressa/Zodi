@@ -175,7 +175,6 @@ class _DailyScreenState extends State<DailyScreen> with AutomaticKeepAliveClient
         'rewarded_tomorrow_preview',
         placement: 'daily_tomorrow_preview',
         outcome: success ? 'success' : _adService.lastRewardedDecision,
-        outcome: success ? 'success' : 'failed',
         audienceSegment: _adService.audienceSegment,
       );
 

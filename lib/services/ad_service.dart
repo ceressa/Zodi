@@ -40,17 +40,6 @@ class AdService {
   static int get _minMinutesBetweenRewarded =>
       int.fromEnvironment('ADS_MIN_MINUTES_BETWEEN_REWARDED', defaultValue: 2);
 
-  static const int _newUserDays = 3;
-  static const int _newUserMaxInterstitialsPerDay = 2;
-  static const int _regularMaxInterstitialsPerDay = 3;
-  static const int _newUserScreensBetweenInterstitials = 4;
-  static const int _regularScreensBetweenInterstitials = 3;
-  static const int _minMinutesBetweenInterstitials = 4;
-  static const int _minMinutesAfterSessionStartForInterstitial = 2;
-
-  static const int _maxRewardedPerDay = 5;
-  static const int _minMinutesBetweenRewarded = 2;
-
   int _screenNavigationCount = 0;
   int _interstitialShownToday = 0;
   DateTime? _lastInterstitialShownAt;
@@ -65,14 +54,6 @@ class AdService {
 
   String get lastInterstitialDecision => _lastInterstitialDecision;
   String get lastRewardedDecision => _lastRewardedDecision;
-
-  String get audienceSegment {
-    final days = _daysSinceInstall();
-    if (days < _newUserDays) return 'new_user';
-    if (days < _warmingDays) return 'warming';
-    if (days < 14) return 'warming';
-    return 'regular';
-  }
 
   static String _resolveAdUnit({
     required String androidTest,
@@ -283,30 +264,16 @@ class AdService {
     if (days < _newUserDays) return _newUserScreensBetweenInterstitials;
     if (days < _warmingDays) return _warmingScreensBetweenInterstitials;
     return _regularScreensBetweenInterstitials;
+  }
 
   String get audienceSegment {
     final days = _daysSinceInstall();
     if (days < _newUserDays) return 'new_user';
-    if (days < 14) return 'warming';
+    if (days < _warmingDays) return 'warming';
     return 'regular';
   }
 
-  int _daysSinceInstall() {
-    if (_firstOpenDate == null) {
-      return 999;
-    }
-    return DateTime.now().difference(_firstOpenDate!).inDays;
-  }
-
   bool _isNewUser() => _daysSinceInstall() < _newUserDays;
-
-  int _maxInterstitialsPerDay() {
-    return _isNewUser() ? _newUserMaxInterstitialsPerDay : _regularMaxInterstitialsPerDay;
-  }
-
-  int _screensBetweenInterstitials() {
-    return _isNewUser() ? _newUserScreensBetweenInterstitials : _regularScreensBetweenInterstitials;
-  }
 
   Future<bool> _canShowRewarded() async {
     await _resetRewardedCounterIfNeeded();
@@ -366,43 +333,6 @@ class AdService {
       return false;
     }
 
-    if (_screenNavigationCount < screensThreshold) {
-      _lastInterstitialDecision = 'blocked_navigation_threshold';
-      return false;
-    }
-
-    if (_screenNavigationCount < screensThreshold) {
-      _lastInterstitialDecision = 'blocked_navigation_threshold';
-      return false;
-    }
-
-    final sessionMinutes = DateTime.now().difference(_sessionStartedAt).inMinutes;
-    if (sessionMinutes < _minMinutesAfterSessionStartForInterstitial) {
-      _lastInterstitialDecision = 'blocked_session_warmup';
-      return false;
-    }
-
-    if (_lastInterstitialShownAt != null) {
-      final minutesSinceLast = DateTime.now().difference(_lastInterstitialShownAt!).inMinutes;
-      if (minutesSinceLast < _minMinutesBetweenInterstitials) {
-        _lastInterstitialDecision = 'blocked_cooldown';
-
-      print('❌ Daily interstitial limit reached: $_interstitialShownToday/$maxPerDay');
-      return false;
-    }
-
-    if (_screenNavigationCount < screensThreshold) {
-      print('❌ Not enough screens: $_screenNavigationCount/$screensThreshold');
-      return false;
-    }
-
-    final sessionMinutes = DateTime.now().difference(_sessionStartedAt).inMinutes;
-    if (sessionMinutes < _minMinutesAfterSessionStartForInterstitial) {
-      _lastInterstitialDecision = 'blocked_session_warmup';
-      print('❌ Session warmup active: $sessionMinutes/$_minMinutesAfterSessionStartForInterstitial minutes');
-      return false;
-    }
-
     if (_lastInterstitialShownAt != null) {
       final minutesSinceLast = DateTime.now().difference(_lastInterstitialShownAt!).inMinutes;
       if (minutesSinceLast < _minMinutesBetweenInterstitials) {
@@ -413,10 +343,7 @@ class AdService {
     }
 
     _lastInterstitialDecision = 'eligible';
-    _lastInterstitialDecision = 'eligible';
-
     print('✅ Should show interstitial (newUser=${_isNewUser()}, daily=$_interstitialShownToday/$maxPerDay)');
-
     return true;
   }
 

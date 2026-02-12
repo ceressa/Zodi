@@ -114,7 +114,6 @@ class _TarotScreenState extends State<TarotScreen> {
       'rewarded_tarot_three_card_unlock',
       placement: 'tarot_three_card_unlock',
       outcome: success ? 'success' : _adService.lastRewardedDecision,
-      outcome: success ? 'success' : 'failed',
       audienceSegment: _adService.audienceSegment,
     );
 
