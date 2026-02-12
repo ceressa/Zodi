@@ -6,6 +6,7 @@ import '../constants/colors.dart';
 import '../constants/strings.dart';
 import '../services/ad_service.dart';
 import '../services/streak_service.dart';
+import '../services/firebase_service.dart';
 import '../models/streak_data.dart';
 import '../widgets/compact_streak_badge.dart';
 import 'daily_screen.dart';
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   final AdService _adService = AdService();
   final StreakService _streakService = StreakService();
+  final FirebaseService _firebaseService = FirebaseService();
   StreakData? _streakData;
 
   @override
@@ -62,7 +64,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _adService.trackScreenNavigation();
       
       // Gerekirse interstitial göster
-      await _adService.showInterstitialIfNeeded();
+      final shown = await _adService.showInterstitialIfNeeded();
+      if (shown) {
+        await _firebaseService.logAdWatched(
+          'interstitial_navigation',
+          placement: 'home_tab_navigation',
+          outcome: 'shown',
+          audienceSegment: _adService.audienceSegment,
+        );
+      }
     }
   }
 

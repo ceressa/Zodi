@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../services/tarot_service.dart';
 import '../services/gemini_service.dart';
 import '../services/firebase_service.dart';
+import '../services/ad_service.dart';
 import '../models/tarot_card.dart';
 import '../widgets/tarot_card_widget.dart';
 import '../widgets/shimmer_loading.dart';
@@ -21,12 +22,15 @@ class TarotScreen extends StatefulWidget {
 class _TarotScreenState extends State<TarotScreen> {
   late TarotService _tarotService;
   final FirebaseService _firebaseService = FirebaseService();
+  final AdService _adService = AdService();
   TarotReading? _dailyReading;
   TarotReading? _threeCardReading;
   bool _isLoadingDaily = false;
   bool _isLoadingThree = false;
   String? _error;
   int _selectedTab = 0; // 0: Günlük, 1: Üç Kart
+  bool _threeCardUnlockedByAd = false;
+  bool _didAutoLoadOnce = false;
 
   @override
   void initState() {
@@ -35,10 +39,28 @@ class _TarotScreenState extends State<TarotScreen> {
       geminiService: GeminiService(),
       firebaseService: _firebaseService,
     );
+    _adService.loadRewardedAd();
     _loadDailyCard();
   }
 
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didAutoLoadOnce || _isLoadingDaily || _dailyReading != null) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final canLoad = authProvider.userId != null && authProvider.userProfile != null;
+
+    if (canLoad) {
+      _didAutoLoadOnce = true;
+      _loadDailyCard();
+    }
+  }
+
   Future<void> _loadDailyCard() async {
+    _didAutoLoadOnce = true;
     final authProvider = context.read<AuthProvider>();
     if (authProvider.userId == null || authProvider.userProfile == null) return;
 
@@ -69,12 +91,64 @@ class _TarotScreenState extends State<TarotScreen> {
     }
   }
 
+
+  bool _canAccessThreeCard(AuthProvider authProvider) {
+    return authProvider.isPremium || _threeCardUnlockedByAd;
+  }
+
+  Future<void> _unlockThreeCardWithAd() async {
+    if (_threeCardUnlockedByAd || _isLoadingThree) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: AppColors.accentPurple),
+      ),
+    );
+
+    final success = await _adService.showRewardedAd(placement: 'tarot_three_card_unlock');
+    await _firebaseService.logAdWatched(
+      'rewarded_tarot_three_card_unlock',
+      placement: 'tarot_three_card_unlock',
+      outcome: success ? 'success' : 'failed',
+      audienceSegment: _adService.audienceSegment,
+    );
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() {
+        _threeCardUnlockedByAd = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Üç Kart yayılımı bu oturum için açıldı ✨'),
+          backgroundColor: AppColors.positive,
+        ),
+      );
+      await _loadThreeCardSpread();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reklam tamamlanamadı. Lütfen tekrar deneyin.'),
+          backgroundColor: AppColors.negative,
+        ),
+      );
+    }
+  }
+
   Future<void> _loadThreeCardSpread() async {
     final authProvider = context.read<AuthProvider>();
     if (authProvider.userId == null || authProvider.userProfile == null) return;
 
-    // Premium kontrolü
-    if (!authProvider.isPremium) {
+    if (!_canAccessThreeCard(authProvider)) {
       _showPremiumDialog();
       return;
     }
@@ -264,7 +338,11 @@ class _TarotScreenState extends State<TarotScreen> {
     return GestureDetector(
       onTap: () {
         setState(() => _selectedTab = index);
-        if (index == 1 && _threeCardReading == null && !_isLoadingThree) {
+        final authProvider = context.read<AuthProvider>();
+        if (index == 1 &&
+            _threeCardReading == null &&
+            !_isLoadingThree &&
+            _canAccessThreeCard(authProvider)) {
           _loadThreeCardSpread();
         }
       },
@@ -430,12 +508,13 @@ class _TarotScreenState extends State<TarotScreen> {
   Widget _buildThreeCardView() {
     final authProvider = context.watch<AuthProvider>();
 
-    if (!authProvider.isPremium) {
+    if (!_canAccessThreeCard(authProvider)) {
       return PremiumLockOverlay(
         title: 'Üç Kart Yayılımı',
         description:
             'Geçmiş, şimdi ve gelecek için üç kart çekerek daha detaylı bir okuma yapın.',
         onUnlock: () => Navigator.pushNamed(context, '/premium'),
+        onWatchAd: _unlockThreeCardWithAd,
       );
     }
 
@@ -470,6 +549,14 @@ class _TarotScreenState extends State<TarotScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            if (_threeCardUnlockedByAd)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Reklam ile açıldı (oturumluk erişim)',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+              ),
             const SizedBox(height: 8),
             const Text(
               'Geçmiş, şimdi ve gelecek için\nüç kart çekin',

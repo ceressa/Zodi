@@ -1,5 +1,6 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
+
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,115 +9,271 @@ class AdService {
   factory AdService() => _instance;
   AdService._internal();
 
-  // Interstitial ad tracking
+  static const String _firstOpenDateKey = 'first_open_date';
+  static const String _lastInterstitialShownAtKey = 'last_interstitial_shown_at';
+  static const String _interstitialShownTodayKey = 'interstitial_shown_today';
+  static const String _rewardedShownTodayKey = 'rewarded_shown_today';
+  static const String _lastRewardedShownAtKey = 'last_rewarded_shown_at';
+
+  static const int _newUserDays = 3;
+  static const int _newUserMaxInterstitialsPerDay = 2;
+  static const int _regularMaxInterstitialsPerDay = 3;
+  static const int _newUserScreensBetweenInterstitials = 4;
+  static const int _regularScreensBetweenInterstitials = 3;
+  static const int _minMinutesBetweenInterstitials = 4;
+  static const int _minMinutesAfterSessionStartForInterstitial = 2;
+
+  static const int _maxRewardedPerDay = 5;
+  static const int _minMinutesBetweenRewarded = 2;
+
   int _screenNavigationCount = 0;
   int _interstitialShownToday = 0;
-  DateTime? _lastInterstitialDate;
-  
-  static const int _maxInterstitialsPerDay = 3;
-  static const int _screensBetweenInterstitials = 3;
+  DateTime? _lastInterstitialShownAt;
+  DateTime? _firstOpenDate;
+
+  int _rewardedShownToday = 0;
+  DateTime? _lastRewardedShownAt;
+  DateTime _sessionStartedAt = DateTime.now();
+
+  static String _resolveAdUnit({
+    required String androidTest,
+    required String iosTest,
+    required String androidEnv,
+    required String iosEnv,
+  }) {
+    if (Platform.isAndroid) {
+      const configured = String.fromEnvironment('ADMOB_BANNER_ANDROID', defaultValue: '');
+      if (androidEnv == 'ADMOB_BANNER_ANDROID' && configured.isNotEmpty) return configured;
+      const configuredRewarded = String.fromEnvironment('ADMOB_REWARDED_ANDROID', defaultValue: '');
+      if (androidEnv == 'ADMOB_REWARDED_ANDROID' && configuredRewarded.isNotEmpty) return configuredRewarded;
+      const configuredInterstitial = String.fromEnvironment('ADMOB_INTERSTITIAL_ANDROID', defaultValue: '');
+      if (androidEnv == 'ADMOB_INTERSTITIAL_ANDROID' && configuredInterstitial.isNotEmpty) return configuredInterstitial;
+      return androidTest;
+    }
+
+    if (Platform.isIOS) {
+      const configured = String.fromEnvironment('ADMOB_BANNER_IOS', defaultValue: '');
+      if (iosEnv == 'ADMOB_BANNER_IOS' && configured.isNotEmpty) return configured;
+      const configuredRewarded = String.fromEnvironment('ADMOB_REWARDED_IOS', defaultValue: '');
+      if (iosEnv == 'ADMOB_REWARDED_IOS' && configuredRewarded.isNotEmpty) return configuredRewarded;
+      const configuredInterstitial = String.fromEnvironment('ADMOB_INTERSTITIAL_IOS', defaultValue: '');
+      if (iosEnv == 'ADMOB_INTERSTITIAL_IOS' && configuredInterstitial.isNotEmpty) return configuredInterstitial;
+      return iosTest;
+    }
+
+    throw UnsupportedError('Unsupported platform');
+  }
 
   // Test Ad Unit IDs - Production'da gerçek ID'lerle değiştir
-  static String get bannerAdUnitId {
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-3940256099942544/6300978111'; // Test ID
-    } else if (Platform.isIOS) {
-      return 'ca-app-pub-3940256099942544/2934735716'; // Test ID
-    }
-    throw UnsupportedError('Unsupported platform');
-  }
+  static String get bannerAdUnitId => _resolveAdUnit(
+        androidTest: 'ca-app-pub-3940256099942544/6300978111',
+        iosTest: 'ca-app-pub-3940256099942544/2934735716',
+        androidEnv: 'ADMOB_BANNER_ANDROID',
+        iosEnv: 'ADMOB_BANNER_IOS',
+      );
 
-  static String get rewardedAdUnitId {
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-3940256099942544/5224354917'; // Test ID
-    } else if (Platform.isIOS) {
-      return 'ca-app-pub-3940256099942544/1712485313'; // Test ID
-    }
-    throw UnsupportedError('Unsupported platform');
-  }
+  static String get rewardedAdUnitId => _resolveAdUnit(
+        androidTest: 'ca-app-pub-3940256099942544/5224354917',
+        iosTest: 'ca-app-pub-3940256099942544/1712485313',
+        androidEnv: 'ADMOB_REWARDED_ANDROID',
+        iosEnv: 'ADMOB_REWARDED_IOS',
+      );
 
-  static String get interstitialAdUnitId {
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-3940256099942544/1033173712'; // Test ID
-    } else if (Platform.isIOS) {
-      return 'ca-app-pub-3940256099942544/4411468910'; // Test ID
-    }
-    throw UnsupportedError('Unsupported platform');
-  }
+  static String get interstitialAdUnitId => _resolveAdUnit(
+        androidTest: 'ca-app-pub-3940256099942544/1033173712',
+        iosTest: 'ca-app-pub-3940256099942544/4411468910',
+        androidEnv: 'ADMOB_INTERSTITIAL_ANDROID',
+        iosEnv: 'ADMOB_INTERSTITIAL_IOS',
+      );
 
   BannerAd? _bannerAd;
   RewardedAd? _rewardedAd;
   InterstitialAd? _interstitialAd;
-  
+
   bool _isBannerAdReady = false;
   bool _isRewardedAdReady = false;
   bool _isInterstitialAdReady = false;
 
   Future<void> initialize() async {
+    _sessionStartedAt = DateTime.now();
     await MobileAds.instance.initialize();
     await _loadInterstitialTracking();
+    await _loadRewardedTracking();
   }
 
-  // Interstitial tracking yükle
   Future<void> _loadInterstitialTracking() async {
     final prefs = await SharedPreferences.getInstance();
-    final lastDateStr = prefs.getString('last_interstitial_date');
-    
-    if (lastDateStr != null) {
-      _lastInterstitialDate = DateTime.parse(lastDateStr);
-      
-      // Yeni gün mü kontrol et
-      final now = DateTime.now();
-      if (_lastInterstitialDate!.day != now.day ||
-          _lastInterstitialDate!.month != now.month ||
-          _lastInterstitialDate!.year != now.year) {
-        // Yeni gün, sayacı sıfırla
-        _interstitialShownToday = 0;
-        await prefs.setInt('interstitial_shown_today', 0);
-      } else {
-        _interstitialShownToday = prefs.getInt('interstitial_shown_today') ?? 0;
-      }
+
+    final firstOpenStr = prefs.getString(_firstOpenDateKey);
+    if (firstOpenStr == null) {
+      _firstOpenDate = DateTime.now();
+      await prefs.setString(_firstOpenDateKey, _firstOpenDate!.toIso8601String());
+    } else {
+      _firstOpenDate = DateTime.parse(firstOpenStr);
+    }
+
+    final lastShownAtStr = prefs.getString(_lastInterstitialShownAtKey);
+    if (lastShownAtStr != null) {
+      _lastInterstitialShownAt = DateTime.parse(lastShownAtStr);
+    }
+
+    await _resetDailyCounterIfNeeded();
+    _interstitialShownToday = prefs.getInt(_interstitialShownTodayKey) ?? 0;
+  }
+
+  Future<void> _loadRewardedTracking() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final lastRewardedStr = prefs.getString(_lastRewardedShownAtKey);
+    if (lastRewardedStr != null) {
+      _lastRewardedShownAt = DateTime.parse(lastRewardedStr);
+    }
+
+    await _resetRewardedCounterIfNeeded();
+    _rewardedShownToday = prefs.getInt(_rewardedShownTodayKey) ?? 0;
+  }
+
+  Future<void> _resetDailyCounterIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+
+    if (_lastInterstitialShownAt == null) {
+      _interstitialShownToday = prefs.getInt(_interstitialShownTodayKey) ?? 0;
+      return;
+    }
+
+    final isDifferentDay = _lastInterstitialShownAt!.day != now.day ||
+        _lastInterstitialShownAt!.month != now.month ||
+        _lastInterstitialShownAt!.year != now.year;
+
+    if (isDifferentDay) {
+      _interstitialShownToday = 0;
+      await prefs.setInt(_interstitialShownTodayKey, 0);
     }
   }
 
-  // Ekran navigasyonunu kaydet
+  Future<void> _resetRewardedCounterIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+
+    if (_lastRewardedShownAt == null) {
+      _rewardedShownToday = prefs.getInt(_rewardedShownTodayKey) ?? 0;
+      return;
+    }
+
+    final isDifferentDay = _lastRewardedShownAt!.day != now.day ||
+        _lastRewardedShownAt!.month != now.month ||
+        _lastRewardedShownAt!.year != now.year;
+
+    if (isDifferentDay) {
+      _rewardedShownToday = 0;
+      await prefs.setInt(_rewardedShownTodayKey, 0);
+    }
+  }
+
+  String get audienceSegment {
+    final days = _daysSinceInstall();
+    if (days < _newUserDays) return 'new_user';
+    if (days < 14) return 'warming';
+    return 'regular';
+  }
+
+  int _daysSinceInstall() {
+    if (_firstOpenDate == null) {
+      return 999;
+    }
+    return DateTime.now().difference(_firstOpenDate!).inDays;
+  }
+
+  bool _isNewUser() => _daysSinceInstall() < _newUserDays;
+
+  int _maxInterstitialsPerDay() {
+    return _isNewUser() ? _newUserMaxInterstitialsPerDay : _regularMaxInterstitialsPerDay;
+  }
+
+  int _screensBetweenInterstitials() {
+    return _isNewUser() ? _newUserScreensBetweenInterstitials : _regularScreensBetweenInterstitials;
+  }
+
+  Future<bool> _canShowRewarded() async {
+    await _resetRewardedCounterIfNeeded();
+
+    if (_rewardedShownToday >= _maxRewardedPerDay) {
+      print('❌ Rewarded daily limit reached: $_rewardedShownToday/$_maxRewardedPerDay');
+      return false;
+    }
+
+    if (_lastRewardedShownAt != null) {
+      final mins = DateTime.now().difference(_lastRewardedShownAt!).inMinutes;
+      if (mins < _minMinutesBetweenRewarded) {
+        print('❌ Rewarded cooldown active: $mins/$_minMinutesBetweenRewarded minutes');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  Future<void> _markRewardedShown() async {
+    _rewardedShownToday++;
+    _lastRewardedShownAt = DateTime.now();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_rewardedShownTodayKey, _rewardedShownToday);
+    await prefs.setString(_lastRewardedShownAtKey, _lastRewardedShownAt!.toIso8601String());
+  }
+
   void trackScreenNavigation() {
     _screenNavigationCount++;
     print('📱 Screen navigation count: $_screenNavigationCount');
   }
 
-  // Interstitial gösterilmeli mi?
-  bool shouldShowInterstitial() {
-    // Günlük limit kontrolü
-    if (_interstitialShownToday >= _maxInterstitialsPerDay) {
-      print('❌ Daily interstitial limit reached: $_interstitialShownToday/$_maxInterstitialsPerDay');
+  Future<bool> shouldShowInterstitial() async {
+    await _resetDailyCounterIfNeeded();
+
+    final maxPerDay = _maxInterstitialsPerDay();
+    final screensThreshold = _screensBetweenInterstitials();
+
+    if (_interstitialShownToday >= maxPerDay) {
+      print('❌ Daily interstitial limit reached: $_interstitialShownToday/$maxPerDay');
       return false;
     }
 
-    // Ekran sayısı kontrolü
-    if (_screenNavigationCount < _screensBetweenInterstitials) {
-      print('❌ Not enough screens: $_screenNavigationCount/$_screensBetweenInterstitials');
+    if (_screenNavigationCount < screensThreshold) {
+      print('❌ Not enough screens: $_screenNavigationCount/$screensThreshold');
       return false;
     }
 
-    print('✅ Should show interstitial');
+    final sessionMinutes = DateTime.now().difference(_sessionStartedAt).inMinutes;
+    if (sessionMinutes < _minMinutesAfterSessionStartForInterstitial) {
+      print('❌ Session warmup active: $sessionMinutes/$_minMinutesAfterSessionStartForInterstitial minutes');
+      return false;
+    }
+
+    if (_lastInterstitialShownAt != null) {
+      final minutesSinceLast = DateTime.now().difference(_lastInterstitialShownAt!).inMinutes;
+      if (minutesSinceLast < _minMinutesBetweenInterstitials) {
+        print('❌ Cooldown active: $minutesSinceLast/$_minMinutesBetweenInterstitials minutes');
+        return false;
+      }
+    }
+
+    print('✅ Should show interstitial (newUser=${_isNewUser()}, daily=$_interstitialShownToday/$maxPerDay)');
     return true;
   }
 
-  // Interstitial gösterildi olarak işaretle
   Future<void> _markInterstitialShown() async {
     _screenNavigationCount = 0;
     _interstitialShownToday++;
-    _lastInterstitialDate = DateTime.now();
+    _lastInterstitialShownAt = DateTime.now();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('interstitial_shown_today', _interstitialShownToday);
-    await prefs.setString('last_interstitial_date', _lastInterstitialDate!.toIso8601String());
-    
-    print('✅ Interstitial marked as shown. Today: $_interstitialShownToday/$_maxInterstitialsPerDay');
+    await prefs.setInt(_interstitialShownTodayKey, _interstitialShownToday);
+    await prefs.setString(_lastInterstitialShownAtKey, _lastInterstitialShownAt!.toIso8601String());
+
+    print('✅ Interstitial marked as shown. Today: $_interstitialShownToday/${_maxInterstitialsPerDay()}');
   }
 
-  // Banner Ad
   void loadBannerAd() {
     print('📱 AdService: Starting to load banner ad...');
     _bannerAd = BannerAd(
@@ -130,36 +287,24 @@ class AdService {
         },
         onAdFailedToLoad: (ad, error) {
           print('❌ Banner ad failed to load: ${error.message}');
-          print('   Error code: ${error.code}');
-          print('   Error domain: ${error.domain}');
           _isBannerAdReady = false;
           ad.dispose();
           _bannerAd = null;
         },
-        onAdOpened: (ad) {
-          print('📱 Banner ad opened');
-        },
-        onAdClosed: (ad) {
-          print('📱 Banner ad closed');
-        },
       ),
     );
     _bannerAd?.load();
-    print('📱 AdService: Banner ad load() called');
   }
 
   BannerAd? get bannerAd => _isBannerAdReady ? _bannerAd : null;
   bool get isBannerAdReady => _isBannerAdReady;
 
-  // Rewarded Ad
   void loadRewardedAd() {
-    print('📺 Loading rewarded ad...');
     RewardedAd.load(
       adUnitId: rewardedAdUnitId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
-          print('✅ Rewarded ad loaded successfully');
           _rewardedAd = ad;
           _isRewardedAdReady = true;
         },
@@ -171,79 +316,59 @@ class AdService {
     );
   }
 
-  Future<bool> showRewardedAd() async {
-    print('🎬 showRewardedAd called - isReady: $_isRewardedAdReady, ad: ${_rewardedAd != null}');
-    
-    if (!_isRewardedAdReady || _rewardedAd == null) {
-      print('❌ Rewarded ad not ready - loading new ad');
-      loadRewardedAd(); // Yeni reklam yükle
+  Future<bool> showRewardedAd({String placement = 'generic'}) async {
+    if (!await _canShowRewarded()) {
       return false;
     }
 
-    final Completer<bool> completer = Completer<bool>();
-    bool rewarded = false;
-    
-    print('📺 Setting up ad callbacks...');
+    if (!_isRewardedAdReady || _rewardedAd == null) {
+      loadRewardedAd();
+      return false;
+    }
+
+    final completer = Completer<bool>();
+    var rewarded = false;
+
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) {
-        print('✅ Ad showed full screen content');
+        _markRewardedShown();
+        print('✅ Rewarded ad showed (placement: $placement)');
       },
       onAdDismissedFullScreenContent: (ad) {
-        print('✅ Ad dismissed - User was rewarded: $rewarded');
-        ad.dispose();
-        _isRewardedAdReady = false;
-        _rewardedAd = null;
-        loadRewardedAd(); // Yeni reklam yükle
-        if (!completer.isCompleted) {
-          print('🔄 Completing future with: $rewarded');
-          completer.complete(rewarded);
-        }
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        print('❌ Ad failed to show full screen: $error');
         ad.dispose();
         _isRewardedAdReady = false;
         _rewardedAd = null;
         loadRewardedAd();
-        if (!completer.isCompleted) {
-          print('🔄 Completing future with: false (error)');
-          completer.complete(false);
-        }
+        if (!completer.isCompleted) completer.complete(rewarded);
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        _isRewardedAdReady = false;
+        _rewardedAd = null;
+        loadRewardedAd();
+        if (!completer.isCompleted) completer.complete(false);
       },
     );
 
     try {
-      print('📺 Calling show() on rewarded ad...');
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
-          print('🎉🎉🎉 USER EARNED REWARD: ${reward.amount} ${reward.type}');
           rewarded = true;
         },
       );
-      print('📺 show() method completed');
-    } catch (e) {
-      print('❌ Exception while showing ad: $e');
-      if (!completer.isCompleted) {
-        print('🔄 Completing future with: false (exception)');
-        completer.complete(false);
-      }
+    } catch (_) {
+      if (!completer.isCompleted) completer.complete(false);
     }
 
-    print('⏳ Waiting for ad to complete...');
-    final result = await completer.future;
-    print('✅ Ad flow completed with result: $result');
-    return result;
+    return completer.future;
   }
 
-  // Interstitial Ad
   void loadInterstitialAd() {
-    print('📱 AdService: Loading interstitial ad...');
     InterstitialAd.load(
       adUnitId: interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
-          print('✅ Interstitial ad loaded successfully');
           _interstitialAd = ad;
           _isInterstitialAdReady = true;
         },
@@ -257,28 +382,22 @@ class AdService {
 
   Future<bool> showInterstitialAd() async {
     if (!_isInterstitialAdReady || _interstitialAd == null) {
-      print('❌ Interstitial ad not ready');
-      loadInterstitialAd(); // Yeni reklam yükle
+      loadInterstitialAd();
       return false;
     }
 
     final completer = Completer<bool>();
-    
+
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (ad) {
-        print('✅ Interstitial ad showed');
-      },
       onAdDismissedFullScreenContent: (ad) {
-        print('✅ Interstitial ad dismissed');
         ad.dispose();
         _isInterstitialAdReady = false;
         _interstitialAd = null;
         _markInterstitialShown();
-        loadInterstitialAd(); // Yeni reklam yükle
+        loadInterstitialAd();
         if (!completer.isCompleted) completer.complete(true);
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
-        print('❌ Interstitial ad failed to show: ${error.message}');
         ad.dispose();
         _isInterstitialAdReady = false;
         _interstitialAd = null;
@@ -291,13 +410,11 @@ class AdService {
     return completer.future;
   }
 
-  // Akıllı interstitial gösterme
-  Future<void> showInterstitialIfNeeded() async {
-    if (!shouldShowInterstitial()) {
-      return;
+  Future<bool> showInterstitialIfNeeded() async {
+    if (!await shouldShowInterstitial()) {
+      return false;
     }
-
-    await showInterstitialAd();
+    return showInterstitialAd();
   }
 
   void dispose() {
