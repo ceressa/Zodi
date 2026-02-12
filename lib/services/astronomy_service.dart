@@ -1,16 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:sweph/sweph.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import '../models/zodiac_sign.dart';
 
 /// Service for accurate astronomical calculations using Swiss Ephemeris
 class AstronomyService {
   static bool _initialized = false;
+  static bool _timezoneInitialized = false;
 
   /// Initialize Swiss Ephemeris
   static Future<void> initialize() async {
     if (_initialized) return;
     
     try {
+      if (!_timezoneInitialized) {
+        tz.initializeTimeZones();
+        _timezoneInitialized = true;
+      }
+
       // Initialize Sweph with bundled ephemeris files
       await Sweph.init(
         epheAssets: [
@@ -44,15 +52,29 @@ class AstronomyService {
       final hour = int.parse(timeParts[0]);
       final minute = int.parse(timeParts[1]);
 
+      // Convert local birth time (Turkey) to UTC for Swiss Ephemeris
+      final istanbulLocation = tz.getLocation('Europe/Istanbul');
+      final birthDateTimeLocal = tz.TZDateTime(
+        istanbulLocation,
+        birthDate.year,
+        birthDate.month,
+        birthDate.day,
+        hour,
+        minute,
+      );
+      final birthDateTimeUtc = birthDateTimeLocal.toUtc();
+
       // Get coordinates for birth place (simplified - in production use geocoding API)
       final coords = _getCoordinates(birthPlace);
       
       // Calculate Julian day
       final julianDay = Sweph.swe_julday(
-        birthDate.year,
-        birthDate.month,
-        birthDate.day,
-        hour + minute / 60.0,
+        birthDateTimeUtc.year,
+        birthDateTimeUtc.month,
+        birthDateTimeUtc.day,
+        birthDateTimeUtc.hour +
+            birthDateTimeUtc.minute / 60.0 +
+            birthDateTimeUtc.second / 3600.0,
         CalendarType.SE_GREG_CAL,
       );
 
@@ -89,6 +111,8 @@ class AstronomyService {
       final moonSign = _degreeToZodiacSign(moonDegree);
 
       debugPrint('🌟 Calculated: Sun=$sunSign, Rising=$risingSign, Moon=$moonSign');
+      debugPrint('🕒 Local birth time: $birthDateTimeLocal');
+      debugPrint('🕒 UTC birth time: $birthDateTimeUtc');
       debugPrint('📍 Degrees: Sun=${sunDegree.toStringAsFixed(2)}°, Asc=${ascendantDegree.toStringAsFixed(2)}°, Moon=${moonDegree.toStringAsFixed(2)}°');
 
       return {

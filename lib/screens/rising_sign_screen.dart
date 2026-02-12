@@ -18,6 +18,8 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
   DateTime? _birthDate;
   final _birthTimeController = TextEditingController();
   final _birthPlaceController = TextEditingController();
+  bool _hasPrefilledProfileData = false;
+  bool _isBirthDateLocked = false;
   
   // Turkish cities for autocomplete
   static const List<String> _turkishCities = [
@@ -105,6 +107,32 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
   ];
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_hasPrefilledProfileData) return;
+
+    final profile = Provider.of<AuthProvider>(context).userProfile;
+
+    if (profile == null) return;
+
+    if (profile.birthDate.year > 1900) {
+      _birthDate = profile.birthDate;
+      _isBirthDateLocked = true;
+    }
+
+    if (profile.birthTime.trim().isNotEmpty) {
+      _birthTimeController.text = profile.birthTime.trim();
+    }
+
+    if (profile.birthPlace.trim().isNotEmpty) {
+      _birthPlaceController.text = profile.birthPlace.trim();
+    }
+
+    _hasPrefilledProfileData = true;
+  }
+
+  @override
   void dispose() {
     _birthTimeController.dispose();
     _birthPlaceController.dispose();
@@ -155,7 +183,9 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
       },
     );
     if (picked != null) {
-      _birthTimeController.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      setState(() {
+        _birthTimeController.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      });
     }
   }
 
@@ -259,7 +289,7 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
                         
                         // Birth Date
                         InkWell(
-                          onTap: _selectDate,
+                          onTap: _isBirthDateLocked ? null : _selectDate,
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -294,7 +324,18 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
                             ),
                           ),
                         ),
-                        
+                        if (_isBirthDateLocked)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8, left: 4),
+                            child: Text(
+                              'Doğum tarihi profilinden otomatik alındı',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+
                         const SizedBox(height: 16),
                         
                         // Birth Time
