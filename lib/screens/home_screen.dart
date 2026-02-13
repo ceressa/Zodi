@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadStreakData() async {
     final authProvider = context.read<AuthProvider>();
     final userId = authProvider.userId;
-    
+
     if (userId != null) {
       final streakData = await _streakService.getStreakData(userId);
       if (mounted) {
@@ -56,13 +56,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onPageChanged(int index) async {
     setState(() => _currentIndex = index);
-    
+
     // Premium değilse reklam göster
     final authProvider = context.read<AuthProvider>();
     if (!authProvider.isPremium) {
       // Ekran navigasyonunu kaydet
       _adService.trackScreenNavigation();
-      
+
       // Gerekirse interstitial göster
       final shown = await _adService.showInterstitialIfNeeded();
       await _firebaseService.logAdWatched(
@@ -86,20 +86,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = context.watch<AuthProvider>();
-    
+
     return Scaffold(
       extendBody: true, // Alt menünün arkasının görünmesi için
       body: Container(
-        decoration: BoxDecoration(
-          gradient: isDark
-              ? AppColors.homePastelDarkGradient
-              : AppColors.homePastelLightGradient,
-        ),
+        color: isDark ? const Color(0xFF1E233F) : const Color(0xFFF7F5FB),
         child: Column(
           children: [
             // Custom App Bar
             _buildCustomAppBar(isDark, authProvider),
-            
+
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -129,21 +125,13 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: 15,
       ),
       decoration: BoxDecoration(
-        gradient: isDark
-            ? const LinearGradient(
-                colors: [Color(0xCC1A1F3A), Color(0xCC252B48)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : const LinearGradient(
-                colors: [Color(0xF2FFFFFF), Color(0xF2F8F5FF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+        color: isDark ? const Color(0xFF2C3256) : const Color(0xFFFFFFFF),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.2) : const Color(0x338B5CF6),
+            color: isDark
+                ? Colors.black.withOpacity(0.16)
+                : const Color(0x22BDA7F8),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -166,14 +154,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 50,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppColors.purpleGradient,
+                    color: AppColors.accentPurple,
                   ),
-                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+                  child: const Icon(Icons.auto_awesome,
+                      color: Colors.white, size: 24),
                 ),
               ),
             ),
           ),
-          
+
           // Streak Badge (ortada)
           if (_streakData != null)
             CompactStreakBadge(
@@ -187,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-          
+
           // Burç Badge
           if (authProvider.selectedZodiac != null)
             _buildZodiacBadge(authProvider.selectedZodiac!.symbol, isDark),
@@ -200,17 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        gradient: isDark
-            ? const LinearGradient(
-                colors: [Color(0xFF8B5CF6), Color(0xFF6366F1)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : const LinearGradient(
-                colors: [Color(0xFFB794F6), Color(0xFF93C5FD)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+        color: isDark ? const Color(0xFF8C79D9) : const Color(0xFFB7A7EB),
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
@@ -232,14 +211,16 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xD91A1F3A) : const Color(0xE6FFFFFF),
+        color: isDark ? const Color(0xD9262B4E) : const Color(0xEFFFFBFF),
         borderRadius: BorderRadius.circular(30),
         border: Border.all(
-          color: isDark ? const Color(0x334A5A8A) : const Color(0x338B5CF6),
+          color: isDark ? const Color(0x336D77A8) : const Color(0x33C4B5FD),
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.22) : const Color(0x228B5CF6),
+            color: isDark
+                ? Colors.black.withOpacity(0.18)
+                : const Color(0x1FA78BFA),
             blurRadius: 22,
             offset: const Offset(0, 10),
           ),
@@ -248,9 +229,12 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(0, Icons.auto_awesome_outlined, Icons.auto_awesome, AppStrings.navDaily),
-          _buildNavItem(1, Icons.pie_chart_outline, Icons.pie_chart, AppStrings.navAnalysis),
-          _buildNavItem(2, Icons.favorite_border, Icons.favorite, AppStrings.navMatch),
+          _buildNavItem(0, Icons.auto_awesome_outlined, Icons.auto_awesome,
+              AppStrings.navDaily),
+          _buildNavItem(1, Icons.pie_chart_outline, Icons.pie_chart,
+              AppStrings.navAnalysis),
+          _buildNavItem(
+              2, Icons.favorite_border, Icons.favorite, AppStrings.navMatch),
           _buildNavItem(3, Icons.explore_outlined, Icons.explore, 'Keşfet'),
           _buildNavItem(4, Icons.person_outline, Icons.person, 'Profil'),
         ],
@@ -258,17 +242,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
+  Widget _buildNavItem(
+      int index, IconData icon, IconData activeIcon, String label) {
     bool isActive = _currentIndex == index;
     return GestureDetector(
       onTap: () {
-        _pageController.animateToPage(index, duration: 300.ms, curve: Curves.easeOutCubic);
+        _pageController.animateToPage(index,
+            duration: 300.ms, curve: Curves.easeOutCubic);
       },
       child: AnimatedContainer(
         duration: 200.ms,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.accentPurple.withOpacity(0.16) : Colors.transparent,
+          color: isActive
+              ? AppColors.accentPurple.withOpacity(0.16)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -288,7 +276,8 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 width: 5,
                 height: 5,
-                decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.accentPurple),
+                decoration: const BoxDecoration(
+                    shape: BoxShape.circle, color: AppColors.accentPurple),
               ).animate().scale(),
           ],
         ),
