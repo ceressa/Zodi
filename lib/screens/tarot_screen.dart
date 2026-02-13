@@ -9,7 +9,7 @@ import '../services/firebase_service.dart';
 import '../services/ad_service.dart';
 import '../models/tarot_card.dart';
 import '../widgets/tarot_card_widget.dart';
-import '../widgets/shimmer_loading.dart';
+import '../widgets/candy_loading.dart';
 import '../widgets/premium_lock_overlay.dart';
 
 class TarotScreen extends StatefulWidget {
@@ -101,6 +101,18 @@ class _TarotScreenState extends State<TarotScreen> {
       return;
     }
 
+    // Check if ad is ready first
+    if (_adService.lastRewardedDecision == 'not_ready') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reklam yükleniyor... Lütfen birkaç saniye bekleyin ve tekrar deneyin.'),
+          backgroundColor: AppColors.warning,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -135,9 +147,12 @@ class _TarotScreenState extends State<TarotScreen> {
       );
       await _loadThreeCardSpread();
     } else {
+      final message = _adService.lastRewardedDecision == 'not_ready'
+          ? 'Reklam henüz hazır değil. Lütfen birkaç saniye bekleyin.'
+          : 'Reklam tamamlanamadı. Lütfen tekrar deneyin.';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Reklam tamamlanamadı. Lütfen tekrar deneyin.'),
+        SnackBar(
+          content: Text(message),
           backgroundColor: AppColors.negative,
         ),
       );
@@ -383,9 +398,8 @@ class _TarotScreenState extends State<TarotScreen> {
   Widget _buildDailyCardView() {
     if (_isLoadingDaily) {
       return const Center(
-        child: ShimmerLoading(
-          width: 200,
-          height: 320,
+        child: CandyLoading(
+          message: 'Kartlar karılıyor...',
         ),
       );
     }
@@ -522,10 +536,8 @@ class _TarotScreenState extends State<TarotScreen> {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ShimmerLoading(width: 200, height: 320),
-            SizedBox(height: 16),
-            Text('Kartlar karılıyor...'),
+          children: const [
+            CandyLoading(message: 'Kartlar karılıyor...'),
           ],
         ),
       );

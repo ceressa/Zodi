@@ -1,100 +1,108 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Dark theme colors
-  static const bgDark = Color(0xFF1B1F3B);
-  static const cardDark = Color(0xFF252A4C);
-  static const surfaceDark = Color(0xFF30375C);
-
-  // Light theme colors
-  static const bgLight = Color(0xFFFDF9FF);
-  static const cardLight = Color(0xFFFFFDFF);
-  static const surfaceLight = Color(0xFFF2EEFF);
-
-  // Accent colors
-  static const accentPurple = Color(0xFFA78BFA);
-  static const accentBlue = Color(0xFF93C5FD);
-  static const accentPink = Color(0xFFF9A8D4);
-  static const accentCyan = Color(0xFF99F6E4);
-
-  // Gradient definitions
-  static const purpleGradient = LinearGradient(
-    colors: [Color(0xFFB9A4FF), Color(0xFF9FA8FF)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const blueGradient = LinearGradient(
-    colors: [Color(0xFFA5B4FC), Color(0xFF93C5FD)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
+  // === VIBRANT PINK THEME - Cıvıl Cıvıl ve Parlak! ===
+  static const bgLight = Color(0xFFFFE4EC);           // Canlı pembe arka plan
+  static const cardLight = Color(0xFFFFFFFF);         // Beyaz kartlar
+  static const surfaceLight = Color(0xFFFFCCE2);      // Parlak pembe surface
+  
+  // === VIBRANT ACCENT COLORS - Çok Parlak ve Canlı! ===
+  static const primaryPink = Color(0xFFFF1493);       // Deep Pink - çok parlak!
+  static const secondaryPink = Color(0xFFFF69B4);     // Hot Pink
+  static const accentRose = Color(0xFFFF1493);        // Deep Pink
+  static const accentPurple = Color(0xFF9400D3);      // Dark Violet - canlı mor
+  static const accentLavender = Color(0xFFBA55D3);    // Medium Orchid
+  static const accentGold = Color(0xFFFFD700);        // Altın
+  static const accentCoral = Color(0xFFFF6347);       // Tomato - canlı mercan
+  static const accentBlue = Color(0xFF00BFFF);        // Deep Sky Blue - çok parlak mavi!
+  
+  // === STATUS COLORS - Canlı ve Net ===
+  static const gold = Color(0xFFFFD700);              // Altın
+  static const positive = Color(0xFF00FA9A);          // Medium Spring Green
+  static const negative = Color(0xFFFF1493);          // Deep Pink
+  static const warning = Color(0xFFFF8C00);           // Dark Orange
+  
+  // === BORDER COLORS - Belirgin ===
+  static const borderLight = Color(0xFFFF69B4);       // Hot Pink border
+  
+  // === TEXT COLORS - Koyu ve Net (Yüksek Kontrast!) ===
+  static const textPrimary = Color(0xFF8B008B);       // Dark Magenta - çok net!
+  static const textSecondary = Color(0xFFC71585);     // Medium Violet Red
+  static const textTertiary = Color(0xFFDB7093);      // Pale Violet Red
+  static const textDark = Color(0xFF4B0082);          // Indigo
+  static const textLight = Color(0xFFFFFFFF);         // Beyaz metin
+  static const textMuted = Color(0xFFCD5C5C);         // Indian Red
+  
+  // === DARK THEME (KULLANILMAYACAK) ===
+  static const bgDark = Color(0xFFFFE4EC);            // Aynı açık tema
+  static const cardDark = Color(0xFFFFFFFF);          // Aynı açık tema
+  static const surfaceDark = Color(0xFFFFCCE2);       // Aynı açık tema
+  static const borderDark = Color(0xFFFF69B4);        // Aynı açık tema
+  
+  // === GRADIENT DEFINITIONS - Çok Parlak Gradyanlar! ===
   static const pinkGradient = LinearGradient(
-    colors: [Color(0xFFF9A8D4), Color(0xFFFBCFE8)],
+    colors: [Color(0xFFFF1493), Color(0xFFFF69B4)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const purpleGradient = LinearGradient(
+    colors: [Color(0xFF9400D3), Color(0xFFBA55D3)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const roseGradient = LinearGradient(
+    colors: [Color(0xFFFF1493), Color(0xFFFF69B4)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const goldGradient = LinearGradient(
-    colors: [Color(0xFFFDE68A), Color(0xFFFCD34D)],
+    colors: [Color(0xFFFFD700), Color(0xFFFFE4B5)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const cosmicGradient = LinearGradient(
     colors: [
-      Color(0xFFC4B5FD),
-      Color(0xFFA5B4FC),
-      Color(0xFFBFDBFE),
-      Color(0xFFBAE6FD),
+      Color(0xFF9400D3),
+      Color(0xFFFF1493),
+      Color(0xFFFF69B4),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  static const homePastelLightGradient = LinearGradient(
+  static const vibrantGradient = LinearGradient(
     colors: [
-      Color(0xFFF7F3FF),
-      Color(0xFFF1F8FF),
-      Color(0xFFECFEFF),
+      Color(0xFFFFE4EC),
+      Color(0xFFFFCCE2),
+      Color(0xFFFFB6C1),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-
-  static const homePastelDarkGradient = LinearGradient(
+  
+  // === SHIMMER COLORS ===
+  static const shimmerBase = Color(0xFFFFCCE2);
+  static const shimmerHighlight = Color(0xFFFFFFFF);
+  
+  // === ESKI RENKLER (GERIYE DÖNÜK UYUMLULUK İÇİN) ===
+  static const accentPink = Color(0xFFFF69B4);        // Hot pink
+  static const pastelLavender = Color(0xFFAA7FFF);
+  static const blueGradient = LinearGradient(
+    colors: [Color(0xFF00BFFF), Color(0xFF9400D3)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  static const elegantGradient = LinearGradient(
     colors: [
-      Color(0xFF141B36),
-      Color(0xFF1B2347),
-      Color(0xFF1A2C4A),
+      Color(0xFFFFE4EC),
+      Color(0xFFFFCCE2),
+      Color(0xFFFFB6C1),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-
-  // Status colors
-  static const gold = Color(0xFFFBBF24);
-  static const positive = Color(0xFF10B981);
-  static const negative = Color(0xFFEF4444);
-  static const warning = Color(0xFFF59E0B);
-
-  // Border colors
-  static const borderDark = Color(0xFF252B48);
-  static const borderLight = Color(0xFFE8ECF4);
-
-  // Text colors - VIBRANT & READABLE!
-  static const textPrimary = Color(0xFFFFFFFF); // Pure white - main titles
-  static const textSecondary =
-      Color(0xFFF0F4FF); // Almost white with purple hint - very readable
-  static const textTertiary =
-      Color(0xFFDDE4FF); // Light purple-white - readable
-  static const textDark =
-      Color(0xFF1E1B4B); // Deep purple-black - for light mode
-  static const textLight = Color(0xFFFFFFFF); // Pure white
-  static const textMuted = Color(0xFF7E7AA3); // Bright purple-white - NO GRAY!
-
-  // Shimmer colors
-  static const shimmerBase = Color(0xFF1A1F3A);
-  static const shimmerHighlight = Color(0xFF252B48);
 }

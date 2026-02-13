@@ -431,4 +431,22 @@ Yanıtı şu JSON formatında ver:
       rethrow;
     }
   }
+
+  Future<String> generateTarotInterpretation(String prompt) async {
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final text = response.text ?? '';
+      
+      // JSON formatında geldiyse temizle
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      if (jsonMatch != null) {
+        return jsonMatch.group(1) ?? text;
+      }
+      
+      return text.trim();
+    } catch (e) {
+      debugPrint('❌ Tarot interpretation error: $e');
+      rethrow;
+    }
+  }
 }

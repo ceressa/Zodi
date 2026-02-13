@@ -490,7 +490,7 @@ class TarotData {
       number: cardNumber,
       suit: cardData['suit'] as TarotSuit,
       reversed: reversed,
-      imageUrl: 'assets/tarot/$cardNumber.webp',
+      imageUrl: 'assets/tarot/$index.webp', // Index kullan, cardNumber değil!
       basicMeaning: cardData['meaning'] as String,
     );
   }

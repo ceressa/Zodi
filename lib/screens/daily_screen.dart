@@ -145,6 +145,19 @@ class _DailyScreenState extends State<DailyScreen>
 
       setState(() => _isLoadingTomorrow = true);
 
+      // Check if ad is ready first
+      if (_adService.lastRewardedDecision == 'not_ready') {
+        setState(() => _isLoadingTomorrow = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reklam yükleniyor... Lütfen birkaç saniye bekleyin ve tekrar deneyin.'),
+            backgroundColor: AppColors.warning,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
       // Reklam loading göster
       showDialog(
         context: context,

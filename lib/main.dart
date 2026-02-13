@@ -17,6 +17,7 @@ import 'services/notification_service.dart';
 import 'services/streak_service.dart';
 import 'services/astronomy_service.dart';
 import 'utils/navigation_helper.dart';
+import 'theme/app_theme.dart'; // Yeni tema
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,7 +37,13 @@ void main() async {
   await initializeDateFormatting('tr_TR', null);
   
   // Initialize Ad Service
-  await AdService().initialize();
+  final adService = AdService();
+  await adService.initialize();
+  
+  // Preload ads for better UX
+  adService.loadInterstitialAd();
+  adService.loadRewardedAd();
+  adService.loadBannerAd();
   
   // Initialize Notification Service with navigation callback
   await NotificationService().initialize(
@@ -70,7 +77,7 @@ class ZodiApp extends StatelessWidget {
           return MaterialApp(
             title: 'Zodi',
             debugShowCheckedModeBanner: false,
-            navigatorKey: navigatorKey, // Add global navigator key for notification navigation
+            navigatorKey: navigatorKey,
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
@@ -80,25 +87,8 @@ class ZodiApp extends StatelessWidget {
               Locale('tr', 'TR'),
             ],
             locale: const Locale('tr', 'TR'),
-            theme: ThemeData(
-              useMaterial3: true,
-              brightness: Brightness.light,
-              scaffoldBackgroundColor: AppColors.bgLight,
-              colorScheme: ColorScheme.light(
-                primary: AppColors.accentPurple,
-                secondary: AppColors.accentBlue,
-              ),
-            ),
-            darkTheme: ThemeData(
-              useMaterial3: true,
-              brightness: Brightness.dark,
-              scaffoldBackgroundColor: AppColors.bgDark,
-              colorScheme: ColorScheme.dark(
-                primary: AppColors.accentPurple,
-                secondary: AppColors.accentBlue,
-              ),
-            ),
-            themeMode: themeProvider.themeMode,
+            theme: AppTheme.lightTheme, // Yeni tema kullan
+            themeMode: ThemeMode.light,
             home: const SplashScreen(),
           );
         },

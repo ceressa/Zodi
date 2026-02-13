@@ -120,6 +120,7 @@ Politika değişikliklerini düzenli olarak kontrol etmenizi öneririz.
 Gizlilik politikamız veya verileriniz hakkında sorularınız varsa bizimle iletişime geçebilirsiniz:
 
 - **E-posta**: info@dozi.app
+- **GitHub**: https://github.com/ceressa/Zodi
 - **Uygulama İçi**: Ayarlar > Yardım ve Destek
 
 ## 14. Yasal Uyum

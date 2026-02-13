@@ -7,8 +7,8 @@ import '../services/firebase_service.dart';
 import '../services/streak_service.dart';
 import '../constants/colors.dart';
 import '../constants/strings.dart';
+import '../app.dart'; // Yeni app.dart
 import 'onboarding_screen.dart';
-import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -80,10 +80,10 @@ class _SplashScreenState extends State<SplashScreen> {
     Widget nextScreen;
     if (firebaseUser != null) {
       await authProvider.login(firebaseUser.displayName ?? 'Gezgin', firebaseUser.email ?? '');
-      nextScreen = authProvider.hasSelectedZodiac ? const HomeScreen() : const OnboardingScreen();
+      nextScreen = authProvider.hasSelectedZodiac ? const MainShell() : const OnboardingScreen();
     } else {
       nextScreen = authProvider.isAuthenticated 
-          ? (authProvider.hasSelectedZodiac ? const HomeScreen() : const OnboardingScreen())
+          ? (authProvider.hasSelectedZodiac ? const MainShell() : const OnboardingScreen())
           : const OnboardingScreen();
     }
 

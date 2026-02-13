@@ -130,11 +130,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.bgDark, AppColors.cardDark],
-              ),
+              gradient: AppColors.elegantGradient,
             ),
           ),
           Align(
@@ -142,7 +138,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: ConfettiWidget(
               confettiController: _confettiController,
               blastDirectionality: BlastDirectionality.explosive,
-              colors: const [AppColors.accentPurple, AppColors.accentBlue, AppColors.accentPink, AppColors.gold],
+              colors: const [AppColors.accentRose, AppColors.accentPurple, AppColors.primaryPink, AppColors.accentGold],
             ),
           ),
           SafeArea(
@@ -158,7 +154,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           height: 4,
                           margin: EdgeInsets.only(right: index < 3 ? 8 : 0),
                           decoration: BoxDecoration(
-                            color: index <= _currentStep ? AppColors.accentPurple : AppColors.borderDark,
+                            color: index <= _currentStep ? AppColors.primaryPink : AppColors.borderDark,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -207,14 +203,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   decoration: BoxDecoration(
                     gradient: AppColors.cosmicGradient,
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: AppColors.accentPurple.withOpacity(0.5), blurRadius: 30, offset: const Offset(0, 10))],
+                    boxShadow: [BoxShadow(color: AppColors.accentRose.withOpacity(0.5), blurRadius: 30, offset: const Offset(0, 10))],
                   ),
                   child: const Icon(Icons.auto_awesome, size: 60, color: Colors.white),
                 ),
               ),
             ).animate().scale(duration: 600.ms).shimmer(duration: 2000.ms),
             const SizedBox(height: 40),
-            const Text('Zodi', style: TextStyle(fontSize: 56, fontWeight: FontWeight.w900, color: Colors.white)).animate().fadeIn(delay: 200.ms),
+            const Text('Zodi', style: TextStyle(fontSize: 56, fontWeight: FontWeight.w900, color: AppColors.textPrimary)).animate().fadeIn(delay: 200.ms),
             const SizedBox(height: 16),
             const Text('Yıldızlar senin için konuşuyor ✨', style: TextStyle(fontSize: 18, color: AppColors.textSecondary), textAlign: TextAlign.center).animate().fadeIn(delay: 400.ms),
             const SizedBox(height: 60),
@@ -249,7 +245,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ).animate().scale(duration: 600.ms),
               const SizedBox(height: 24),
-              const Text('Adın ne?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+              const Text('Adın ne?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
               const SizedBox(height: 12),
               const Text('Sana nasıl hitap edeyim?', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
               const SizedBox(height: 40),
@@ -257,13 +253,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 controller: _nameController,
                 autofocus: true,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                style: const TextStyle(
+                  fontSize: 24, 
+                  fontWeight: FontWeight.bold, 
+                  color: AppColors.textPrimary, // KOYU RENK
+                ),
                 decoration: InputDecoration(
                   hintText: 'Örn: Ayşe',
-                  hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                  hintStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.5)),
                   filled: true,
-                  fillColor: AppColors.cardDark,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                  fillColor: Colors.white, // BEYAZ ARKA PLAN
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20), 
+                    borderSide: BorderSide.none,
+                  ),
                   contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
                   errorText: _nameController.text.isEmpty && _nameController.text.isNotEmpty ? 'Lütfen adını gir' : null,
                 ),
@@ -301,7 +304,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             const Text('🎂', style: TextStyle(fontSize: 80)).animate().scale(duration: 600.ms),
             const SizedBox(height: 24),
-            const Text('Doğum tarihin ne?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Text('Doğum tarihin ne?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
             const SizedBox(height: 12),
             const Text('Burcunu hesaplayalım', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
             const SizedBox(height: 40),
@@ -319,9 +322,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           children: [
                             Text(_calculatedZodiac!.symbol, style: const TextStyle(fontSize: 60)),
                             const SizedBox(height: 12),
-                            Text(_calculatedZodiac!.turkishName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                            Text(_calculatedZodiac!.turkishName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                             const SizedBox(height: 12),
-                            Text(_getZodiacMessage(_calculatedZodiac!, _nameController.text.trim()), style: const TextStyle(fontSize: 16, color: Colors.white), textAlign: TextAlign.center),
+                            Text(_getZodiacMessage(_calculatedZodiac!, _nameController.text.trim()), style: const TextStyle(fontSize: 16, color: AppColors.textPrimary), textAlign: TextAlign.center),
                           ],
                         ),
                       ).animate().fadeIn().scale(begin: const Offset(0.8, 0.8)),
@@ -408,7 +411,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 20),
             const Text(
               'Burcunu Seç',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 20),
             Expanded(
@@ -435,7 +438,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         color: isSelected ? null : AppColors.bgDark,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isSelected ? AppColors.accentPurple : AppColors.borderDark,
+                          color: isSelected ? AppColors.primaryPink : AppColors.borderDark,
                           width: 2,
                         ),
                       ),
@@ -504,7 +507,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   const Text('🔐', style: TextStyle(fontSize: 80)).animate().scale(duration: 600.ms),
                   const SizedBox(height: 24),
-                  const Text('Son adım!', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const Text('Son adım!', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                   const SizedBox(height: 12),
                   const Text('Giriş yap ve başlayalım', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
                   const SizedBox(height: 40),
@@ -551,7 +554,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: AppColors.accentPurple),
+                  CircularProgressIndicator(color: AppColors.primaryPink),
                   SizedBox(height: 16),
                   Text(
                     'Giriş yapılıyor...',
@@ -622,7 +625,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   style: TextStyle(
                                     fontSize: 18,
                                     color: selectedMonth == index + 1
-                                        ? AppColors.accentPurple
+                                        ? AppColors.primaryPink
                                         : AppColors.textSecondary,
                                     fontWeight: selectedMonth == index + 1
                                         ? FontWeight.bold
@@ -653,7 +656,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   style: TextStyle(
                                     fontSize: 18,
                                     color: selectedDay == index + 1
-                                        ? AppColors.accentPurple
+                                        ? AppColors.primaryPink
                                         : AppColors.textSecondary,
                                     fontWeight: selectedDay == index + 1
                                         ? FontWeight.bold
@@ -727,7 +730,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildButton(String text, VoidCallback onTap) {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(gradient: AppColors.purpleGradient, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: AppColors.accentPurple.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))]),
+      decoration: BoxDecoration(gradient: AppColors.roseGradient, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: AppColors.accentRose.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))]),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

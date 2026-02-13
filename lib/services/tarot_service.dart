@@ -107,15 +107,11 @@ Sadece yorumu yaz, başlık, giriş veya "Merhaba" gibi ifadeler ekleme. Direkt 
 ''';
 
     try {
-      // GeminiService'in mevcut metodunu kullan
-      final response = await _geminiService.interpretDream(prompt);
-      // interpretDream metodu Map döndürüyor, interpretation alanını al
-      if (response is Map<String, dynamic> && response.containsKey('interpretation')) {
-        return response['interpretation'] as String;
-      }
-      // Eğer direkt string dönerse
-      return response.toString();
+      // Gemini'den direkt text response al
+      final response = await _geminiService.generateTarotInterpretation(prompt);
+      return response;
     } catch (e) {
+      print('Tarot yorumu hatası: $e');
       return 'Tarot yorumu oluşturulurken bir hata oluştu. Lütfen daha sonra tekrar deneyin.';
     }
   }

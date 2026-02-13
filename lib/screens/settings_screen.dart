@@ -54,11 +54,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleNotifications(bool value, AuthProvider authProvider) async {
+    setState(() {
+      _notificationsEnabled = value;
+    });
+
     try {
       if (value) {
         // Request permissions first
         final granted = await _notificationService.requestPermissions();
         if (!granted) {
+          setState(() {
+            _notificationsEnabled = false;
+          });
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -70,25 +77,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           return;
         }
 
-        // Schedule notification
+        // Schedule notification - NO PREVIEW GENERATION
         await _notificationService.scheduleDaily(
           time: _notificationTime,
           zodiacSign: authProvider.selectedZodiac?.displayName ?? 'Koç',
         );
-
-        // Generate preview
-        await _generatePreview(authProvider);
       } else {
         // Cancel notifications
         await _notificationService.cancelAll();
-        setState(() {
-          _notificationPreview = null;
-        });
       }
-
-      setState(() {
-        _notificationsEnabled = value;
-      });
 
       final timeValue = '${_notificationTime.hour}:${_notificationTime.minute}';
 
@@ -100,6 +97,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         time: timeValue,
       );
     } catch (e) {
+      setState(() {
+        _notificationsEnabled = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -136,16 +136,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _notificationTime = picked;
       });
 
-      // Reschedule if notifications are enabled
+      // Reschedule if notifications are enabled - NO PREVIEW
       if (_notificationsEnabled) {
         await _notificationService.cancelAll();
         await _notificationService.scheduleDaily(
           time: _notificationTime,
           zodiacSign: authProvider.selectedZodiac?.displayName ?? 'Koç',
         );
-        
-        // Regenerate preview
-        await _generatePreview(authProvider);
       }
 
       // Save to storage and Firebase
@@ -463,18 +460,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           
           // Settings Items
-          _SettingItem(
-            icon: Icons.palette_outlined,
-            title: AppStrings.settingsTheme,
-            subtitle: themeProvider.isDarkMode ? 'Karanlık' : 'Aydınlık',
-            trailing: Switch(
-              value: themeProvider.isDarkMode,
-              onChanged: (_) => themeProvider.toggleTheme(),
-              activeColor: AppColors.accentPurple,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
           _SettingItem(
             icon: Icons.color_lens_outlined,
             title: 'Tema Özelleştirme',

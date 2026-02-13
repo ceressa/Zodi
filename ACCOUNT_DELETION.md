@@ -19,7 +19,7 @@ Zodi uygulamasında hesabınızı ve ilişkili tüm verilerinizi silmek için a�
 
 Uygulamaya erişiminiz yoksa veya sorun yaşıyorsanız:
 
-1. **[E-posta adresinizi buraya ekleyin]** adresine e-posta gönderin
+1. **info@dozi.app** adresine e-posta gönderin
 2. E-posta konusu: **"Hesap Silme Talebi - Zodi"**
 3. E-postanızda şunları belirtin:
    - Kayıtlı e-posta adresiniz veya kullanıcı kimliğiniz
@@ -87,7 +87,7 @@ Hesabınız silindikten sonra:
 
 Hesap silme talebinizi **7 gün içinde** iptal edebilirsiniz:
 
-1. **[E-posta adresinizi buraya ekleyin]** adresine e-posta gönderin
+1. **info@dozi.app** adresine e-posta gönderin
 2. Konu: **"Hesap Silme İptali - Zodi"**
 3. Kayıtlı e-posta adresinizi belirtin
 4. İptal talebiniz 24 saat içinde işleme alınır
@@ -151,7 +151,7 @@ Uygulama içi silme anında başlar, tüm sistemlerden silme 72 saat içinde tam
 
 Hesap silme işlemi hakkında sorularınız için:
 
-- **E-posta**: [E-posta adresinizi buraya ekleyin]
+- **E-posta**: info@dozi.app
 - **Yanıt Süresi**: 24-72 saat
 - **Destek Saatleri**: Hafta içi 09:00 - 18:00 (Türkiye saati)
 
