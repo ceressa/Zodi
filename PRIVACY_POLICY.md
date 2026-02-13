@@ -119,8 +119,7 @@ Politika değişikliklerini düzenli olarak kontrol etmenizi öneririz.
 
 Gizlilik politikamız veya verileriniz hakkında sorularınız varsa bizimle iletişime geçebilirsiniz:
 
-- **E-posta**: [E-posta adresinizi buraya ekleyin]
-- **GitHub**: https://github.com/[kullanıcı-adınız]/zodi-flutter
+- **E-posta**: info@dozi.app
 - **Uygulama İçi**: Ayarlar > Yardım ve Destek
 
 ## 14. Yasal Uyum
