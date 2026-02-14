@@ -75,7 +75,7 @@ class AuthProvider with ChangeNotifier {
         email: email,
         createdAt: DateTime.now(),
         lastActiveAt: DateTime.now(),
-        birthDate: DateTime.now(), // Placeholder, profil kurulumunda güncellenecek
+        birthDate: DateTime(1900, 1, 1), // Placeholder - profil kurulumunda güncellenecek
         birthTime: '',
         birthPlace: '',
         zodiacSign: _selectedZodiac?.name ?? '',

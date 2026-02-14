@@ -490,7 +490,7 @@ class TarotData {
       number: cardNumber,
       suit: cardData['suit'] as TarotSuit,
       reversed: reversed,
-      imageUrl: 'assets/tarot/$index.webp', // Index kullan, cardNumber değil!
+      imageUrl: 'assets/tarot/$cardNumber.webp', // cardNumber kullan (0-21 Major Arcana)
       basicMeaning: cardData['meaning'] as String,
     );
   }

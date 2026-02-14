@@ -108,6 +108,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
 
     final authProvider = context.read<AuthProvider>();
+    final birthTimeStr = '${_birthTime!.hour.toString().padLeft(2, '0')}:${_birthTime!.minute.toString().padLeft(2, '0')}';
+    
+    // UserProfile oluştur ve local storage'a kaydet
     final profile = UserProfile(
       userId: FirebaseService().currentUser?.uid ?? '',
       name: _nameController.text,
@@ -115,13 +118,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       createdAt: DateTime.now(),
       lastActiveAt: DateTime.now(),
       birthDate: _birthDate!,
-      birthTime: '${_birthTime!.hour.toString().padLeft(2, '0')}:${_birthTime!.minute.toString().padLeft(2, '0')}',
+      birthTime: birthTimeStr,
       birthPlace: _birthPlaceController.text,
       zodiacSign: authProvider.selectedZodiac?.name ?? '',
       interests: _selectedInterests,
     );
 
     await _historyService.saveUserProfile(profile);
+    
+    // AuthProvider üzerinden Firebase'e de kaydet
+    await authProvider.updateProfile(
+      name: _nameController.text,
+      birthDate: _birthDate!,
+      birthTime: birthTimeStr,
+      birthPlace: _birthPlaceController.text,
+    );
+    
     widget.onComplete();
   }
 
