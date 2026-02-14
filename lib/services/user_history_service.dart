@@ -162,11 +162,34 @@ class UserHistoryService {
     if (profile != null) {
       context.writeln('- İsim: ${profile.name}');
       context.writeln('- Doğum: ${profile.birthDate.day}/${profile.birthDate.month}/${profile.birthDate.year}');
+      final age = DateTime.now().year - profile.birthDate.year;
+      context.writeln('- Yaş: $age');
       if (profile.risingSign != null) {
         context.writeln('- Yükselen: ${profile.risingSign}');
       }
       if (profile.moonSign != null) {
         context.writeln('- Ay burcu: ${profile.moonSign}');
+      }
+
+      // Kişisel bilgiler
+      if (profile.relationshipStatus != null) {
+        const statusLabels = {
+          'single': 'Bekar',
+          'relationship': 'Sevgilisi var',
+          'engaged': 'Nişanlı',
+          'married': 'Evli',
+          'separated': 'Ayrılmış',
+        };
+        context.writeln('- İlişki durumu: ${statusLabels[profile.relationshipStatus] ?? profile.relationshipStatus}');
+      }
+      if (profile.partnerName != null && profile.partnerName!.isNotEmpty) {
+        context.writeln('- Partnerin adı: ${profile.partnerName}');
+      }
+      if (profile.currentCity != null && profile.currentCity!.isNotEmpty) {
+        context.writeln('- Yaşadığı şehir: ${profile.currentCity}');
+      }
+      if (profile.interests.isNotEmpty) {
+        context.writeln('- İlgi alanları: ${profile.interests.join(", ")}');
       }
     }
 
@@ -203,11 +226,13 @@ class UserHistoryService {
     }
 
     context.writeln('\nZODİ YAKLAŞIMI:');
-    context.writeln('Bu bilgilere göre yorumlarını şekillendir. Kullanıcının geçmiş deneyimlerine göre:');
+    context.writeln('Bu bilgilere göre yorumlarını şekillendir:');
     context.writeln('- Tutarlı ol (önceki yorumlarla çelişme)');
-    context.writeln('- Övgüyü hak ettiğinde över, eleştiriyi hak ettiğinde eleştirir');
     context.writeln('- Samimi ve direkt ol, gereksiz yere övme');
-    context.writeln('- Kullanıcının ilgi alanlarına odaklan');
+    context.writeln('- Kullanıcının ilgi alanlarına göre yorumu ağırlıkla o konulara odakla');
+    context.writeln('- İlişki durumunu ve partnerinin adını aşk yorumlarında kullan');
+    context.writeln('- Yaşadığı şehre göre pratik öneriler ver');
+    context.writeln('- Kısa ve öz tut, 2-3 paragrafı geçme');
 
     return context.toString();
   }

@@ -15,9 +15,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
   String _selectedPlan = 'monthly';
 
   static const Map<String, Map<String, String>> _planConfig = {
-    'monthly': {'price': '₺49,99', 'label': 'Aylık'},
-    'yearly': {'price': '₺399,99', 'label': 'Yıllık'},
-    'lifetime': {'price': '₺999,99', 'label': 'Ömür Boyu'},
+    'monthly': {'price': '₺99,99', 'label': 'Aylık'},
+    'yearly': {'price': '₺799,99', 'label': 'Yıllık', 'save': '%33 tasarruf'},
+    'lifetime': {'price': '₺1.999,99', 'label': 'Ömür Boyu'},
   };
 
   @override

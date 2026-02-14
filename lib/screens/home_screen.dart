@@ -10,7 +10,6 @@ import '../services/firebase_service.dart';
 import '../models/streak_data.dart';
 import '../widgets/compact_streak_badge.dart';
 import 'daily_screen.dart';
-import 'analysis_screen.dart';
 import 'match_screen.dart';
 import 'explore_screen.dart';
 import 'settings_screen.dart';
@@ -58,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = context.read<AuthProvider>();
     if (!authProvider.isPremium) {
       _adService.trackScreenNavigation();
+
       final shown = await _adService.showInterstitialIfNeeded();
       await _firebaseService.logAdWatched(
         'interstitial_navigation',
@@ -65,430 +65,238 @@ class _HomeScreenState extends State<HomeScreen> {
         outcome: shown ? 'shown' : _adService.lastInterstitialDecision,
         audienceSegment: _adService.audienceSegment,
       );
+      if (shown) {
+        await _firebaseService.logAdWatched(
+          'interstitial_navigation',
+          placement: 'home_tab_navigation',
+          outcome: 'shown',
+          audienceSegment: _adService.audienceSegment,
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = context.watch<AuthProvider>();
-    final selectedZodiac = authProvider.selectedZodiac;
 
     return Scaffold(
+      extendBody: true,
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.bgLight,
-              AppColors.surfaceLight,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(authProvider, selectedZodiac),
-              
-              // Main Content
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: _onPageChanged,
-                  children: [
-                    _buildHomeContent(authProvider),
-                    const ExploreScreen(),
-                    const MatchScreen(),
-                    const StatisticsScreen(),
-                    const SettingsScreen(),
-                  ],
-                ),
+        color: isDark ? const Color(0xFF1E233F) : const Color(0xFFF7F5FB),
+        child: Column(
+          children: [
+            _buildCustomAppBar(isDark, authProvider),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: _onPageChanged,
+                children: const [
+                  DailyScreen(),
+                  ExploreScreen(),
+                  MatchScreen(),
+                  StatisticsScreen(showAppBar: false),
+                  SettingsScreen(),
+                ],
               ),
-              
-              // Bottom Navigation
-              _buildBottomNavigation(),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+      bottomNavigationBar: _buildBottomNav(isDark),
     );
   }
 
-  Widget _buildHeader(AuthProvider authProvider, dynamic selectedZodiac) {
+  Widget _buildCustomAppBar(bool isDark, AuthProvider authProvider) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 10,
+        left: 20,
+        right: 20,
+        bottom: 15,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF2C2854), const Color(0xFF1E2448)]
+              : [const Color(0xFFF3EDFF), const Color(0xFFE8E0FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withOpacity(0.2)
+                : AppColors.accentPurple.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Merhaba, ${authProvider.userName?.split(' ').first ?? 'Kullanıcı'}! 👋',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
-              ).animate().fadeIn(),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  if (selectedZodiac != null) ...[
-                    Text(
-                      selectedZodiac.symbol,
-                      style: const TextStyle(fontSize: 28),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      selectedZodiac.turkishName,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ] else
-                    const Text(
-                      'Burcunu seç!',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                ],
-              ).animate().fadeIn(delay: 100.ms),
-            ],
-          ),
-          
-          // Streak Badge
-          if (_streakData != null && _streakData!.currentStreak > 0)
-            CompactStreakBadge(streakData: _streakData!),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHomeContent(AuthProvider authProvider) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 20),
-          
-          // Zodi Karakter + Mesaj Hero Kartı
-          _buildHeroCard().animate().fadeIn(delay: 200.ms),
-          
-          const SizedBox(height: 24),
-          
-          // Hızlı Başla Başlığı
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'HIZLI BAŞLA',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textSecondary,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Detaylı Analiz ve Burç Uyumu Kartları
+          // Logo + "Zodi" text
           Row(
             children: [
-              Expanded(
-                child: _buildQuickActionCard(
-                  title: 'Detaylı\nAnaliz',
-                  icon: Icons.pie_chart_rounded,
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFFF1493), Color(0xFFFF69B4)],
+              Hero(
+                tag: 'logo',
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/zodi_logo.webp',
+                    width: 46,
+                    height: 46,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 46,
+                      height: 46,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.accentPurple,
+                      ),
+                      child: const Icon(Icons.auto_awesome,
+                          color: Colors.white, size: 22),
+                    ),
                   ),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalysisScreen())),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildQuickActionCard(
-                  title: 'Burç\nUyumu',
-                  icon: Icons.favorite_rounded,
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF00BFFF), Color(0xFF1E90FF)],
-                  ),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MatchScreen())),
+              const SizedBox(width: 10),
+              Text(
+                'Zodi',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.textDark,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
-          ).animate().fadeIn(delay: 300.ms),
-          
-          const SizedBox(height: 100),
+          ),
+
+          // Streak Badge (center)
+          if (_streakData != null)
+            CompactStreakBadge(
+              streakData: _streakData!,
+              onTap: () {
+                // Navigate to statistics tab
+                _pageController.animateToPage(3,
+                    duration: 300.ms, curve: Curves.easeOutCubic);
+              },
+            ),
+
+          // Zodiac Badge
+          if (authProvider.selectedZodiac != null)
+            _buildZodiacBadge(authProvider.selectedZodiac!.symbol, isDark),
         ],
       ),
     );
   }
 
-  Widget _buildHeroCard() {
+  Widget _buildZodiacBadge(String symbol, bool isDark) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF7C6BC4), const Color(0xFF6B5DAF)]
+              : [const Color(0xFFBAAEF0), const Color(0xFFA899E0)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFE0F2FE), // Açık mavi
-            Color(0xFFDDD6FE), // Açık mor
-            Color(0xFFFCE7F3), // Açık pembe
-          ],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accentPurple.withOpacity(isDark ? 0.3 : 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Text(
+        symbol,
+        style: const TextStyle(fontSize: 22, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xD9262B4E) : const Color(0xEFFFFBFF),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: isDark ? const Color(0x336D77A8) : const Color(0x33C4B5FD),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.accentPurple.withOpacity(0.2),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: isDark
+                ? Colors.black.withOpacity(0.18)
+                : const Color(0x1FA78BFA),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // Zodi Karakteri (Animasyonlu)
-          _buildAnimatedCharacter(),
-          
-          const SizedBox(height: 20),
-          
-          // Mesaj
-          const Text(
-            'Bugün sana ne\nsöyleyeyim?',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
-              height: 1.2,
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // Günlük Falına Bak Butonu
-          GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const DailyScreen()),
-            ),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                gradient: AppColors.purpleGradient,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.accentPurple.withOpacity(0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Günlük Falına Bak',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(Icons.arrow_forward, color: Colors.white.withOpacity(0.8), size: 18),
-                ],
-              ),
-            ),
-          ),
+          _buildNavItem(0, Icons.home_outlined, Icons.home,
+              AppStrings.navHome),
+          _buildNavItem(1, Icons.explore_outlined, Icons.explore,
+              AppStrings.navExplore),
+          _buildNavItem(
+              2, Icons.favorite_border, Icons.favorite, AppStrings.navMatch),
+          _buildNavItem(3, Icons.bar_chart_outlined, Icons.bar_chart,
+              AppStrings.navStatistics),
+          _buildNavItem(4, Icons.person_outline, Icons.person,
+              AppStrings.navProfile),
         ],
       ),
     );
   }
 
-  Widget _buildAnimatedCharacter() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.elasticOut,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppColors.accentBlue.withOpacity(0.3),
-                  AppColors.accentPurple.withOpacity(0.1),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-            child: Center(
-              child: Image.asset(
-                'assets/dozi_char.webp',
-                width: 100,
-                height: 100,
-                errorBuilder: (context, error, stackTrace) {
-                  // Fallback: Emoji karakteri
-                  return const Text(
-                    '👻',
-                    style: TextStyle(fontSize: 80),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildQuickActionCard({
-    required String title,
-    required IconData icon,
-    required Gradient gradient,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildNavItem(
+      int index, IconData icon, IconData activeIcon, String label) {
+    bool isActive = _currentIndex == index;
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 140,
-        padding: const EdgeInsets.all(20),
+      onTap: () {
+        _pageController.animateToPage(index,
+            duration: 300.ms, curve: Curves.easeOutCubic);
+      },
+      child: AnimatedContainer(
+        duration: 200.ms,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          color: isActive
+              ? AppColors.accentPurple.withOpacity(0.16)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: Colors.white, size: 28),
+            Icon(
+              isActive ? activeIcon : icon,
+              color: isActive
+                  ? AppColors.accentPurple
+                  : Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.textTertiary
+                      : const Color(0xFF7C83A3),
+              size: 26,
             ),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                height: 1.2,
-              ),
-            ),
+            const SizedBox(height: 4),
+            if (isActive)
+              Container(
+                width: 5,
+                height: 5,
+                decoration: const BoxDecoration(
+                    shape: BoxShape.circle, color: AppColors.accentPurple),
+              ).animate().scale(),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavigation() {
-    final items = [
-      {'icon': Icons.home_rounded, 'label': 'Ana Sayfa'},
-      {'icon': Icons.explore_rounded, 'label': 'Keşfet'},
-      {'icon': Icons.favorite_rounded, 'label': 'Yıldızlar'},
-      {'icon': Icons.person_rounded, 'label': 'Profil'},
-      {'icon': Icons.sticky_note_2_rounded, 'label': 'Notlar'},
-    ];
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accentPurple.withOpacity(0.15),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: items.asMap().entries.map((entry) {
-              final index = entry.key;
-              final item = entry.value;
-              final isSelected = _currentIndex == index;
-              
-              return GestureDetector(
-                onTap: () {
-                  _pageController.jumpToPage(index);
-                },
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: isSelected
-                        ? const LinearGradient(
-                            colors: [
-                              Color(0xFFF3E8FF),
-                              Color(0xFFFCE7F3),
-                            ],
-                          )
-                        : null,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        item['icon'] as IconData,
-                        color: isSelected ? AppColors.accentPurple : AppColors.textMuted,
-                        size: isSelected ? 26 : 24,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item['label'] as String,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected ? AppColors.accentPurple : AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
         ),
       ),
     );

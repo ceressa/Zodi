@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:confetti/confetti.dart';
+import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 import '../providers/horoscope_provider.dart';
 import '../constants/colors.dart';
@@ -23,11 +24,12 @@ class DailyScreen extends StatefulWidget {
 }
 
 class _DailyScreenState extends State<DailyScreen>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, TickerProviderStateMixin {
   final AdService _adService = AdService();
   final FirebaseService _firebaseService = FirebaseService();
   final StorageService _storageService = StorageService();
   late ConfettiController _confettiController;
+  late AnimationController _pulseController;
   bool _showTomorrowPreview = false;
   String? _tomorrowPreview;
   DateTime? _sessionStartTime;
@@ -41,12 +43,15 @@ class _DailyScreenState extends State<DailyScreen>
     super.initState();
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 2));
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
     _sessionStartTime = DateTime.now();
     _loadTomorrowPreviewFromCache();
   }
 
   Future<void> _loadTomorrowPreviewFromCache() async {
-    // Storage'dan yarın önizlemesini yükle
     final cache = await _storageService.getTomorrowHoroscope();
     if (cache != null) {
       final cachedDate = cache['date'] as DateTime;
@@ -54,11 +59,9 @@ class _DailyScreenState extends State<DailyScreen>
       final tomorrow = DateTime(today.year, today.month, today.day)
           .add(const Duration(days: 1));
 
-      // Eğer cache yarın için geçerliyse
       if (cachedDate.year == tomorrow.year &&
           cachedDate.month == tomorrow.month &&
           cachedDate.day == tomorrow.day) {
-        // Önizleme var mı kontrol et
         final preview = cache['preview'] as String?;
         if (preview != null && preview.isNotEmpty) {
           if (mounted) {
@@ -67,11 +70,8 @@ class _DailyScreenState extends State<DailyScreen>
               _tomorrowPreview = preview;
             });
           }
-          debugPrint('✅ Loaded tomorrow preview from cache: $preview');
         }
       } else {
-        // Eski cache, temizle
-        debugPrint('🗑️ Clearing old tomorrow cache');
         await _storageService.clearTomorrowCache();
       }
     }
@@ -79,7 +79,6 @@ class _DailyScreenState extends State<DailyScreen>
 
   @override
   void dispose() {
-    // Oturum süresini kaydet
     if (_sessionStartTime != null) {
       final duration = DateTime.now().difference(_sessionStartTime!).inMinutes;
       if (duration > 0) {
@@ -88,6 +87,7 @@ class _DailyScreenState extends State<DailyScreen>
     }
 
     _confettiController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -101,32 +101,16 @@ class _DailyScreenState extends State<DailyScreen>
       await horoscopeProvider.fetchDailyHoroscope(authProvider.selectedZodiac!);
       _confettiController.play();
 
-      // Zengin profil güncellemeleri
       if (_firebaseService.isAuthenticated) {
-        // 1. Özellik kullanımını artır
         _firebaseService.incrementFeatureUsage('daily_horoscope');
-
-        // 2. Ardışık gün sayısını güncelle
         _firebaseService.updateConsecutiveDays();
-
-        // 3. Son görüntülenen burcu kaydet
         _firebaseService
             .updateLastViewedZodiacSign(authProvider.selectedZodiac!.name);
-
-        // 4. Okuma desenlerini güncelle (kategori: daily, süre: saniye)
         final readDuration = DateTime.now().difference(readStartTime).inSeconds;
         _firebaseService.updateReadingPatterns('daily', readDuration);
-
-        // 5. Tercih edilen okuma saatini güncelle
         _firebaseService.updatePreferredReadingTime();
-
-        // 6. Favori konuları güncelle
         _firebaseService.updateFavoriteTopics('daily_horoscope');
-
-        // 7. Kullanıcı etiketlerini güncelle
         _firebaseService.updateUserTags();
-
-        // 8. Analytics event
         _firebaseService.logHoroscopeView(
             authProvider.selectedZodiac!.name, 'daily');
       }
@@ -134,31 +118,13 @@ class _DailyScreenState extends State<DailyScreen>
   }
 
   Future<void> _unlockTomorrowWithAd() async {
-    // Zaten açılmışsa tekrar açma
-    if (_showTomorrowPreview || _isLoadingTomorrow) {
-      debugPrint('⚠️ Tomorrow preview already unlocked or loading');
-      return;
-    }
+    if (_showTomorrowPreview || _isLoadingTomorrow) return;
 
     try {
       if (!mounted) return;
 
       setState(() => _isLoadingTomorrow = true);
 
-      // Check if ad is ready first
-      if (_adService.lastRewardedDecision == 'not_ready') {
-        setState(() => _isLoadingTomorrow = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Reklam yükleniyor... Lütfen birkaç saniye bekleyin ve tekrar deneyin.'),
-            backgroundColor: AppColors.warning,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
-
-      // Reklam loading göster
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -176,11 +142,9 @@ class _DailyScreenState extends State<DailyScreen>
         audienceSegment: _adService.audienceSegment,
       );
 
-      // Reklam loading'i kapat
       if (mounted) Navigator.of(context).pop();
 
       if (success && mounted) {
-        // Şimdi yarın yorumu yükleme göster
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -191,38 +155,33 @@ class _DailyScreenState extends State<DailyScreen>
         final authProvider = context.read<AuthProvider>();
         if (authProvider.selectedZodiac != null) {
           try {
-            // 1. Önce kısa önizleme al
             final horoscopeProvider = context.read<HoroscopeProvider>();
             final preview = await horoscopeProvider
                 .fetchTomorrowPreview(authProvider.selectedZodiac!);
 
-            // Loading'i kapat
             if (mounted) Navigator.of(context).pop();
 
-            // 2. State'i güncelle
             setState(() {
               _showTomorrowPreview = true;
               _tomorrowPreview = preview;
               _isLoadingTomorrow = false;
             });
 
-            // 3. Arka planda TAM horoscope'u çek ve cache'le (preview ile birlikte)
             horoscopeProvider
                 .fetchTomorrowHoroscope(
               authProvider.selectedZodiac!,
               preview: preview,
             )
                 .then((_) {
-              debugPrint(
-                  '✅ Tomorrow FULL horoscope cached silently with preview');
+              debugPrint('Tomorrow FULL horoscope cached');
             }).catchError((e) {
-              debugPrint('⚠️ Failed to cache tomorrow horoscope: $e');
+              debugPrint('Failed to cache tomorrow horoscope: $e');
             });
 
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: const Text('🎉 Yarınki ipucu kilidi açıldı!'),
+                  content: const Text('Yarınki ipucu kilidi açıldı!'),
                   backgroundColor: AppColors.positive,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
@@ -232,15 +191,12 @@ class _DailyScreenState extends State<DailyScreen>
               _confettiController.play();
             }
           } catch (e) {
-            debugPrint('❌ Error fetching tomorrow preview: $e');
-
-            // Loading'i kapat
             if (mounted) Navigator.of(context).pop();
 
             setState(() {
               _showTomorrowPreview = true;
               _tomorrowPreview =
-                  'Yarın senin için harika bir gün olacak! Yeni fırsatlar kapıda bekliyor. 🌟';
+                  'Yarın senin için harika bir gün olacak! Yeni fırsatlar kapıda bekliyor.';
               _isLoadingTomorrow = false;
             });
           }
@@ -259,11 +215,8 @@ class _DailyScreenState extends State<DailyScreen>
         );
       }
     } catch (e) {
-      debugPrint('❌ Error in _unlockTomorrowWithAd: $e');
-
       if (mounted) {
         setState(() => _isLoadingTomorrow = false);
-        // Tüm dialog'ları kapat
         Navigator.of(context, rootNavigator: true)
             .popUntil((route) => route.isFirst);
 
@@ -282,14 +235,12 @@ class _DailyScreenState extends State<DailyScreen>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // AutomaticKeepAliveClientMixin için gerekli
+    super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = context.watch<AuthProvider>();
     final horoscopeProvider = context.watch<HoroscopeProvider>();
 
     final bgColor = isDark ? const Color(0xFF1F2338) : const Color(0xFFF4F1F8);
-    final panelColor = isDark ? const Color(0xFF2A2F49) : Colors.white;
-    final softText = isDark ? AppColors.textSecondary : const Color(0xFF666387);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -313,282 +264,16 @@ class _DailyScreenState extends State<DailyScreen>
             color: AppColors.accentPurple,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 120),
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 120),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 36),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: panelColor,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: isDark
-                            ? const Color(0xFF41486C)
-                            : const Color(0xFFE7E1F0),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 27,
-                          backgroundColor: const Color(0xFFB7A7EB),
-                          child: const Icon(Icons.auto_awesome,
-                              color: Colors.white),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                  'Merhaba, ${authProvider.userName ?? "Yıldız Gezgini"}',
-                                  style:
-                                      TextStyle(fontSize: 13, color: softText)),
-                              const SizedBox(height: 3),
-                              Text(
-                                'Günlük Yorum Merkezi',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  color: isDark
-                                      ? AppColors.textPrimary
-                                      : AppColors.textDark,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
                   if (horoscopeProvider.isLoadingDaily)
                     const ZodiLoading(message: 'Yorum hazırlanıyor...')
                   else if (horoscopeProvider.dailyHoroscope == null)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: panelColor,
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Column(
-                        children: [
-                          Image.asset('assets/dozi_char.webp',
-                              width: 140, height: 140),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Bugün için yorumunu hemen al',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? AppColors.textPrimary
-                                  : AppColors.textDark,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text('Tek dokunuşla detaylı günlük akışın gelsin.',
-                              style: TextStyle(color: softText)),
-                          const SizedBox(height: 18),
-                          ElevatedButton.icon(
-                            onPressed: _loadHoroscope,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF8C79D9),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14)),
-                            ),
-                            icon: const Icon(Icons.play_circle_fill),
-                            label: const Text('Günlük Yorumu Başlat'),
-                          ),
-                        ],
-                      ),
-                    )
-                  else ...[
-                    _buildMottoCard(horoscopeProvider.dailyHoroscope!.motto),
-                    const SizedBox(height: 14),
-                    AnimatedCard(
-                      delay: 100.ms,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Bugünün Yorumu',
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark
-                                      ? AppColors.textPrimary
-                                      : AppColors.textDark)),
-                          const SizedBox(height: 10),
-                          Text(horoscopeProvider.dailyHoroscope!.commentary,
-                              style: TextStyle(
-                                  height: 1.65, color: softText, fontSize: 15)),
-                          if (!authProvider.isPremium) ...[
-                            const SizedBox(height: 14),
-                            const AdBannerWidget(),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: MetricCard(
-                                label: AppStrings.dailyLove,
-                                value: horoscopeProvider.dailyHoroscope!.love,
-                                icon: Icons.favorite)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                            child: MetricCard(
-                                label: AppStrings.dailyMoney,
-                                value: horoscopeProvider.dailyHoroscope!.money,
-                                icon: Icons.attach_money)),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: MetricCard(
-                                label: AppStrings.dailyHealth,
-                                value: horoscopeProvider.dailyHoroscope!.health,
-                                icon: Icons.monitor_heart)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                            child: MetricCard(
-                                label: AppStrings.dailyCareer,
-                                value: horoscopeProvider.dailyHoroscope!.career,
-                                icon: Icons.work_outline)),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    AnimatedCard(
-                      delay: 300.ms,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              children: [
-                                const Icon(Icons.palette_outlined,
-                                    color: Color(0xFF8C79D9)),
-                                const SizedBox(height: 6),
-                                const Text('Şanslı Renk',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF7B7799))),
-                                Text(
-                                    horoscopeProvider
-                                        .dailyHoroscope!.luckyColor,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w700)),
-                              ],
-                            ),
-                          ),
-                          Container(
-                              width: 1,
-                              height: 48,
-                              color: const Color(0xFFE6E0F0)),
-                          Expanded(
-                            child: Column(
-                              children: [
-                                const Icon(Icons.numbers,
-                                    color: Color(0xFF8C79D9)),
-                                const SizedBox(height: 6),
-                                const Text('Şanslı Sayı',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF7B7799))),
-                                Text(
-                                    '${horoscopeProvider.dailyHoroscope!.luckyNumber}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w700)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    AnimatedCard(
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const CircleAvatar(
-                            backgroundColor: Color(0xFFEDE8FB),
-                            child: Icon(Icons.rate_review,
-                                color: Color(0xFF8C79D9))),
-                        title: Text('Yorumum Nasıldı?',
-                            style: TextStyle(
-                                color: isDark
-                                    ? AppColors.textPrimary
-                                    : AppColors.textDark,
-                                fontWeight: FontWeight.w700)),
-                        subtitle: Text(
-                            'Geri bildirimini paylaş, deneyimi geliştirelim',
-                            style: TextStyle(color: softText)),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => Padding(
-                              padding: EdgeInsets.only(
-                                  bottom:
-                                      MediaQuery.of(context).viewInsets.bottom),
-                              child: FeedbackWidget(interactionType: 'daily'),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    if (!authProvider.isPremium) ...[
-                      const SizedBox(height: 12),
-                      AnimatedCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Yarınki İpucu',
-                                style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark
-                                        ? AppColors.textPrimary
-                                        : AppColors.textDark)),
-                            const SizedBox(height: 8),
-                            Text(
-                              _showTomorrowPreview
-                                  ? (_tomorrowPreview ??
-                                      'Yıldızlar konuşuyor...')
-                                  : 'Yarının sinyalini şimdi açmak için reklam izle.',
-                              style: TextStyle(color: softText, height: 1.45),
-                            ),
-                            const SizedBox(height: 12),
-                            if (!_showTomorrowPreview)
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton.icon(
-                                  onPressed: _isLoadingTomorrow
-                                      ? null
-                                      : _unlockTomorrowWithAd,
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFF8C79D9),
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  icon: const Icon(Icons.play_circle_outline),
-                                  label: Text(_isLoadingTomorrow
-                                      ? 'Açılıyor...'
-                                      : 'Reklam İzle & Aç'),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
+                    _buildWelcomeSection(isDark, authProvider)
+                  else
+                    _buildHoroscopeContent(isDark, authProvider, horoscopeProvider),
                   if (horoscopeProvider.error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 18),
@@ -605,25 +290,415 @@ class _DailyScreenState extends State<DailyScreen>
     );
   }
 
-  // Modern Motto Card Widget
+  Widget _buildWelcomeSection(bool isDark, AuthProvider authProvider) {
+    final softText = isDark ? AppColors.textSecondary : const Color(0xFF666387);
+    final dateStr = DateFormat('d MMMM EEEE', 'tr_TR').format(DateTime.now());
+
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+
+        // Animated Zodi character with pulse
+        AnimatedBuilder(
+          animation: _pulseController,
+          builder: (context, child) {
+            final scale = 1.0 + (_pulseController.value * 0.05);
+            return Transform.scale(
+              scale: scale,
+              child: child,
+            );
+          },
+          child: Container(
+            width: 140,
+            height: 140,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  AppColors.accentPurple.withOpacity(0.15),
+                  Colors.transparent,
+                ],
+                radius: 1.2,
+              ),
+            ),
+            child: Center(
+              child: Image.asset(
+                'assets/dozi_char.webp',
+                width: 120,
+                height: 120,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [AppColors.accentPurple, AppColors.accentBlue],
+                    ),
+                  ),
+                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 48),
+                ),
+              ),
+            ),
+          ),
+        )
+            .animate()
+            .fadeIn(duration: 600.ms)
+            .slideY(begin: -0.1, end: 0, duration: 600.ms),
+
+        const SizedBox(height: 20),
+
+        // Greeting
+        Text(
+          'Merhaba, ${authProvider.userName ?? "Yıldız Gezgini"}!',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : AppColors.textDark,
+          ),
+          textAlign: TextAlign.center,
+        )
+            .animate()
+            .fadeIn(delay: 200.ms, duration: 500.ms),
+
+        const SizedBox(height: 8),
+
+        // Zodiac badge
+        if (authProvider.selectedZodiac != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF3D3470), const Color(0xFF2A2D5E)]
+                    : [const Color(0xFFE8DFFF), const Color(0xFFD5CCFF)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  authProvider.selectedZodiac!.symbol,
+                  style: const TextStyle(fontSize: 20),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  authProvider.selectedZodiac!.displayName,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.accentPurple : const Color(0xFF6B5DAF),
+                  ),
+                ),
+              ],
+            ),
+          )
+              .animate()
+              .fadeIn(delay: 350.ms, duration: 500.ms)
+              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1)),
+
+        const SizedBox(height: 10),
+
+        // Date
+        Text(
+          dateStr,
+          style: TextStyle(
+            fontSize: 14,
+            color: softText,
+          ),
+        )
+            .animate()
+            .fadeIn(delay: 450.ms, duration: 400.ms),
+
+        const SizedBox(height: 32),
+
+        // CTA Button - Stunning gradient
+        Container(
+          width: double.infinity,
+          height: 58,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF8C79D9), Color(0xFF6B8AE8), Color(0xFFA78BFA)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.accentPurple.withOpacity(0.35),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _loadHoroscope,
+              borderRadius: BorderRadius.circular(18),
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Günlük Yorumunu Keşfet',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        )
+            .animate()
+            .fadeIn(delay: 550.ms, duration: 500.ms)
+            .slideY(begin: 0.2, end: 0, delay: 550.ms, duration: 500.ms),
+
+        const SizedBox(height: 16),
+
+        Text(
+          'Tek dokunuşla bugünün yorum akışını başlat',
+          style: TextStyle(fontSize: 13, color: softText),
+          textAlign: TextAlign.center,
+        )
+            .animate()
+            .fadeIn(delay: 650.ms, duration: 400.ms),
+      ],
+    );
+  }
+
+  Widget _buildHoroscopeContent(
+      bool isDark, AuthProvider authProvider, HoroscopeProvider horoscopeProvider) {
+    final softText = isDark ? AppColors.textSecondary : const Color(0xFF666387);
+    final horoscope = horoscopeProvider.dailyHoroscope!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Motto Card
+        _buildMottoCard(horoscope.motto),
+        const SizedBox(height: 14),
+
+        // Commentary
+        AnimatedCard(
+          delay: 100.ms,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bugünün Yorumu',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? AppColors.textPrimary
+                          : AppColors.textDark)),
+              const SizedBox(height: 10),
+              Text(horoscope.commentary,
+                  style: TextStyle(
+                      height: 1.7, color: softText, fontSize: 15)),
+              if (!authProvider.isPremium) ...[
+                const SizedBox(height: 14),
+                const AdBannerWidget(),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Metrics 2x2
+        Row(
+          children: [
+            Expanded(
+                child: MetricCard(
+                    label: AppStrings.dailyLove,
+                    value: horoscope.love,
+                    icon: Icons.favorite)),
+            const SizedBox(width: 10),
+            Expanded(
+                child: MetricCard(
+                    label: AppStrings.dailyMoney,
+                    value: horoscope.money,
+                    icon: Icons.attach_money)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+                child: MetricCard(
+                    label: AppStrings.dailyHealth,
+                    value: horoscope.health,
+                    icon: Icons.monitor_heart)),
+            const SizedBox(width: 10),
+            Expanded(
+                child: MetricCard(
+                    label: AppStrings.dailyCareer,
+                    value: horoscope.career,
+                    icon: Icons.work_outline)),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Lucky Color & Number
+        AnimatedCard(
+          delay: 300.ms,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Icon(Icons.palette_outlined,
+                        color: AppColors.accentPurple),
+                    const SizedBox(height: 6),
+                    Text(AppStrings.dailyLuckyColor,
+                        style: TextStyle(fontSize: 12, color: softText)),
+                    Text(horoscope.luckyColor,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : AppColors.textDark,
+                        )),
+                  ],
+                ),
+              ),
+              Container(
+                  width: 1,
+                  height: 48,
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : const Color(0xFFE6E0F0)),
+              Expanded(
+                child: Column(
+                  children: [
+                    Icon(Icons.numbers,
+                        color: AppColors.accentPurple),
+                    const SizedBox(height: 6),
+                    Text(AppStrings.dailyLuckyNumber,
+                        style: TextStyle(fontSize: 12, color: softText)),
+                    Text('${horoscope.luckyNumber}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : AppColors.textDark,
+                        )),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Feedback Card
+        AnimatedCard(
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+                backgroundColor: AppColors.accentPurple.withOpacity(0.15),
+                child: Icon(Icons.rate_review, color: AppColors.accentPurple)),
+            title: Text('Yorumum Nasıldı?',
+                style: TextStyle(
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.textDark,
+                    fontWeight: FontWeight.w700)),
+            subtitle: Text(
+                'Geri bildirimini paylaş, deneyimi geliştirelim',
+                style: TextStyle(color: softText)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => Padding(
+                  padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom),
+                  child: FeedbackWidget(interactionType: 'daily'),
+                ),
+              );
+            },
+          ),
+        ),
+
+        // Tomorrow Preview (non-premium)
+        if (!authProvider.isPremium) ...[
+          const SizedBox(height: 12),
+          AnimatedCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Yarınki İpucu',
+                    style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : AppColors.textDark)),
+                const SizedBox(height: 8),
+                Text(
+                  _showTomorrowPreview
+                      ? (_tomorrowPreview ?? 'Yıldızlar konuşuyor...')
+                      : 'Yarının sinyalini şimdi açmak için reklam izle.',
+                  style: TextStyle(color: softText, height: 1.45),
+                ),
+                const SizedBox(height: 12),
+                if (!_showTomorrowPreview)
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _isLoadingTomorrow
+                          ? null
+                          : _unlockTomorrowWithAd,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.accentPurple,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.play_circle_outline),
+                      label: Text(_isLoadingTomorrow
+                          ? 'Açılıyor...'
+                          : 'Reklam İzle & Aç'),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildMottoCard(String motto) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AnimatedCard(
       elevation: 15,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF7D88C7),
-          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: isDark
+                ? [const Color(0xFF5B4FA0), const Color(0xFF4A5EB0)]
+                : [const Color(0xFF7D88C7), const Color(0xFF8B7FC7)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
         child: Stack(
           children: [
             Positioned(
-              right: -20,
-              top: -20,
+              right: -15,
+              top: -15,
               child: Icon(
                 Icons.format_quote,
-                size: 100,
-                color: Colors.white.withOpacity(0.1),
+                size: 90,
+                color: Colors.white.withOpacity(0.08),
               ),
             ),
             Column(
@@ -637,11 +712,11 @@ class _DailyScreenState extends State<DailyScreen>
                     letterSpacing: 2,
                   ),
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 14),
                 Text(
                   motto,
                   style: const TextStyle(
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                     fontStyle: FontStyle.italic,

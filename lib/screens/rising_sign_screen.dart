@@ -1,6 +1,8 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:confetti/confetti.dart';
 import '../providers/auth_provider.dart';
 import '../providers/horoscope_provider.dart';
 import '../constants/colors.dart';
@@ -13,13 +15,30 @@ class RisingSignScreen extends StatefulWidget {
   State<RisingSignScreen> createState() => _RisingSignScreenState();
 }
 
-class _RisingSignScreenState extends State<RisingSignScreen> {
+class _RisingSignScreenState extends State<RisingSignScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   DateTime? _birthDate;
   final _birthTimeController = TextEditingController();
   final _birthPlaceController = TextEditingController();
   bool _hasPrefilledProfileData = false;
   bool _isBirthDateLocked = false;
+  late ConfettiController _confettiController;
+  late AnimationController _spinController;
+  late AnimationController _messageController;
+  int _loadingMessageIndex = 0;
+  static const _loadingMessages = [
+    'Yıldız haritanı okuyorum...',
+    'Güneş burcunu analiz ediyorum...',
+    'Ay burcunu hesaplıyorum...',
+    'Yükselen burcunu arıyorum...',
+    'Gezegenler konuşuyor...',
+    'Kozmik enerjini çözümlüyorum...',
+  ];
+
+  static const _zodiacSymbols = [
+    '♈', '♉', '♊', '♋', '♌', '♍',
+    '♎', '♏', '♐', '♑', '♒', '♓',
+  ];
   
   // Turkish cities for autocomplete
   static const List<String> _turkishCities = [
@@ -107,6 +126,27 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+    _spinController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+    _messageController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          _loadingMessageIndex = (_loadingMessageIndex + 1) % _loadingMessages.length;
+        });
+        _messageController.forward(from: 0);
+      }
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
@@ -136,6 +176,9 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
   void dispose() {
     _birthTimeController.dispose();
     _birthPlaceController.dispose();
+    _confettiController.dispose();
+    _spinController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
@@ -202,12 +245,22 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
 
     if (authProvider.selectedZodiac == null) return;
 
+    // Start loading animations
+    _loadingMessageIndex = 0;
+    _messageController.forward(from: 0);
+
     await horoscopeProvider.calculateRisingSign(
       sunSign: authProvider.selectedZodiac!,
       birthDate: _birthDate!,
       birthTime: _birthTimeController.text,
       birthPlace: _birthPlaceController.text,
     );
+
+    // Show confetti on success
+    if (horoscopeProvider.risingSignResult != null && mounted) {
+      _messageController.stop();
+      _confettiController.play();
+    }
   }
 
   @override
@@ -216,7 +269,9 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
     final horoscopeProvider = context.watch<HoroscopeProvider>();
     
     return Scaffold(
-      body: Container(
+      body: Stack(
+        children: [
+          Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -647,6 +702,20 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
           ),
         ),
       ),
+          // Confetti
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              colors: const [AppColors.accentPurple, AppColors.accentBlue, AppColors.accentPink, AppColors.gold],
+            ),
+          ),
+          // Loading overlay
+          if (horoscopeProvider.isLoadingRisingSign)
+            _buildLoadingOverlay(),
+        ],
+      ),
     );
   }
 
@@ -697,22 +766,134 @@ class _RisingSignScreenState extends State<RisingSignScreen> {
     );
   }
 
+  Widget _buildLoadingOverlay() {
+    return AnimatedBuilder(
+      animation: _spinController,
+      builder: (context, child) {
+        return Container(
+          color: const Color(0xDD1E1040),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Spinning zodiac wheel
+                SizedBox(
+                  width: 250,
+                  height: 250,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Zodiac symbols in a circle
+                      ...List.generate(12, (index) {
+                        final angle = (index * 30.0 + _spinController.value * 360) * math.pi / 180;
+                        final radius = 100.0;
+                        return Positioned(
+                          left: 125 + radius * math.cos(angle) - 14,
+                          top: 125 + radius * math.sin(angle) - 14,
+                          child: Text(
+                            _zodiacSymbols[index],
+                            style: TextStyle(
+                              fontSize: 28,
+                              color: Colors.white.withOpacity(
+                                0.4 + 0.6 * ((math.sin(angle + _spinController.value * math.pi * 2) + 1) / 2),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      // Center glow
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              AppColors.accentPurple.withOpacity(0.6),
+                              AppColors.accentPurple.withOpacity(0.0),
+                            ],
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text('✨', style: TextStyle(fontSize: 36)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+                // Loading message
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  child: Text(
+                    _loadingMessages[_loadingMessageIndex],
+                    key: ValueKey(_loadingMessageIndex),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Subtle progress dots
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(3, (index) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.accentPurple.withOpacity(
+                          0.3 + 0.7 * ((math.sin(_spinController.value * math.pi * 2 + index * 1.0) + 1) / 2),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSignBadge(String symbol, String label, {String? signName}) {
     return Column(
       children: [
         Container(
-          width: 60,
-          height: 60,
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: AppColors.gold.withOpacity(0.6),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.gold.withOpacity(0.2),
+                blurRadius: 12,
+                spreadRadius: 1,
+              ),
+            ],
           ),
           child: Center(
             child: Text(
               symbol,
-              style: const TextStyle(fontSize: 32),
+              style: const TextStyle(fontSize: 34),
             ),
           ),
+        ).animate().scale(
+          begin: const Offset(0, 0),
+          end: const Offset(1, 1),
+          duration: 600.ms,
+          curve: Curves.elasticOut,
         ),
         const SizedBox(height: 8),
         if (signName != null) ...[

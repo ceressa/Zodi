@@ -7,7 +7,8 @@ import '../constants/colors.dart';
 import '../widgets/metric_card.dart';
 
 class StatisticsScreen extends StatefulWidget {
-  const StatisticsScreen({super.key});
+  final bool showAppBar;
+  const StatisticsScreen({super.key, this.showAppBar = true});
 
   @override
   State<StatisticsScreen> createState() => _StatisticsScreenState();
@@ -53,14 +54,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = context.watch<AuthProvider>();
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
-      appBar: AppBar(
-        title: const Text('İstatistikler'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: _isLoading
+    final body = _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadData,
@@ -101,7 +95,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ],
                 ),
               ),
-            ),
+            );
+
+    if (!widget.showAppBar) return body;
+
+    return Scaffold(
+      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+      appBar: AppBar(
+        title: const Text('İstatistikler'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: body,
     );
   }
 

@@ -618,16 +618,21 @@ class FirebaseService {
   // İlişki durumunu güncelle
   Future<void> updateRelationshipInfo({
     String? relationshipStatus,
+    String? partnerName,
     String? partnerZodiacSign,
     DateTime? partnerBirthDate,
+    String? currentCity,
   }) async {
     if (currentUser == null) return;
-    
+
     try {
       final updates = <String, dynamic>{};
-      
+
       if (relationshipStatus != null) {
         updates['relationshipStatus'] = relationshipStatus;
+      }
+      if (partnerName != null) {
+        updates['partnerName'] = partnerName;
       }
       if (partnerZodiacSign != null) {
         updates['partnerZodiacSign'] = partnerZodiacSign;
@@ -635,7 +640,10 @@ class FirebaseService {
       if (partnerBirthDate != null) {
         updates['partnerBirthDate'] = partnerBirthDate.toIso8601String();
       }
-      
+      if (currentCity != null) {
+        updates['currentCity'] = currentCity;
+      }
+
       if (updates.isNotEmpty) {
         await _firestore
             .collection('users')

@@ -58,9 +58,11 @@ class UserProfile {
   
   // Sosyal & İlişkiler
   final String? relationshipStatus; // 'single', 'relationship', 'married'
+  final String? partnerName; // Sevdiği kişinin adı
   final String? partnerZodiacSign;
   final DateTime? partnerBirthDate;
   final List<String> friendZodiacSigns; // Arkadaşların burçları
+  final String? currentCity; // Yaşadığı şehir
   
   // Davranış Analizi
   final Map<String, dynamic> readingPatterns; // Okuma alışkanlıkları
@@ -137,9 +139,11 @@ class UserProfile {
     this.lastViewedZodiacSign,
     this.recentSearches = const [],
     this.relationshipStatus,
+    this.partnerName,
     this.partnerZodiacSign,
     this.partnerBirthDate,
     this.friendZodiacSigns = const [],
+    this.currentCity,
     this.readingPatterns = const {},
     this.mostReadCategories = const [],
     this.preferredReadingTime,
@@ -222,9 +226,11 @@ class UserProfile {
         
         // Sosyal & İlişkiler
         'relationshipStatus': relationshipStatus,
+        'partnerName': partnerName,
         'partnerZodiacSign': partnerZodiacSign,
         'partnerBirthDate': partnerBirthDate?.toIso8601String(),
         'friendZodiacSigns': friendZodiacSigns,
+        'currentCity': currentCity,
         
         // Davranış Analizi
         'readingPatterns': readingPatterns,
@@ -314,11 +320,13 @@ class UserProfile {
         lastViewedZodiacSign: json['lastViewedZodiacSign'],
         recentSearches: List<String>.from(json['recentSearches'] ?? []),
         relationshipStatus: json['relationshipStatus'],
+        partnerName: json['partnerName'],
         partnerZodiacSign: json['partnerZodiacSign'],
-        partnerBirthDate: json['partnerBirthDate'] != null 
-            ? DateTime.parse(json['partnerBirthDate']) 
+        partnerBirthDate: json['partnerBirthDate'] != null
+            ? DateTime.parse(json['partnerBirthDate'])
             : null,
         friendZodiacSigns: List<String>.from(json['friendZodiacSigns'] ?? []),
+        currentCity: json['currentCity'],
         readingPatterns: Map<String, dynamic>.from(json['readingPatterns'] ?? {}),
         mostReadCategories: List<String>.from(json['mostReadCategories'] ?? []),
         preferredReadingTime: json['preferredReadingTime'],
@@ -438,9 +446,11 @@ class UserProfile {
     String? lastViewedZodiacSign,
     List<String>? recentSearches,
     String? relationshipStatus,
+    String? partnerName,
     String? partnerZodiacSign,
     DateTime? partnerBirthDate,
     List<String>? friendZodiacSigns,
+    String? currentCity,
     Map<String, dynamic>? readingPatterns,
     List<String>? mostReadCategories,
     String? preferredReadingTime,
@@ -507,9 +517,11 @@ class UserProfile {
       lastViewedZodiacSign: lastViewedZodiacSign ?? this.lastViewedZodiacSign,
       recentSearches: recentSearches ?? this.recentSearches,
       relationshipStatus: relationshipStatus ?? this.relationshipStatus,
+      partnerName: partnerName ?? this.partnerName,
       partnerZodiacSign: partnerZodiacSign ?? this.partnerZodiacSign,
       partnerBirthDate: partnerBirthDate ?? this.partnerBirthDate,
       friendZodiacSigns: friendZodiacSigns ?? this.friendZodiacSigns,
+      currentCity: currentCity ?? this.currentCity,
       readingPatterns: readingPatterns ?? this.readingPatterns,
       mostReadCategories: mostReadCategories ?? this.mostReadCategories,
       preferredReadingTime: preferredReadingTime ?? this.preferredReadingTime,
