@@ -18,13 +18,11 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
   DateTime? _birthDate;
   ZodiacSign? _calculatedZodiac;
   int _currentStep = 0;
   late ConfettiController _confettiController;
   bool _isLoading = false;
-  String? _emailError;
 
   @override
   void initState() {
@@ -36,7 +34,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void dispose() {
     _pageController.dispose();
     _nameController.dispose();
-    _emailController.dispose();
     _confettiController.dispose();
     super.dispose();
   }
@@ -513,72 +510,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildAuthStep() {
     return Stack(
       children: [
-        GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const SizedBox(height: 16),
-                        // Content
-                        Column(
-                          children: [
-                            const Text('🔐', style: TextStyle(fontSize: 80)).animate().scale(duration: 600.ms),
-                            const SizedBox(height: 24),
-                            const Text('Son adım!', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-                            const SizedBox(height: 12),
-                            const Text('Giriş yap ve başlayalım', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
-                            const SizedBox(height: 40),
-                            _buildGoogleButton(),
-                            const SizedBox(height: 16),
-                            const Row(children: [Expanded(child: Divider(color: AppColors.borderDark)), Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('veya', style: TextStyle(color: AppColors.textSecondary))), Expanded(child: Divider(color: AppColors.borderDark))]),
-                            const SizedBox(height: 16),
-                            TextField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 16, color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText: 'E-posta adresin',
-                                hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
-                                filled: true,
-                                fillColor: AppColors.cardDark,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                                contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                                errorText: _emailError,
-                                errorBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: AppColors.negative, width: 2),
-                                ),
-                              ),
-                              onChanged: (_) {
-                                if (_emailError != null) {
-                                  setState(() => _emailError = null);
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                        // Button always at bottom
-                        Padding(
-                          padding: const EdgeInsets.only(top: 24, bottom: 16),
-                          child: _buildButton('E-posta ile Devam Et', _handleEmailSignIn),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
+        Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('🔐', style: TextStyle(fontSize: 80)).animate().scale(duration: 600.ms),
+              const SizedBox(height: 24),
+              const Text('Son adım!', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 12),
+              const Text('Google hesabınla giriş yap', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+              const SizedBox(height: 40),
+              _buildGoogleButton(),
+              const SizedBox(height: 24),
+              Text(
+                'Giriş yaparak Gizlilik Politikası ve\nKullanım Koşullarını kabul etmiş olursun',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary.withOpacity(0.7)),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
         // Loading overlay
@@ -836,46 +786,4 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  Future<void> _handleEmailSignIn() async {
-    if (_emailController.text.trim().isEmpty) {
-      setState(() => _emailError = 'Lütfen e-posta adresini gir');
-      return;
-    }
-    
-    // Email validation
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(_emailController.text.trim())) {
-      setState(() => _emailError = 'Geçerli bir e-posta adresi gir');
-      return;
-    }
-    
-    setState(() => _isLoading = true);
-    try {
-      final authProvider = context.read<AuthProvider>();
-      await authProvider.login(_nameController.text.trim(), _emailController.text.trim());
-      if (_calculatedZodiac != null) await authProvider.selectZodiac(_calculatedZodiac!);
-      if (FirebaseService().isAuthenticated && _birthDate != null) {
-        await FirebaseService().firestore.collection('users').doc(FirebaseService().currentUser!.uid).update({'birthDate': _birthDate!.toIso8601String()});
-      }
-      if (mounted) {
-        setState(() => _isLoading = false);
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => WelcomeScreen(
-              userName: _nameController.text.trim(),
-              zodiacName: _calculatedZodiac!.turkishName,
-              zodiacSymbol: _calculatedZodiac!.symbol,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _emailError = 'Giriş yapılamadı. Tekrar dene.';
-        });
-      }
-    }
-  }
 }

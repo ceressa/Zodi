@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
-import '../widgets/zodi_character.dart';
+import '../widgets/zodi_logo.dart';
 import '../providers/auth_provider.dart';
+import '../providers/horoscope_provider.dart';
 import '../screens/daily_screen.dart';
 import '../screens/analysis_screen.dart';
 import '../screens/match_screen.dart';
+import 'package:intl/intl.dart';
 
 class DailyCommentPage extends StatelessWidget {
   const DailyCommentPage({super.key});
@@ -33,55 +35,6 @@ class DailyCommentPage extends StatelessWidget {
           // Üçlü bilgi kartları
           _infoRow(),
           
-          const SizedBox(height: 16),
-          
-          // Hızlı Başla Başlığı
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'HIZLI BAŞLA',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.gray600,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Detaylı Analiz ve Burç Uyumu
-          Row(
-            children: [
-              Expanded(
-                child: _quickActionCard(
-                  context,
-                  title: 'Detaylı\nAnaliz',
-                  icon: Icons.pie_chart_rounded,
-                  colors: [AppColors.pink400, AppColors.rose400],
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AnalysisScreen()),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _quickActionCard(
-                  context,
-                  title: 'Burç\nUyumu',
-                  icon: Icons.favorite_rounded,
-                  colors: [AppColors.cyan400, AppColors.blue400],
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MatchScreen()),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
           const SizedBox(height: 100),
         ],
       ),
@@ -105,21 +58,8 @@ class DailyCommentPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: const LinearGradient(
-                colors: [AppColors.violet400, AppColors.fuchsia400],
-              ),
-            ),
-            child: const Icon(
-              Icons.auto_awesome,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
+          // Zodi Logo yerine garip yıldız ikonu
+          const ZodiLogo(size: 56),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,6 +89,9 @@ class DailyCommentPage extends StatelessWidget {
   }
   
   Widget _heroCard(BuildContext context) {
+    final authProvider = context.read<AuthProvider>();
+    final horoscopeProvider = context.read<HoroscopeProvider>();
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(32),
@@ -173,10 +116,10 @@ class DailyCommentPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const ZodiCharacter(size: ZodiSize.large),
+          const ZodiLogo(size: 80),
           const SizedBox(height: 20),
           const Text(
-            'Bugün ne diyor\nyıldızlar?',
+            'Yıldızlar Bugün\nSenin İçin Ne Diyor?',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 28,
@@ -197,10 +140,33 @@ class DailyCommentPage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const DailyScreen()),
-            ),
+            onTap: () async {
+              // Direkt falı hazırla ve sayfaya git
+              if (authProvider.selectedZodiac != null) {
+                // Loading göster
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(
+                    child: CircularProgressIndicator(color: AppColors.purple600),
+                  ),
+                );
+                
+                // Falı yükle
+                await horoscopeProvider.fetchDailyHoroscope(authProvider.selectedZodiac!);
+                
+                // Loading kapat
+                if (context.mounted) Navigator.pop(context);
+                
+                // Daily screen'e git
+                if (context.mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DailyScreen()),
+                  );
+                }
+              }
+            },
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -244,11 +210,15 @@ class DailyCommentPage extends StatelessWidget {
   }
   
   Widget _infoRow() {
+    final now = DateTime.now();
+    final dayName = DateFormat('EEEE', 'tr_TR').format(now);
+    final dateStr = '${now.day} ${DateFormat('MMMM', 'tr_TR').format(now)}';
+    
     return Row(
       children: [
         Expanded(child: _infoTile('🔥', '0 Gün', 'Streak')),
         const SizedBox(width: 8),
-        Expanded(child: _infoTile('📅', 'Cuma', '13 Şubat')),
+        Expanded(child: _infoTile('📅', dayName, dateStr)),
         const SizedBox(width: 8),
         Expanded(child: _infoTile('🌙', 'Dolunay', 'Faz')),
       ],
