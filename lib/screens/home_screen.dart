@@ -10,7 +10,6 @@ import '../services/firebase_service.dart';
 import '../models/streak_data.dart';
 import '../widgets/compact_streak_badge.dart';
 import 'daily_screen.dart';
-import 'analysis_screen.dart';
 import 'match_screen.dart';
 import 'explore_screen.dart';
 import 'settings_screen.dart';
@@ -34,9 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // İlk interstitial ad'i yükle
     _adService.loadInterstitialAd();
-    // Streak verilerini yükle
     _loadStreakData();
   }
 
@@ -57,13 +54,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onPageChanged(int index) async {
     setState(() => _currentIndex = index);
 
-    // Premium değilse reklam göster
     final authProvider = context.read<AuthProvider>();
     if (!authProvider.isPremium) {
-      // Ekran navigasyonunu kaydet
       _adService.trackScreenNavigation();
 
-      // Gerekirse interstitial göster
       final shown = await _adService.showInterstitialIfNeeded();
       await _firebaseService.logAdWatched(
         'interstitial_navigation',
@@ -88,23 +82,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      extendBody: true, // Alt menünün arkasının görünmesi için
+      extendBody: true,
       body: Container(
         color: isDark ? const Color(0xFF1E233F) : const Color(0xFFF7F5FB),
         child: Column(
           children: [
-            // Custom App Bar
             _buildCustomAppBar(isDark, authProvider),
-
             Expanded(
               child: PageView(
                 controller: _pageController,
                 onPageChanged: _onPageChanged,
                 children: const [
                   DailyScreen(),
-                  AnalysisScreen(),
-                  MatchScreen(),
                   ExploreScreen(),
+                  MatchScreen(),
+                  StatisticsScreen(showAppBar: false),
                   SettingsScreen(),
                 ],
               ),
@@ -125,59 +117,76 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: 15,
       ),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2C3256) : const Color(0xFFFFFFFF),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF2C2854), const Color(0xFF1E2448)]
+              : [const Color(0xFFF3EDFF), const Color(0xFFE8E0FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withOpacity(0.16)
-                : const Color(0x22BDA7F8),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+                ? Colors.black.withOpacity(0.2)
+                : AppColors.accentPurple.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo
-          Hero(
-            tag: 'logo',
-            child: ClipOval(
-              child: Image.asset(
-                'assets/zodi_logo.webp',
-                width: 50,
-                height: 50,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 50,
-                  height: 50,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.accentPurple,
+          // Logo + "Zodi" text
+          Row(
+            children: [
+              Hero(
+                tag: 'logo',
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/zodi_logo.webp',
+                    width: 46,
+                    height: 46,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 46,
+                      height: 46,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.accentPurple,
+                      ),
+                      child: const Icon(Icons.auto_awesome,
+                          color: Colors.white, size: 22),
+                    ),
                   ),
-                  child: const Icon(Icons.auto_awesome,
-                      color: Colors.white, size: 24),
                 ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Text(
+                'Zodi',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : AppColors.textDark,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
 
-          // Streak Badge (ortada)
+          // Streak Badge (center)
           if (_streakData != null)
             CompactStreakBadge(
               streakData: _streakData!,
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const StatisticsScreen(),
-                  ),
-                );
+                // Navigate to statistics tab
+                _pageController.animateToPage(3,
+                    duration: 300.ms, curve: Curves.easeOutCubic);
               },
             ),
 
-          // Burç Badge
+          // Zodiac Badge
           if (authProvider.selectedZodiac != null)
             _buildZodiacBadge(authProvider.selectedZodiac!.symbol, isDark),
         ],
@@ -187,21 +196,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildZodiacBadge(String symbol, bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF8C79D9) : const Color(0xFFB7A7EB),
-        borderRadius: BorderRadius.circular(25),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF7C6BC4), const Color(0xFF6B5DAF)]
+              : [const Color(0xFFBAAEF0), const Color(0xFFA899E0)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
             color: AppColors.accentPurple.withOpacity(isDark ? 0.3 : 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Text(
         symbol,
-        style: const TextStyle(fontSize: 24, color: Colors.white),
+        style: const TextStyle(fontSize: 22, color: Colors.white),
       ),
     );
   }
@@ -209,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBottomNav(bool isDark) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xD9262B4E) : const Color(0xEFFFFBFF),
         borderRadius: BorderRadius.circular(30),
@@ -229,14 +244,16 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(0, Icons.auto_awesome_outlined, Icons.auto_awesome,
-              AppStrings.navDaily),
-          _buildNavItem(1, Icons.pie_chart_outline, Icons.pie_chart,
-              AppStrings.navAnalysis),
+          _buildNavItem(0, Icons.home_outlined, Icons.home,
+              AppStrings.navHome),
+          _buildNavItem(1, Icons.explore_outlined, Icons.explore,
+              AppStrings.navExplore),
           _buildNavItem(
               2, Icons.favorite_border, Icons.favorite, AppStrings.navMatch),
-          _buildNavItem(3, Icons.explore_outlined, Icons.explore, 'Keşfet'),
-          _buildNavItem(4, Icons.person_outline, Icons.person, 'Profil'),
+          _buildNavItem(3, Icons.bar_chart_outlined, Icons.bar_chart,
+              AppStrings.navStatistics),
+          _buildNavItem(4, Icons.person_outline, Icons.person,
+              AppStrings.navProfile),
         ],
       ),
     );
@@ -269,9 +286,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   : Theme.of(context).brightness == Brightness.dark
                       ? AppColors.textTertiary
                       : const Color(0xFF7C83A3),
-              size: 28,
+              size: 26,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             if (isActive)
               Container(
                 width: 5,

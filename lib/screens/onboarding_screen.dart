@@ -227,161 +227,184 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildNameStep() {
     return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(), // Ekrana tıklayınca klavyeyi kapat
-      child: SingleChildScrollView(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          height: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - 100,
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Zodi Character
-              ClipOval(
-                child: Image.asset(
-                  'assets/dozi_char.webp',
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const Text('👋', style: TextStyle(fontSize: 80)),
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(height: 16),
+                    // Content
+                    Column(
+                      children: [
+                        ClipOval(
+                          child: Image.asset(
+                            'assets/dozi_char.webp',
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => const Text('👋', style: TextStyle(fontSize: 80)),
+                          ),
+                        ).animate().scale(duration: 600.ms),
+                        const SizedBox(height: 24),
+                        const Text('Adın ne?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                        const SizedBox(height: 12),
+                        const Text('Sana nasıl hitap edeyim?', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+                        const SizedBox(height: 40),
+                        TextField(
+                          controller: _nameController,
+                          autofocus: true,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Örn: Ayşe',
+                            hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                            filled: true,
+                            fillColor: AppColors.cardDark,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+                            errorText: _nameController.text.isEmpty && _nameController.text.isNotEmpty ? 'Lütfen adını gir' : null,
+                          ),
+                          onSubmitted: (_) {
+                            if (_nameController.text.trim().isNotEmpty) _nextStep();
+                          },
+                        ),
+                      ],
+                    ),
+                    // Button always at bottom
+                    Padding(
+                      padding: const EdgeInsets.only(top: 24, bottom: 16),
+                      child: _buildButton('Devam Et', () {
+                        if (_nameController.text.trim().isEmpty) {
+                          setState(() {});
+                          return;
+                        }
+                        _nextStep();
+                      }),
+                    ),
+                  ],
                 ),
-              ).animate().scale(duration: 600.ms),
-              const SizedBox(height: 24),
-              const Text('Adın ne?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-              const SizedBox(height: 12),
-              const Text('Sana nasıl hitap edeyim?', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
-              const SizedBox(height: 40),
-              TextField(
-                controller: _nameController,
-                autofocus: true,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Örn: Ayşe',
-                  hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
-                  filled: true,
-                  fillColor: AppColors.cardDark,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                  errorText: _nameController.text.isEmpty && _nameController.text.isNotEmpty ? 'Lütfen adını gir' : null,
-                ),
-                onSubmitted: (_) {
-                  if (_nameController.text.trim().isNotEmpty) _nextStep();
-                },
               ),
-              const SizedBox(height: 32),
-              _buildButton('Devam Et', () {
-                if (_nameController.text.trim().isEmpty) {
-                  setState(() {}); // Hatayı göster
-                  return;
-                }
-                _nextStep();
-              }),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildBirthDateStep() {
     final isOnBoundary = _birthDate != null && _isOnZodiacBoundary(_birthDate!);
-    
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        height: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - 100,
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('🎂', style: TextStyle(fontSize: 80)).animate().scale(duration: 600.ms),
-            const SizedBox(height: 24),
-            const Text('Doğum tarihin ne?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-            const SizedBox(height: 12),
-            const Text('Burcunu hesaplayalım', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
-            const SizedBox(height: 40),
-            if (_birthDate == null)
-              _buildButton('Doğum Gününü Seç 📅', () => _showMonthDayPicker())
-            else
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(height: 16),
+                  // Content
+                  Column(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(gradient: AppColors.goldGradient, borderRadius: BorderRadius.circular(20)),
-                        child: Column(
-                          children: [
-                            Text(_calculatedZodiac!.symbol, style: const TextStyle(fontSize: 60)),
-                            const SizedBox(height: 12),
-                            Text(_calculatedZodiac!.turkishName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-                            const SizedBox(height: 12),
-                            Text(_getZodiacMessage(_calculatedZodiac!, _nameController.text.trim()), style: const TextStyle(fontSize: 16, color: Colors.white), textAlign: TextAlign.center),
-                          ],
-                        ),
-                      ).animate().fadeIn().scale(begin: const Offset(0.8, 0.8)),
-                      if (isOnBoundary) ...[
-                        const SizedBox(height: 24),
+                      const Text('🎂', style: TextStyle(fontSize: 80)).animate().scale(duration: 600.ms),
+                      const SizedBox(height: 24),
+                      const Text('Doğum tarihin ne?', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                      const SizedBox(height: 12),
+                      const Text('Burcunu hesaplayalım', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+                      const SizedBox(height: 40),
+                      if (_birthDate == null)
+                        const SizedBox()
+                      else ...[
                         Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardDark.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-                          ),
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(gradient: AppColors.goldGradient, borderRadius: BorderRadius.circular(20)),
                           child: Column(
                             children: [
-                              const Row(
-                                children: [
-                                  Icon(Icons.info_outline, color: AppColors.warning, size: 20),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Burç geçiş tarihinde doğdun!',
-                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Doğum tarihin burç geçiş dönemine denk geliyor. Bazı kaynaklara göre farklı burç olabilirsin. Emin değilsen değiştirebilirsin.',
-                                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                              ),
+                              Text(_calculatedZodiac!.symbol, style: const TextStyle(fontSize: 60)),
+                              const SizedBox(height: 12),
+                              Text(_calculatedZodiac!.turkishName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                              const SizedBox(height: 12),
+                              Text(_getZodiacMessage(_calculatedZodiac!, _nameController.text.trim()), style: const TextStyle(fontSize: 16, color: Colors.white), textAlign: TextAlign.center),
                             ],
                           ),
-                        ).animate(delay: 300.ms).fadeIn(),
+                        ).animate().fadeIn().scale(begin: const Offset(0.8, 0.8)),
+                        if (isOnBoundary) ...[
+                          const SizedBox(height: 24),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.cardDark.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.info_outline, color: AppColors.warning, size: 20),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Burç geçiş tarihinde doğdun!',
+                                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Doğum tarihin burç geçiş dönemine denk geliyor. Bazı kaynaklara göre farklı burç olabilirsin. Emin değilsen değiştirebilirsin.',
+                                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ).animate(delay: 300.ms).fadeIn(),
+                        ],
                       ],
-                      const SizedBox(height: 20),
-                      if (isOnBoundary)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildSecondaryButton('Burcu Değiştir', () {
-                                _showZodiacPicker();
-                              }),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 2,
-                              child: _buildButton('Doğru, Devam Et ✓', _nextStep),
-                            ),
-                          ],
-                        )
-                      else
-                        _buildButton('Devam Et ✓', _nextStep),
                     ],
                   ),
-                ),
+                  // Button always at bottom
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24, bottom: 16),
+                    child: _birthDate == null
+                        ? _buildButton('Doğum Gününü Seç 📅', () => _showMonthDayPicker())
+                        : isOnBoundary
+                            ? Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildSecondaryButton('Burcu Değiştir', () {
+                                      _showZodiacPicker();
+                                    }),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    flex: 2,
+                                    child: _buildButton('Doğru, Devam Et ✓', _nextStep),
+                                  ),
+                                ],
+                              )
+                            : _buildButton('Devam Et ✓', _nextStep),
+                  ),
+                ],
               ),
-          ],
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -492,55 +515,70 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       children: [
         GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Container(
-              height: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - 100,
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('🔐', style: TextStyle(fontSize: 80)).animate().scale(duration: 600.ms),
-                  const SizedBox(height: 24),
-                  const Text('Son adım!', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 12),
-                  const Text('Giriş yap ve başlayalım', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
-                  const SizedBox(height: 40),
-                  _buildGoogleButton(),
-                  const SizedBox(height: 16),
-                  const Row(children: [Expanded(child: Divider(color: AppColors.borderDark)), Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('veya', style: TextStyle(color: AppColors.textSecondary))), Expanded(child: Divider(color: AppColors.borderDark))]),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'E-posta adresin',
-                      hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
-                      filled: true,
-                      fillColor: AppColors.cardDark,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                      errorText: _emailError,
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.negative, width: 2),
-                      ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const SizedBox(height: 16),
+                        // Content
+                        Column(
+                          children: [
+                            const Text('🔐', style: TextStyle(fontSize: 80)).animate().scale(duration: 600.ms),
+                            const SizedBox(height: 24),
+                            const Text('Son adım!', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                            const SizedBox(height: 12),
+                            const Text('Giriş yap ve başlayalım', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+                            const SizedBox(height: 40),
+                            _buildGoogleButton(),
+                            const SizedBox(height: 16),
+                            const Row(children: [Expanded(child: Divider(color: AppColors.borderDark)), Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Text('veya', style: TextStyle(color: AppColors.textSecondary))), Expanded(child: Divider(color: AppColors.borderDark))]),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 16, color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: 'E-posta adresin',
+                                hintStyle: TextStyle(color: AppColors.textSecondary.withOpacity(0.5)),
+                                filled: true,
+                                fillColor: AppColors.cardDark,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                                errorText: _emailError,
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: AppColors.negative, width: 2),
+                                ),
+                              ),
+                              onChanged: (_) {
+                                if (_emailError != null) {
+                                  setState(() => _emailError = null);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        // Button always at bottom
+                        Padding(
+                          padding: const EdgeInsets.only(top: 24, bottom: 16),
+                          child: _buildButton('E-posta ile Devam Et', _handleEmailSignIn),
+                        ),
+                      ],
                     ),
-                    onChanged: (_) {
-                      if (_emailError != null) {
-                        setState(() => _emailError = null);
-                      }
-                    },
                   ),
-                  const SizedBox(height: 16),
-                  _buildButton('E-posta ile Devam Et', _handleEmailSignIn),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
         // Loading overlay

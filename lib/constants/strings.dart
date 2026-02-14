@@ -4,10 +4,14 @@ class AppStrings {
   static const String appSubtitle = 'Premium';
   
   // Navigation
+  static const String navHome = 'Ana Sayfa';
+  static const String navExplore = 'Keşfet';
+  static const String navMatch = 'Uyum';
+  static const String navStatistics = 'İstatistik';
+  static const String navProfile = 'Profil';
+  // Legacy
   static const String navDaily = 'Günlük';
   static const String navAnalysis = 'Analiz';
-  static const String navMatch = 'Uyum';
-  static const String navProfile = 'Profil';
   
   // Auth
   static const String authTitle = 'Hoş Geldin';

@@ -264,7 +264,17 @@ class _TarotScreenState extends State<TarotScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [AppColors.bgDark, AppColors.cardDark.withOpacity(0.5)]
+                : [AppColors.bgLight, AppColors.surfaceLight],
+          ),
+        ),
+        child: Column(
         children: [
           // Tab seçici
           Container(
@@ -327,6 +337,7 @@ class _TarotScreenState extends State<TarotScreen> {
                 : _buildThreeCardView(),
           ),
         ],
+        ),
       ),
     );
   }
@@ -362,7 +373,7 @@ class _TarotScreenState extends State<TarotScreen> {
               size: 20,
               color: isSelected
                   ? AppColors.accentPurple
-                  : (isDark ? Colors.white60 : Colors.black54),
+                  : (isDark ? AppColors.textSecondary : AppColors.textMuted),
             ),
             const SizedBox(width: 8),
             Text(
@@ -371,7 +382,7 @@ class _TarotScreenState extends State<TarotScreen> {
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected
                     ? AppColors.accentPurple
-                    : (isDark ? Colors.white60 : Colors.black54),
+                    : (isDark ? AppColors.textSecondary : AppColors.textMuted),
               ),
             ),
           ],
@@ -381,6 +392,7 @@ class _TarotScreenState extends State<TarotScreen> {
   }
 
   Widget _buildDailyCardView() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_isLoadingDaily) {
       return const Center(
         child: ShimmerLoading(
@@ -399,9 +411,22 @@ class _TarotScreenState extends State<TarotScreen> {
             const SizedBox(height: 16),
             Text(_error!),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadDailyCard,
-              child: const Text('Tekrar Dene'),
+            Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.purpleGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _loadDailyCard,
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    child: Text('Tekrar Dene', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -428,7 +453,7 @@ class _TarotScreenState extends State<TarotScreen> {
             'Bugün senin için özel bir mesaj var',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[600],
+              color: isDark ? AppColors.textSecondary : AppColors.textMuted,
             ),
           ),
           const SizedBox(height: 32),
@@ -488,15 +513,28 @@ class _TarotScreenState extends State<TarotScreen> {
           const SizedBox(height: 24),
 
           // Paylaş butonu
-          ElevatedButton.icon(
-            onPressed: () => _shareReading(_dailyReading!),
-            icon: const Icon(Icons.share),
-            label: const Text('Paylaş'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accentPurple,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 14,
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.purpleGradient,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: AppColors.accentPurple.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _shareReading(_dailyReading!),
+                borderRadius: BorderRadius.circular(16),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.share, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Text('Paylaş', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -564,15 +602,28 @@ class _TarotScreenState extends State<TarotScreen> {
               style: TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: _loadThreeCardSpread,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Kartları Çek'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentPurple,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
+            Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.cosmicGradient,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: AppColors.accentPurple.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _loadThreeCardSpread,
+                  borderRadius: BorderRadius.circular(16),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                        SizedBox(width: 8),
+                        Text('Kartları Çek', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -713,15 +764,28 @@ class _TarotScreenState extends State<TarotScreen> {
           const SizedBox(height: 24),
 
           // Paylaş butonu
-          ElevatedButton.icon(
-            onPressed: () => _shareReading(_threeCardReading!),
-            icon: const Icon(Icons.share),
-            label: const Text('Paylaş'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accentPurple,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 14,
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.purpleGradient,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: AppColors.accentPurple.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _shareReading(_threeCardReading!),
+                borderRadius: BorderRadius.circular(16),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.share, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Text('Paylaş', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

@@ -62,7 +62,7 @@ Burç: ${sign.displayName}, Bugünün tarihi: $dateStr. Zodi olarak bugünün ge
 Yanıtı şu JSON formatında ver:
 {
   "motto": "Günün mottosu (kısa, vurucu)",
-  "commentary": "Detaylı yorum (2-3 paragraf, Zodi tarzında dürüst)",
+  "commentary": "Detaylı yorum (2-3 paragraf, Zodi tarzında dürüst, toplam 150-250 kelime, kullanıcı bilgilerine göre kişiselleştirilmiş)",
   "love": 0-100 arası sayı,
   "money": 0-100 arası sayı,
   "health": 0-100 arası sayı,
