@@ -23,7 +23,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   final List<_ChatMessage> _messages = [];
   bool _isTyping = false;
   int _freeQuestionsToday = 0;
-  static const int _maxFreeQuestions = 3;
+  static const int _maxFreeQuestions = 2;
 
   // Önerilen sorular
   static const List<String> _suggestedQuestions = [
@@ -85,8 +85,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
-    // Ücretsiz hak kontrolü
-    if (!_canAskFree) {
+    // Premium kullanıcılar sınırsız
+    final authProvider = context.read<AuthProvider>();
+    if (!authProvider.isPremium && !_canAskFree) {
       _showLimitDialog();
       return;
     }
@@ -333,16 +334,24 @@ Yanıtını düz metin olarak ver, JSON formatında değil.
                     color: isDark ? Colors.white : AppColors.textDark,
                   ),
                 ),
-                Text(
-                  _isTyping
-                      ? 'Yazıyor...'
-                      : 'Kozmik danışmanın ($_freeQuestionsToday/$_maxFreeQuestions)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _isTyping
-                        ? AppColors.positive
-                        : (isDark ? Colors.white54 : AppColors.textMuted),
-                  ),
+                Builder(
+                  builder: (context) {
+                    final isPremium = context.read<AuthProvider>().isPremium;
+                    final subtitle = _isTyping
+                        ? 'Yazıyor...'
+                        : isPremium
+                            ? 'Kozmik danışmanın (Sınırsız ✨)'
+                            : 'Kozmik danışmanın ($_freeQuestionsToday/$_maxFreeQuestions)';
+                    return Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _isTyping
+                            ? AppColors.positive
+                            : (isDark ? Colors.white54 : AppColors.textMuted),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

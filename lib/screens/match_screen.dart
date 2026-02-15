@@ -6,7 +6,9 @@ import '../models/zodiac_sign.dart';
 import '../constants/colors.dart';
 import '../constants/strings.dart';
 import '../services/firebase_service.dart';
+import '../services/ad_service.dart';
 import 'compatibility_report_screen.dart';
+import 'premium_screen.dart';
 
 class MatchScreen extends StatefulWidget {
   const MatchScreen({super.key});
@@ -17,7 +19,9 @@ class MatchScreen extends StatefulWidget {
 
 class _MatchScreenState extends State<MatchScreen> {
   final FirebaseService _firebaseService = FirebaseService();
+  final AdService _adService = AdService();
   ZodiacSign? _selectedPartner;
+  bool _reportUnlockedByAd = false;
 
   Future<void> _loadCompatibility() async {
     final authProvider = context.read<AuthProvider>();
@@ -57,6 +61,85 @@ class _MatchScreenState extends State<MatchScreen> {
         );
       }
     }
+  }
+
+  void _openDetailedReport(AuthProvider authProvider) {
+    if (authProvider.isPremium || _reportUnlockedByAd) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CompatibilityReportScreen(
+            userSign: authProvider.selectedZodiac!,
+            partnerSign: _selectedPartner!,
+          ),
+        ),
+      );
+    } else {
+      _showReportGateDialog(authProvider);
+    }
+  }
+
+  void _showReportGateDialog(AuthProvider authProvider) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: AppColors.cosmicGradient,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.lock, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text('Premium İçerik', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Detaylı uyum raporu premium bir özelliktir.\nReklam izleyerek veya premium üyelikle erişebilirsin.',
+          style: TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Vazgeç', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          OutlinedButton.icon(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final success = await _adService.showRewardedAd(placement: 'compatibility_report');
+              if (success && mounted) {
+                setState(() => _reportUnlockedByAd = true);
+                _openDetailedReport(authProvider);
+              }
+            },
+            icon: const Icon(Icons.play_circle_outline, size: 18),
+            label: const Text('Reklam İzle'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.accentPurple,
+              side: const BorderSide(color: AppColors.accentPurple),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const PremiumScreen()));
+            },
+            icon: const Icon(Icons.diamond, size: 18),
+            label: const Text('Premium'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentPurple,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -326,7 +409,7 @@ class _MatchScreenState extends State<MatchScreen> {
 
             const SizedBox(height: 16),
 
-            // Detaylı Rapor Butonu
+            // Detaylı Rapor Butonu (Premium / Rewarded Ad gated)
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -336,24 +419,16 @@ class _MatchScreenState extends State<MatchScreen> {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CompatibilityReportScreen(
-                        userSign: authProvider.selectedZodiac!,
-                        partnerSign: _selectedPartner!,
-                      ),
-                    ),
-                  ),
+                  onTap: () => _openDetailedReport(authProvider),
                   borderRadius: BorderRadius.circular(20),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.description, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text(
+                        const Icon(Icons.description, color: Colors.white),
+                        const SizedBox(width: 8),
+                        const Text(
                           'Detaylı Uyum Raporu Al',
                           style: TextStyle(
                             color: Colors.white,
@@ -361,11 +436,22 @@ class _MatchScreenState extends State<MatchScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 4),
-                        Text(
-                          '✨',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        const SizedBox(width: 4),
+                        if (!authProvider.isPremium)
+                          Container(
+                            margin: const EdgeInsets.only(left: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.gold,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'PRO',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                            ),
+                          )
+                        else
+                          const Text('✨', style: TextStyle(fontSize: 16)),
                       ],
                     ),
                   ),

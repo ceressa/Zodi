@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../constants/colors.dart';
 import '../models/zodiac_sign.dart';
+import '../providers/auth_provider.dart';
 import '../services/gemini_service.dart';
 import '../services/ad_service.dart';
 import '../services/share_service.dart';
 import '../widgets/share_cards/compatibility_share_card.dart';
+import 'premium_screen.dart';
 
 class CompatibilityReportScreen extends StatefulWidget {
   final ZodiacSign userSign;
@@ -29,12 +32,40 @@ class _CompatibilityReportScreenState extends State<CompatibilityReportScreen> {
   final _adService = AdService();
   Map<String, dynamic>? _report;
   bool _isLoading = true;
+  bool _hasAccess = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadReport();
+    _adService.loadRewardedAd();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAccessAndLoad();
+    });
+  }
+
+  void _checkAccessAndLoad() {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.isPremium) {
+      setState(() => _hasAccess = true);
+      _loadReport();
+    } else {
+      setState(() {
+        _hasAccess = false;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _unlockWithAd() async {
+    final success = await _adService.showRewardedAd(placement: 'compatibility_report');
+    if (success && mounted) {
+      setState(() {
+        _hasAccess = true;
+        _isLoading = true;
+      });
+      _loadReport();
+    }
   }
 
   Future<void> _loadReport() async {
@@ -142,11 +173,13 @@ Yanıtı aşağıdaki JSON formatında ver:
             children: [
               _buildAppBar(isDark),
               Expanded(
-                child: _isLoading
-                    ? _buildLoading(isDark)
-                    : _error != null
-                        ? _buildError(isDark)
-                        : _buildReport(isDark),
+                child: !_hasAccess
+                    ? _buildAccessGate(isDark)
+                    : _isLoading
+                        ? _buildLoading(isDark)
+                        : _error != null
+                            ? _buildError(isDark)
+                            : _buildReport(isDark),
               ),
             ],
           ),
@@ -182,6 +215,103 @@ Yanıtı aşağıdaki JSON formatında ver:
             onPressed: _report != null ? _shareReport : null,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAccessGate(bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(widget.userSign.symbol, style: const TextStyle(fontSize: 48)),
+                const SizedBox(width: 16),
+                const Icon(Icons.lock, color: AppColors.gold, size: 36),
+                const SizedBox(width: 16),
+                Text(widget.partnerSign.symbol, style: const TextStyle(fontSize: 48)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Detaylı Uyum Raporu',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bu rapor premium bir içeriktir.\nReklam izleyerek veya premium üyelikle erişebilirsin.',
+              style: TextStyle(
+                fontSize: 15,
+                color: isDark ? Colors.white70 : AppColors.textMuted,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            // Reklam İzle butonu
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _unlockWithAd,
+                icon: const Icon(Icons.play_circle_outline),
+                label: const Text('Reklam İzle & Kilidi Aç', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.accentPurple,
+                  side: const BorderSide(color: AppColors.accentPurple, width: 2),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Premium butonu
+            SizedBox(
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: AppColors.cosmicGradient,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.diamond, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Premium\'a Geç',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
