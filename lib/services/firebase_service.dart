@@ -655,6 +655,70 @@ class FirebaseService {
     }
   }
 
+  // Kişiselleştirme bilgilerini güncelle (PersonalizationScreen için)
+  Future<void> updatePersonalizationInfo({
+    String? relationshipStatus,
+    String? partnerName,
+    String? employmentStatus,
+    String? occupation,
+    String? workField,
+    String? careerGoal,
+    String? lifePhase,
+    String? spiritualInterest,
+    String? currentCity,
+    List<String>? interests,
+    List<String>? currentChallenges,
+    List<String>? lifeGoals,
+  }) async {
+    if (currentUser == null) return;
+
+    try {
+      final updates = <String, dynamic>{
+        'lastActiveAt': DateTime.now().toIso8601String(),
+      };
+
+      // İlişki bilgileri
+      if (relationshipStatus != null) updates['relationshipStatus'] = relationshipStatus;
+      if (partnerName != null) updates['partnerName'] = partnerName;
+      
+      // Kariyer bilgileri
+      if (employmentStatus != null) updates['employmentStatus'] = employmentStatus;
+      if (occupation != null) updates['occupation'] = occupation;
+      if (workField != null) updates['workField'] = workField;
+      if (careerGoal != null) updates['careerGoal'] = careerGoal;
+      
+      // Yaşam bilgileri
+      if (lifePhase != null) updates['lifePhase'] = lifePhase;
+      if (spiritualInterest != null) updates['spiritualInterest'] = spiritualInterest;
+      if (currentCity != null) updates['currentCity'] = currentCity;
+      
+      // Listeler
+      if (interests != null) updates['interests'] = interests;
+      if (currentChallenges != null) updates['currentChallenges'] = currentChallenges;
+      if (lifeGoals != null) updates['lifeGoals'] = lifeGoals;
+
+      await _firestore
+          .collection('users')
+          .doc(currentUser!.uid)
+          .update(updates);
+      
+      // Analytics event
+      await _analytics.logEvent(
+        name: 'profile_personalization_updated',
+        parameters: {
+          'has_relationship_info': (relationshipStatus != null).toString(),
+          'has_career_info': (occupation != null || employmentStatus != null).toString(),
+          'interests_count': (interests?.length ?? 0).toString(),
+          'challenges_count': (currentChallenges?.length ?? 0).toString(),
+          'goals_count': (lifeGoals?.length ?? 0).toString(),
+        },
+      );
+    } catch (e) {
+      await _crashlytics.recordError(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
   // Arkadaş burçlarını güncelle
   Future<void> addFriendZodiacSign(String zodiacSign) async {
     if (currentUser == null) return;

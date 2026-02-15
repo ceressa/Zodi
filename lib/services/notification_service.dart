@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -13,9 +14,66 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   final GeminiService _geminiService = GeminiService();
   bool _initialized = false;
+  final _random = Random();
 
   // Callback for handling notification taps
   Function(String?)? _onNotificationTap;
+
+  // ===== HOOK BİLDİRİMLERİ — Merak Tetikleyici Mesajlar =====
+  static const List<Map<String, String>> _hookTemplates = [
+    // Günlük genel hook'lar
+    {'title': '🔮 Bugün dikkat!', 'body': '{sign} için kritik bir gezegensel geçiş var...'},
+    {'title': '⚡ Kozmik uyarı!', 'body': '{sign}, bugün beklenmedik bir haber alabilirsin...'},
+    {'title': '💫 Yıldızlar konuşuyor!', 'body': '{sign} burcu bugün özel bir enerjiye sahip...'},
+    {'title': '✨ Bugünkü falın hazır!', 'body': '{sign}, bugün aşk hayatında sürprizler olabilir...'},
+    {'title': '🌙 Ay burcu etkisi!', 'body': 'Bugünkü Ay pozisyonu {sign} burcunu doğrudan etkiliyor...'},
+    {'title': '🪐 Gezegen hareketleri!', 'body': '{sign}, bu hafta büyük bir dönüşümün eşiğindesin...'},
+    {'title': '🌟 Kaçırma!', 'body': '{sign} için bugün şans kapısı aralanıyor...'},
+    {'title': '💕 Aşk enerjisi yükseliyor!', 'body': '{sign}, bugün romantik sürprizlere hazır ol...'},
+    {'title': '💰 Bolluk enerjisi!', 'body': '{sign} burcu için maddi fırsatlar beliriyor...'},
+    {'title': '🔥 Ateşli bir gün!', 'body': '{sign}, enerjin bugün tavan yapacak...'},
+    // Merak uyandıran hook'lar
+    {'title': '👀 Bunu bilmen lazım!', 'body': '{sign} burcu için bugün çok önemli bir detay var...'},
+    {'title': '🎯 Tam zamanı!', 'body': '{sign}, bugün bir karar vermen gerekebilir...'},
+    {'title': '🌈 İyi haber!', 'body': 'Zodi {sign} burcu için güzel şeyler görüyor...'},
+    {'title': '⭐ Günün sürprizi!', 'body': '{sign} burcu bugün neyle karşılaşacak? Hemen bak!'},
+    {'title': '🎪 Kozmik sahne senin!', 'body': '{sign}, bugün spot ışığı sende olabilir...'},
+  ];
+
+  // Öğle saati hook'ları (hatırlatma)
+  static const List<Map<String, String>> _middayHooks = [
+    {'title': '☀️ Öğle enerjisi!', 'body': '{sign}, günün ikinci yarısı için falına baktın mı?'},
+    {'title': '🔄 Güncellemen var!', 'body': '{sign} burcu için öğleden sonra enerjiler değişiyor...'},
+    {'title': '💡 Hızlı bir bakış!', 'body': 'Bugünkü şanslı sayın ve rengin ne? Zodi\'de bak!'},
+    {'title': '🎴 Tarot hatırlatma!', 'body': '{sign}, günlük tarot kartını çekmeyi unuttun mu?'},
+  ];
+
+  // Akşam hook'ları
+  static const List<Map<String, String>> _eveningHooks = [
+    {'title': '🌙 Gece enerjisi!', 'body': '{sign}, yarın için kozmik önizleme hazır...'},
+    {'title': '✨ Yarına hazır mısın?', 'body': '{sign} burcu için yarın neler olacak? İpucu bıraktık...'},
+    {'title': '🌠 Yıldızların mesajı!', 'body': '{sign}, gece gökyüzü sana bir şey fısıldıyor...'},
+    {'title': '💤 Uyumadan önce!', 'body': '{sign}, rüyanda göreceğin sembol hakkında bir ipucu var...'},
+  ];
+
+  Map<String, String> _getRandomHook(String zodiacName, {String period = 'morning'}) {
+    final List<Map<String, String>> templates;
+    switch (period) {
+      case 'midday':
+        templates = _middayHooks;
+        break;
+      case 'evening':
+        templates = _eveningHooks;
+        break;
+      default:
+        templates = _hookTemplates;
+    }
+    final template = templates[_random.nextInt(templates.length)];
+    return {
+      'title': template['title']!,
+      'body': template['body']!.replaceAll('{sign}', zodiacName),
+    };
+  }
 
   Future<void> initialize({Function(String?)? onNotificationTap}) async {
     if (_initialized) return;
@@ -255,7 +313,7 @@ class NotificationService {
     try {
       // Generate personalized preview
       final preview = await generateNotificationPreview(zodiacName);
-      
+
       await _notifications.zonedSchedule(
         0, // notification id
         '🌟 Günlük Falın Hazır!',
@@ -290,5 +348,171 @@ class NotificationService {
         zodiacName: zodiacName,
       );
     }
+  }
+
+  // ===== HOOK BİLDİRİM SİSTEMİ =====
+
+  /// Tüm hook bildirimlerini planla (sabah + öğle + akşam)
+  Future<void> scheduleHookNotifications({
+    required int morningHour,
+    required int morningMinute,
+    required String zodiacName,
+    bool enableMidday = true,
+    bool enableEvening = true,
+  }) async {
+    // 1. Sabah ana bildirimi — merak uyandırıcı hook ile
+    final morningHook = _getRandomHook(zodiacName, period: 'morning');
+    await _notifications.zonedSchedule(
+      0, // sabah bildirimi ID=0
+      morningHook['title']!,
+      morningHook['body']!,
+      _nextInstanceOfTime(morningHour, morningMinute),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'daily_horoscope',
+          'Günlük Burç',
+          channelDescription: 'Günlük burç yorumları',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: 'daily_horoscope',
+    );
+
+    // 2. Öğle hatırlatması (13:00)
+    if (enableMidday) {
+      final middayHook = _getRandomHook(zodiacName, period: 'midday');
+      await _notifications.zonedSchedule(
+        10, // öğle bildirimi ID=10
+        middayHook['title']!,
+        middayHook['body']!,
+        _nextInstanceOfTime(13, 0),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'midday_reminder',
+            'Öğle Hatırlatması',
+            channelDescription: 'Öğle saati hatırlatmaları',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+            icon: '@mipmap/ic_launcher',
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'daily_horoscope',
+      );
+    }
+
+    // 3. Akşam bildirimi (21:00) — yarın için merak
+    if (enableEvening) {
+      final eveningHook = _getRandomHook(zodiacName, period: 'evening');
+      await _notifications.zonedSchedule(
+        20, // akşam bildirimi ID=20
+        eveningHook['title']!,
+        eveningHook['body']!,
+        _nextInstanceOfTime(21, 0),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'evening_preview',
+            'Akşam Önizleme',
+            channelDescription: 'Akşam önizleme bildirimleri',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+            icon: '@mipmap/ic_launcher',
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'daily_horoscope',
+      );
+    }
+  }
+
+  /// Öğle ve akşam bildirimlerini iptal et
+  Future<void> cancelExtraNotifications() async {
+    await _notifications.cancel(10); // öğle
+    await _notifications.cancel(20); // akşam
+  }
+
+  /// Kozmik kutu hatırlatması (günde 1 kez, sabah 10:00)
+  Future<void> scheduleCosmicBoxReminder({required String zodiacName}) async {
+    await _notifications.zonedSchedule(
+      30, // kozmik kutu ID=30
+      '🎁 Kozmik Kutun Hazır!',
+      '$zodiacName, günlük şans kutunu açmayı unutma! Bugün ne çıkacak? ✨',
+      _nextInstanceOfTime(10, 0),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'cosmic_box',
+          'Kozmik Kutu',
+          channelDescription: 'Günlük kozmik kutu hatırlatması',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: 'cosmic_box',
+    );
+  }
+
+  /// Retro gezegen uyarısı (tek seferlik bildirim)
+  Future<void> showRetroAlert({
+    required String planetName,
+    required int daysUntil,
+  }) async {
+    await _notifications.show(
+      40 + DateTime.now().millisecondsSinceEpoch % 100,
+      '⚠️ $planetName Retrosu Yaklaşıyor!',
+      '$daysUntil gün sonra $planetName retrosu başlıyor. Hazırlıklı ol!',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'retro_alert',
+          'Retro Uyarıları',
+          channelDescription: 'Gezegen retrosu uyarıları',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: 'retro_alert',
+    );
   }
 }

@@ -436,17 +436,72 @@ Yanıtı şu JSON formatında ver:
     try {
       final response = await _model.generateContent([Content.text(prompt)]);
       final text = response.text ?? '';
-      
+
       // JSON formatında geldiyse temizle
       final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
       if (jsonMatch != null) {
         return jsonMatch.group(1) ?? text;
       }
-      
+
       return text.trim();
     } catch (e) {
       debugPrint('❌ Tarot interpretation error: $e');
       rethrow;
+    }
+  }
+
+  /// Günlük astrolojik ipucu (Kozmik Takvim için)
+  Future<String> fetchDailyAstroTip(ZodiacSign sign, DateTime date, {String? events}) async {
+    final systemPrompt = await _getPersonalizedPrompt();
+    final dateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(date);
+
+    final prompt = '''
+$systemPrompt
+
+Burç: ${sign.displayName}
+Tarih: $dateStr
+${events != null ? 'Bugünkü astrolojik olaylar: $events' : ''}
+
+Zodi olarak bu gün için kısa bir kozmik ipucu ver. 2-3 cümle, samimi ve pratik.
+Eğer bugün önemli bir astrolojik olay varsa (retro, dolunay, tutulma) ona özel yorum yap.
+
+Sadece düz metin olarak yanıtla, JSON formatı kullanma. Maksimum 80 kelime.
+''';
+
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      return response.text?.trim() ?? 'Bugün yıldızlar senin için sessiz.';
+    } catch (e) {
+      debugPrint('❌ Astro tip error: $e');
+      return 'Kozmik enerjiler bugün sakin. İçsel sesini dinle.';
+    }
+  }
+
+  /// Günlük güzellik tavsiyesi (Güzellik Takvimi için)
+  Future<String> fetchBeautyTip(ZodiacSign sign, DateTime date, String moonPhase, String moonSign) async {
+    final systemPrompt = await _getPersonalizedPrompt();
+    final dateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(date);
+
+    final prompt = '''
+$systemPrompt
+
+Burç: ${sign.displayName}
+Tarih: $dateStr
+Ay Fazı: $moonPhase
+Ay Burcu: $moonSign
+
+Zodi olarak bu gün için kısa bir güzellik tavsiyesi ver. Ay fazı ve ay burcuna göre saç bakımı, cilt bakımı veya genel güzellik rutini öner.
+Samimi, eğlenceli ve pratik ol. 2-3 cümle yeterli.
+
+Sadece düz metin olarak yanıtla, JSON formatı kullanma. Maksimum 60 kelime.
+''';
+
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      return response.text?.trim() ?? 'Bugün kendine biraz vakit ayır!';
+    } catch (e) {
+      debugPrint('❌ Beauty tip error: $e');
+      return 'Ay enerjisi bugün güzelliğini destekliyor. Kendine iyi bak!';
     }
   }
 }

@@ -7,10 +7,12 @@ import '../services/tarot_service.dart';
 import '../services/gemini_service.dart';
 import '../services/firebase_service.dart';
 import '../services/ad_service.dart';
+import '../services/share_service.dart';
 import '../models/tarot_card.dart';
 import '../widgets/tarot_card_widget.dart';
 import '../widgets/candy_loading.dart';
 import '../widgets/premium_lock_overlay.dart';
+import '../widgets/share_cards/tarot_share_card.dart';
 
 class TarotScreen extends StatefulWidget {
   const TarotScreen({super.key});
@@ -226,34 +228,34 @@ class _TarotScreenState extends State<TarotScreen> {
 
   Future<void> _shareReading(TarotReading reading) async {
     try {
-      String shareText = '🔮 Zodi Tarot Falım\n\n';
-      
-      if (reading.cards.length == 1) {
-        // Günlük kart
-        final card = reading.cards.first;
-        shareText += '📜 ${card.name}${card.reversed ? ' (Ters)' : ''}\n';
-        shareText += '✨ ${card.basicMeaning}\n\n';
-      } else {
-        // Üç kart yayılımı
-        shareText += '📜 Geçmiş: ${reading.cards[0].name}\n';
-        shareText += '📜 Şimdi: ${reading.cards[1].name}\n';
-        shareText += '📜 Gelecek: ${reading.cards[2].name}\n\n';
-      }
-      
-      shareText += '💫 Zodi\'nin Yorumu:\n${reading.interpretation}\n\n';
-      shareText += '🌟 Zodi ile senin de falına bak!';
-      
-      await Share.share(
-        shareText,
-        subject: 'Zodi Tarot Falım',
+      final authProvider = context.read<AuthProvider>();
+      final zodiac = authProvider.selectedZodiac;
+      final isThree = reading.cards.length > 1;
+
+      final card = TarotShareCard(
+        cardName: reading.cards.first.name,
+        interpretation: reading.interpretation,
+        zodiacSymbol: zodiac?.symbol,
+        zodiacName: zodiac?.displayName,
+        isThreeCard: isThree,
+        threeCardNames: isThree
+            ? reading.cards.map((c) => c.name).toList()
+            : null,
       );
-      
+
+      await ShareService().shareCardWidget(
+        context,
+        card,
+        text: '🔮 Zodi Tarot Falım\n#Zodi #Tarot',
+      );
+
       // Analytics
       _firebaseService.analytics.logEvent(
         name: 'tarot_shared',
         parameters: {
           'card_count': reading.cards.length,
           'reading_type': reading.cards.length == 1 ? 'daily' : 'three_card',
+          'share_type': 'visual_card',
         },
       );
     } catch (e) {

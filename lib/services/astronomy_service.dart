@@ -3,6 +3,7 @@ import 'package:sweph/sweph.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../models/zodiac_sign.dart';
+import '../models/beauty_day.dart';
 
 /// Service for accurate astronomical calculations using Swiss Ephemeris
 class AstronomyService {
@@ -127,6 +128,128 @@ class AstronomyService {
       debugPrint('❌ Error calculating rising sign: $e');
       rethrow;
     }
+  }
+
+  /// Verilen tarih için ay fazını hesapla (Swiss Ephemeris ile)
+  static Future<MoonPhase> getMoonPhase(DateTime date) async {
+    if (!_initialized) {
+      await initialize();
+    }
+
+    try {
+      final utcDate = date.toUtc();
+      final julianDay = Sweph.swe_julday(
+        utcDate.year,
+        utcDate.month,
+        utcDate.day,
+        utcDate.hour + utcDate.minute / 60.0,
+        CalendarType.SE_GREG_CAL,
+      );
+
+      // Güneş ve Ay pozisyonlarını hesapla
+      final sunCalc = Sweph.swe_calc_ut(
+        julianDay,
+        HeavenlyBody.SE_SUN,
+        SwephFlag.SEFLG_SWIEPH,
+      );
+      final moonCalc = Sweph.swe_calc_ut(
+        julianDay,
+        HeavenlyBody.SE_MOON,
+        SwephFlag.SEFLG_SWIEPH,
+      );
+
+      // Ay-Güneş açı farkı (elongation)
+      double elongation = (moonCalc.longitude - sunCalc.longitude) % 360;
+      if (elongation < 0) elongation += 360;
+
+      // Açı farkına göre ay fazını belirle
+      if (elongation < 22.5 || elongation >= 337.5) {
+        return MoonPhase.newMoon;
+      } else if (elongation < 67.5) {
+        return MoonPhase.waxingCrescent;
+      } else if (elongation < 112.5) {
+        return MoonPhase.firstQuarter;
+      } else if (elongation < 157.5) {
+        return MoonPhase.waxingGibbous;
+      } else if (elongation < 202.5) {
+        return MoonPhase.fullMoon;
+      } else if (elongation < 247.5) {
+        return MoonPhase.waningGibbous;
+      } else if (elongation < 292.5) {
+        return MoonPhase.lastQuarter;
+      } else {
+        return MoonPhase.waningCrescent;
+      }
+    } catch (e) {
+      debugPrint('❌ Error calculating moon phase: $e');
+      // Fallback: basit hesaplama
+      return _simpleMoonPhase(date);
+    }
+  }
+
+  /// Verilen tarihte Ay'ın hangi burçta olduğunu hesapla
+  static Future<String> getMoonSign(DateTime date) async {
+    if (!_initialized) {
+      await initialize();
+    }
+
+    try {
+      final utcDate = date.toUtc();
+      final julianDay = Sweph.swe_julday(
+        utcDate.year,
+        utcDate.month,
+        utcDate.day,
+        utcDate.hour + utcDate.minute / 60.0,
+        CalendarType.SE_GREG_CAL,
+      );
+
+      final moonCalc = Sweph.swe_calc_ut(
+        julianDay,
+        HeavenlyBody.SE_MOON,
+        SwephFlag.SEFLG_SWIEPH,
+      );
+
+      return _degreeToZodiacSignTurkish(moonCalc.longitude);
+    } catch (e) {
+      debugPrint('❌ Error calculating moon sign: $e');
+      return 'Koç'; // Fallback
+    }
+  }
+
+  /// Basit ay fazı hesaplama (fallback)
+  static MoonPhase _simpleMoonPhase(DateTime date) {
+    // Bilinen yeniay referansı: 6 Ocak 2000
+    const knownNewMoon = 2451550.1; // Julian day
+    final jd = Sweph.swe_julday(
+      date.year, date.month, date.day,
+      date.hour + date.minute / 60.0,
+      CalendarType.SE_GREG_CAL,
+    );
+    final daysSinceNew = jd - knownNewMoon;
+    final lunarCycle = 29.53058770576;
+    final phase = (daysSinceNew % lunarCycle) / lunarCycle;
+
+    if (phase < 0.0625) return MoonPhase.newMoon;
+    if (phase < 0.1875) return MoonPhase.waxingCrescent;
+    if (phase < 0.3125) return MoonPhase.firstQuarter;
+    if (phase < 0.4375) return MoonPhase.waxingGibbous;
+    if (phase < 0.5625) return MoonPhase.fullMoon;
+    if (phase < 0.6875) return MoonPhase.waningGibbous;
+    if (phase < 0.8125) return MoonPhase.lastQuarter;
+    if (phase < 0.9375) return MoonPhase.waningCrescent;
+    return MoonPhase.newMoon;
+  }
+
+  /// Derece → Türkçe burç adı
+  static String _degreeToZodiacSignTurkish(double degree) {
+    final normalizedDegree = degree % 360;
+    final signIndex = (normalizedDegree / 30).floor();
+    const signs = [
+      'Koç', 'Boğa', 'İkizler', 'Yengeç',
+      'Aslan', 'Başak', 'Terazi', 'Akrep',
+      'Yay', 'Oğlak', 'Kova', 'Balık',
+    ];
+    return signs[signIndex % 12];
   }
 
   /// Convert ecliptic longitude (0-360°) to zodiac sign

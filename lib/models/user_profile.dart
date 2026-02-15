@@ -57,12 +57,25 @@ class UserProfile {
   final List<String> recentSearches; // Son aramalar
   
   // Sosyal & İlişkiler
-  final String? relationshipStatus; // 'single', 'relationship', 'married'
+  final String? relationshipStatus; // 'single', 'relationship', 'married', 'engaged', 'complicated'
   final String? partnerName; // Sevdiği kişinin adı
   final String? partnerZodiacSign;
   final DateTime? partnerBirthDate;
   final List<String> friendZodiacSigns; // Arkadaşların burçları
   final String? currentCity; // Yaşadığı şehir
+  
+  // Kariyer & İş Hayatı
+  final String? occupation; // Meslek
+  final String? employmentStatus; // 'student', 'employed', 'self_employed', 'unemployed', 'retired'
+  final String? workField; // Çalışma alanı (teknoloji, sağlık, eğitim vs.)
+  final String? careerGoal; // Kariyer hedefi
+  
+  // Yaşam & Kişilik
+  final String? lifePhase; // 'exploring', 'building', 'established', 'transitioning'
+  final List<String> currentChallenges; // Şu anki zorluklar (para, ilişki, kariyer vs.)
+  final List<String> lifeGoals; // Hayat hedefleri
+  final String? personalityType; // MBTI veya benzeri (opsiyonel)
+  final String? spiritualInterest; // Spiritüel ilgi seviyesi: 'curious', 'believer', 'skeptic'
   
   // Davranış Analizi
   final Map<String, dynamic> readingPatterns; // Okuma alışkanlıkları
@@ -144,6 +157,15 @@ class UserProfile {
     this.partnerBirthDate,
     this.friendZodiacSigns = const [],
     this.currentCity,
+    this.occupation,
+    this.employmentStatus,
+    this.workField,
+    this.careerGoal,
+    this.lifePhase,
+    this.currentChallenges = const [],
+    this.lifeGoals = const [],
+    this.personalityType,
+    this.spiritualInterest,
     this.readingPatterns = const {},
     this.mostReadCategories = const [],
     this.preferredReadingTime,
@@ -231,6 +253,19 @@ class UserProfile {
         'partnerBirthDate': partnerBirthDate?.toIso8601String(),
         'friendZodiacSigns': friendZodiacSigns,
         'currentCity': currentCity,
+        
+        // Kariyer & İş Hayatı
+        'occupation': occupation,
+        'employmentStatus': employmentStatus,
+        'workField': workField,
+        'careerGoal': careerGoal,
+        
+        // Yaşam & Kişilik
+        'lifePhase': lifePhase,
+        'currentChallenges': currentChallenges,
+        'lifeGoals': lifeGoals,
+        'personalityType': personalityType,
+        'spiritualInterest': spiritualInterest,
         
         // Davranış Analizi
         'readingPatterns': readingPatterns,
@@ -327,6 +362,15 @@ class UserProfile {
             : null,
         friendZodiacSigns: List<String>.from(json['friendZodiacSigns'] ?? []),
         currentCity: json['currentCity'],
+        occupation: json['occupation'],
+        employmentStatus: json['employmentStatus'],
+        workField: json['workField'],
+        careerGoal: json['careerGoal'],
+        lifePhase: json['lifePhase'],
+        currentChallenges: List<String>.from(json['currentChallenges'] ?? []),
+        lifeGoals: List<String>.from(json['lifeGoals'] ?? []),
+        personalityType: json['personalityType'],
+        spiritualInterest: json['spiritualInterest'],
         readingPatterns: Map<String, dynamic>.from(json['readingPatterns'] ?? {}),
         mostReadCategories: List<String>.from(json['mostReadCategories'] ?? []),
         preferredReadingTime: json['preferredReadingTime'],
@@ -362,25 +406,46 @@ class UserProfile {
   // Helper method: Profil tamamlanma yüzdesi
   double get completionPercentage {
     int completed = 0;
-    int total = 15; // Önemli alanların sayısı
+    int total = 12; // Önemli kişiselleştirme alanları
     
+    // Temel bilgiler (3)
     if (name.isNotEmpty) completed++;
-    if (email.isNotEmpty) completed++;
-    if (photoUrl != null) completed++;
     if (birthPlace.isNotEmpty) completed++;
     if (birthTime.isNotEmpty) completed++;
+    
+    // Astrolojik (2)
     if (risingSign != null) completed++;
     if (moonSign != null) completed++;
-    if (interests.isNotEmpty) completed++;
+    
+    // İlişki (2)
     if (relationshipStatus != null) completed++;
-    if (birthLatitude != null && birthLongitude != null) completed++;
-    if (venusSign != null) completed++;
-    if (marsSign != null) completed++;
-    if (mercurySign != null) completed++;
-    if (jupiterSign != null) completed++;
-    if (saturnSign != null) completed++;
+    if (relationshipStatus != 'single' && partnerName != null && partnerName!.isNotEmpty) completed++;
+    if (relationshipStatus == 'single') completed++; // Bekarsa partner adı gerekmez
+    
+    // Kariyer (2)
+    if (occupation != null && occupation!.isNotEmpty) completed++;
+    if (employmentStatus != null) completed++;
+    
+    // Yaşam (2)
+    if (currentCity != null && currentCity!.isNotEmpty) completed++;
+    if (interests.isNotEmpty) completed++;
+    
+    // Hedefler (1)
+    if (currentChallenges.isNotEmpty || lifeGoals.isNotEmpty) completed++;
     
     return (completed / total) * 100;
+  }
+  
+  // Helper: Hangi kategoriler eksik
+  Map<String, bool> get profileCompletionByCategory {
+    return {
+      'basic': name.isNotEmpty && birthPlace.isNotEmpty && birthTime.isNotEmpty,
+      'astrology': risingSign != null && moonSign != null,
+      'relationship': relationshipStatus != null,
+      'career': occupation != null || employmentStatus != null,
+      'life': currentCity != null && interests.isNotEmpty,
+      'goals': currentChallenges.isNotEmpty || lifeGoals.isNotEmpty,
+    };
   }
 
   // Helper method: Aktif kullanıcı mı?
@@ -451,6 +516,15 @@ class UserProfile {
     DateTime? partnerBirthDate,
     List<String>? friendZodiacSigns,
     String? currentCity,
+    String? occupation,
+    String? employmentStatus,
+    String? workField,
+    String? careerGoal,
+    String? lifePhase,
+    List<String>? currentChallenges,
+    List<String>? lifeGoals,
+    String? personalityType,
+    String? spiritualInterest,
     Map<String, dynamic>? readingPatterns,
     List<String>? mostReadCategories,
     String? preferredReadingTime,
@@ -522,6 +596,15 @@ class UserProfile {
       partnerBirthDate: partnerBirthDate ?? this.partnerBirthDate,
       friendZodiacSigns: friendZodiacSigns ?? this.friendZodiacSigns,
       currentCity: currentCity ?? this.currentCity,
+      occupation: occupation ?? this.occupation,
+      employmentStatus: employmentStatus ?? this.employmentStatus,
+      workField: workField ?? this.workField,
+      careerGoal: careerGoal ?? this.careerGoal,
+      lifePhase: lifePhase ?? this.lifePhase,
+      currentChallenges: currentChallenges ?? this.currentChallenges,
+      lifeGoals: lifeGoals ?? this.lifeGoals,
+      personalityType: personalityType ?? this.personalityType,
+      spiritualInterest: spiritualInterest ?? this.spiritualInterest,
       readingPatterns: readingPatterns ?? this.readingPatterns,
       mostReadCategories: mostReadCategories ?? this.mostReadCategories,
       preferredReadingTime: preferredReadingTime ?? this.preferredReadingTime,

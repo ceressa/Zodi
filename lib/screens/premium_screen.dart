@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/auth_provider.dart';
 import '../constants/colors.dart';
 import '../constants/strings.dart';
@@ -14,13 +15,27 @@ class PremiumScreen extends StatefulWidget {
 class _PremiumScreenState extends State<PremiumScreen> {
   String _selectedPlan = 'monthly';
 
-  static const Map<String, Map<String, String>> _planConfig = {
-    'monthly': {'price': '₺99,99', 'label': 'Aylık'},
-    'yearly': {'price': '₺799,99', 'label': 'Yıllık', 'save': '%33 tasarruf'},
-    'lifetime': {'price': '₺1.999,99', 'label': 'Ömür Boyu'},
+  static const Map<String, Map<String, dynamic>> _planConfig = {
+    'weekly': {
+      'price': '₺29,99',
+      'label': 'Haftalık',
+      'period': '/hafta',
+      'badge': '7 Gün Dene',
+    },
+    'monthly': {
+      'price': '₺99,99',
+      'label': 'Aylık',
+      'period': '/ay',
+      'badge': 'Popüler',
+    },
+    'yearly': {
+      'price': '₺799,99',
+      'label': 'Yıllık',
+      'period': '/yıl',
+      'badge': '%33 İndirim',
+      'savings': '₺400 tasarruf',
+    },
   };
-
-  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final selected = _planConfig[_selectedPlan]!;
@@ -89,13 +104,29 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     const SizedBox(height: 32),
                     _buildPlanSelector(isDark),
                     const SizedBox(height: 24),
-                    _FeatureItem(icon: Icons.analytics, title: AppStrings.premiumFeature1),
-                    const SizedBox(height: 16),
-                    _FeatureItem(icon: Icons.favorite, title: AppStrings.premiumFeature2),
-                    const SizedBox(height: 16),
-                    _FeatureItem(icon: Icons.block, title: AppStrings.premiumFeature3),
-                    const SizedBox(height: 16),
-                    _FeatureItem(icon: Icons.support_agent, title: AppStrings.premiumFeature4),
+                    _FeatureItem(icon: Icons.auto_awesome, title: 'Sınırsız Günlük Yorum', subtitle: 'Her gün yeni ve detaylı burç yorumları'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.style, title: 'Tarot Falı (3 Kart)', subtitle: 'Geçmiş, şimdi ve gelecek için üçlü tarot açılımı'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.coffee, title: 'Kahve Falı Yorumu', subtitle: 'Yapay zeka destekli kahve falı analizi'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.nightlight, title: 'Rüya Tabirleri', subtitle: 'Rüyalarınızın anlamını keşfedin'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.favorite, title: 'Detaylı Uyum Analizi', subtitle: 'Burç uyumunuzu derinlemesine inceleyin'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.calendar_month, title: 'Haftalık & Aylık Yorumlar', subtitle: 'Gelecek planlaması için uzun vadeli tahminler'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.chat_bubble, title: 'Zodi ile Sohbet', subtitle: 'Astroloji asistanınızla sınırsız sohbet'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.stars, title: 'Kozmik Takvim', subtitle: 'Ay evreleri ve astrolojik olaylar'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.person, title: 'Kişisel Profil Kartı', subtitle: 'Detaylı astrolojik profil ve paylaşım'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.share, title: 'Tüm Paylaşım Kartları', subtitle: 'Profesyonel tasarım kartlarını paylaş'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.block, title: 'Reklamsız Deneyim', subtitle: 'Hiç reklam görmeden kullan'),
+                    const SizedBox(height: 12),
+                    _FeatureItem(icon: Icons.update, title: 'Öncelikli Güncellemeler', subtitle: 'Yeni özelliklere ilk erişim'),
                     const SizedBox(height: 40),
                     Container(
                       padding: const EdgeInsets.all(24),
@@ -165,11 +196,11 @@ class _PremiumScreenState extends State<PremiumScreen> {
   Widget _buildPlanSelector(bool isDark) {
     return Row(
       children: [
+        _buildPlanChip('weekly', 'Haftalık', isDark),
+        const SizedBox(width: 8),
         _buildPlanChip('monthly', 'Aylık', isDark),
         const SizedBox(width: 8),
         _buildPlanChip('yearly', 'Yıllık', isDark),
-        const SizedBox(width: 8),
-        _buildPlanChip('lifetime', 'Ömür Boyu', isDark),
       ],
     );
   }
@@ -208,8 +239,9 @@ class _PremiumScreenState extends State<PremiumScreen> {
 class _FeatureItem extends StatelessWidget {
   final IconData icon;
   final String title;
+  final String? subtitle;
 
-  const _FeatureItem({required this.icon, required this.title});
+  const _FeatureItem({required this.icon, required this.title, this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -237,13 +269,28 @@ class _FeatureItem extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textPrimary : AppColors.textDark,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textPrimary : AppColors.textDark,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           const Icon(Icons.check_circle, color: AppColors.positive, size: 24),

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../providers/auth_provider.dart';
 import '../providers/horoscope_provider.dart';
 import '../constants/colors.dart';
 import '../widgets/animated_card.dart';
 import '../services/firebase_service.dart';
+import '../services/ad_service.dart';
+import '../screens/premium_screen.dart';
 
 class DreamScreen extends StatefulWidget {
   const DreamScreen({super.key});
@@ -15,6 +18,7 @@ class DreamScreen extends StatefulWidget {
 
 class _DreamScreenState extends State<DreamScreen> {
   final FirebaseService _firebaseService = FirebaseService();
+  final AdService _adService = AdService();
   final _dreamController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
@@ -26,6 +30,19 @@ class _DreamScreenState extends State<DreamScreen> {
 
   Future<void> _interpretDream() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final authProvider = context.read<AuthProvider>();
+    
+    // Premium kontrolü
+    if (!authProvider.isPremium) {
+      final unlocked = await _adService.showRewardedAd(placement: 'dream_interpretation');
+      if (!unlocked) {
+        if (mounted) {
+          _showPremiumDialog();
+        }
+        return;
+      }
+    }
 
     final horoscopeProvider = context.read<HoroscopeProvider>();
     await horoscopeProvider.interpretDream(_dreamController.text);
@@ -54,6 +71,32 @@ class _DreamScreenState extends State<DreamScreen> {
       // 6. Analytics event
       _firebaseService.logDreamInterpretation();
     }
+  }
+
+  void _showPremiumDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Premium Özellik'),
+        content: const Text('Rüya tabiri premium kullanıcılar için özel bir özelliktir. Reklam izleyerek veya premium üyelikle erişebilirsin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tamam'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PremiumScreen()),
+              );
+            },
+            child: const Text('Premium\'a Geç'),
+          ),
+        ],
+      ),
+    );
   }
 
   Color _getMoodColor(String mood) {

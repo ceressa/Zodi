@@ -6,6 +6,7 @@ import '../models/zodiac_sign.dart';
 import '../constants/colors.dart';
 import '../constants/strings.dart';
 import '../services/firebase_service.dart';
+import 'compatibility_report_screen.dart';
 
 class MatchScreen extends StatefulWidget {
   const MatchScreen({super.key});
@@ -69,6 +70,79 @@ class _MatchScreenState extends State<MatchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // User's Zodiac Header
+          if (authProvider.selectedZodiac != null) ...[
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.accentPurple.withOpacity(0.2),
+                    AppColors.primaryPink.withOpacity(0.2),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primaryPink.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.accentPurple, AppColors.primaryPink],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryPink.withOpacity(0.3),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        authProvider.selectedZodiac!.symbol,
+                        style: const TextStyle(fontSize: 32, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Senin Burcun',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          authProvider.selectedZodiac!.displayName,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.textPrimary : AppColors.textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+          
           Text(
             AppStrings.matchTitle,
             style: TextStyle(
@@ -77,22 +151,20 @@ class _MatchScreenState extends State<MatchScreen> {
               color: isDark ? AppColors.textPrimary : AppColors.textDark,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Hangi burçla uyumunu öğrenmek istersin?',
+            style: TextStyle(
+              fontSize: 16,
+              color: AppColors.textMuted,
+            ),
+          ),
           const SizedBox(height: 24),
           
           // Partner Selection
-          Text(
-            AppStrings.matchSelectPartner,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isDark ? AppColors.textPrimary : AppColors.textDark,
-            ),
-          ),
-          const SizedBox(height: 16),
-          
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: ZodiacSign.values.map((sign) {
               final isSelected = _selectedPartner == sign;
               final isUserSign = authProvider.selectedZodiac == sign;
@@ -102,42 +174,44 @@ class _MatchScreenState extends State<MatchScreen> {
                   setState(() => _selectedPartner = sign);
                   _loadCompatibility();
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  width: (MediaQuery.of(context).size.width - 72) / 3,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? AppColors.accentPurple
                         : (isDark ? AppColors.cardDark : AppColors.cardLight),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isUserSign
-                          ? AppColors.textMuted
-                          : (isSelected ? AppColors.accentPurple : Colors.transparent),
+                          ? AppColors.textMuted.withOpacity(0.3)
+                          : (isSelected ? AppColors.accentPurple : AppColors.borderLight),
+                      width: 2,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Column(
                     children: [
                       Text(
                         sign.symbol,
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 32,
                           color: isUserSign
                               ? AppColors.textMuted
                               : (isSelected ? Colors.white : AppColors.accentBlue),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(height: 8),
                       Text(
                         sign.displayName,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: isUserSign
                               ? AppColors.textMuted
                               : (isSelected ? Colors.white : (isDark ? AppColors.textPrimary : AppColors.textDark)),
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -246,6 +320,55 @@ class _MatchScreenState extends State<MatchScreen> {
                   fontSize: 16,
                   height: 1.6,
                   color: isDark ? AppColors.textPrimary : AppColors.textDark,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Detaylı Rapor Butonu
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: AppColors.cosmicGradient,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CompatibilityReportScreen(
+                        userSign: authProvider.selectedZodiac!,
+                        partnerSign: _selectedPartner!,
+                      ),
+                    ),
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.description, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          'Detaylı Uyum Raporu Al',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          '✨',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

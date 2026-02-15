@@ -160,10 +160,13 @@ class UserHistoryService {
     context.writeln('KULLANICI PROFİLİ VE GEÇMİŞ:');
 
     if (profile != null) {
+      // Temel bilgiler
       context.writeln('- İsim: ${profile.name}');
       context.writeln('- Doğum: ${profile.birthDate.day}/${profile.birthDate.month}/${profile.birthDate.year}');
       final age = DateTime.now().year - profile.birthDate.year;
       context.writeln('- Yaş: $age');
+      
+      // Astrolojik profil
       if (profile.risingSign != null) {
         context.writeln('- Yükselen: ${profile.risingSign}');
       }
@@ -171,25 +174,95 @@ class UserHistoryService {
         context.writeln('- Ay burcu: ${profile.moonSign}');
       }
 
-      // Kişisel bilgiler
+      // İlişki bilgileri
       if (profile.relationshipStatus != null) {
         const statusLabels = {
           'single': 'Bekar',
+          'dating': 'Flört ediyor',
           'relationship': 'Sevgilisi var',
           'engaged': 'Nişanlı',
           'married': 'Evli',
+          'complicated': 'Karmaşık bir ilişkide',
           'separated': 'Ayrılmış',
+          'prefer_not_say': 'Belirtmek istemedi',
         };
         context.writeln('- İlişki durumu: ${statusLabels[profile.relationshipStatus] ?? profile.relationshipStatus}');
       }
       if (profile.partnerName != null && profile.partnerName!.isNotEmpty) {
-        context.writeln('- Partnerin adı: ${profile.partnerName}');
+        context.writeln('- Sevdiği kişinin adı: ${profile.partnerName}');
       }
+      if (profile.partnerZodiacSign != null && profile.partnerZodiacSign!.isNotEmpty) {
+        context.writeln('- Partnerinin burcu: ${profile.partnerZodiacSign}');
+      }
+      
+      // Kariyer bilgileri
+      if (profile.employmentStatus != null) {
+        const employmentLabels = {
+          'student': 'Öğrenci',
+          'employed': 'Çalışan',
+          'self_employed': 'Kendi işinde çalışıyor',
+          'freelancer': 'Freelancer',
+          'unemployed': 'İş arıyor',
+          'homemaker': 'Ev hanımı/babası',
+          'retired': 'Emekli',
+        };
+        context.writeln('- Çalışma durumu: ${employmentLabels[profile.employmentStatus] ?? profile.employmentStatus}');
+      }
+      if (profile.occupation != null && profile.occupation!.isNotEmpty) {
+        context.writeln('- Meslek: ${profile.occupation}');
+      }
+      if (profile.workField != null) {
+        const fieldLabels = {
+          'tech': 'Teknoloji',
+          'health': 'Sağlık',
+          'education': 'Eğitim',
+          'finance': 'Finans',
+          'arts': 'Sanat & Medya',
+          'retail': 'Perakende',
+          'service': 'Hizmet sektörü',
+          'manufacturing': 'Üretim',
+          'government': 'Kamu',
+          'other': 'Diğer',
+        };
+        context.writeln('- Sektör: ${fieldLabels[profile.workField] ?? profile.workField}');
+      }
+      if (profile.careerGoal != null && profile.careerGoal!.isNotEmpty) {
+        context.writeln('- Kariyer hedefi: ${profile.careerGoal}');
+      }
+      
+      // Yaşam bilgileri
       if (profile.currentCity != null && profile.currentCity!.isNotEmpty) {
         context.writeln('- Yaşadığı şehir: ${profile.currentCity}');
       }
+      if (profile.lifePhase != null) {
+        const phaseLabels = {
+          'exploring': 'Keşif aşamasında',
+          'building': 'İnşa ediyor (kariyer/ilişki kurma döneminde)',
+          'established': 'Yerleşik hayat',
+          'transitioning': 'Geçiş döneminde',
+          'uncertain': 'Belirsizlik içinde',
+        };
+        context.writeln('- Hayat dönemi: ${phaseLabels[profile.lifePhase] ?? profile.lifePhase}');
+      }
+      if (profile.spiritualInterest != null) {
+        const spiritualLabels = {
+          'believer': 'Astrolojiye inanan',
+          'curious': 'Meraklı',
+          'skeptic': 'Şüpheci',
+          'just_fun': 'Sadece eğlence için kullanıyor',
+        };
+        context.writeln('- Astrolojiye bakışı: ${spiritualLabels[profile.spiritualInterest] ?? profile.spiritualInterest}');
+      }
+      
+      // İlgi alanları ve hedefler
       if (profile.interests.isNotEmpty) {
         context.writeln('- İlgi alanları: ${profile.interests.join(", ")}');
+      }
+      if (profile.currentChallenges.isNotEmpty) {
+        context.writeln('- Şu anki zorlukları: ${profile.currentChallenges.join(", ")}');
+      }
+      if (profile.lifeGoals.isNotEmpty) {
+        context.writeln('- Hayat hedefleri: ${profile.lifeGoals.join(", ")}');
       }
     }
 
@@ -199,7 +272,7 @@ class UserHistoryService {
       context.writeln('- Ortalama memnuniyet: ${pattern.averageRating.toStringAsFixed(1)}/5.0');
       
       if (pattern.favoriteTopics.isNotEmpty) {
-        context.writeln('- İlgi alanları: ${pattern.favoriteTopics.join(", ")}');
+        context.writeln('- Sık baktığı konular: ${pattern.favoriteTopics.join(", ")}');
       }
 
       final prefs = pattern.preferences;
@@ -225,14 +298,50 @@ class UserHistoryService {
       }
     }
 
-    context.writeln('\nZODİ YAKLAŞIMI:');
-    context.writeln('Bu bilgilere göre yorumlarını şekillendir:');
-    context.writeln('- Tutarlı ol (önceki yorumlarla çelişme)');
-    context.writeln('- Samimi ve direkt ol, gereksiz yere övme');
-    context.writeln('- Kullanıcının ilgi alanlarına göre yorumu ağırlıkla o konulara odakla');
-    context.writeln('- İlişki durumunu ve partnerinin adını aşk yorumlarında kullan');
-    context.writeln('- Yaşadığı şehre göre pratik öneriler ver');
-    context.writeln('- Kısa ve öz tut, 2-3 paragrafı geçme');
+    context.writeln('\nZODİ YAKLAŞIMI - KİŞİSELLEŞTİRME KURALLARI:');
+    context.writeln('Bu bilgilere göre yorumlarını MUTLAKA kişiselleştir:');
+    context.writeln('');
+    context.writeln('1. İSİM KULLANIMI:');
+    context.writeln('   - Kullanıcıya ismiyle hitap et (örn: "Bugün senin için özel bir gün ${profile?.name ?? "dostum"}")');
+    context.writeln('   - Sevgilisi/partneri varsa, aşk yorumlarında partnerinin adını kullan');
+    context.writeln('');
+    context.writeln('2. KARİYER & PARA YORUMLARI:');
+    if (profile?.occupation != null || profile?.employmentStatus != null) {
+      context.writeln('   - Mesleğine (${profile?.occupation ?? profile?.employmentStatus}) özgü tavsiyeler ver');
+      context.writeln('   - Sektörüne (${profile?.workField ?? "genel"}) uygun öneriler sun');
+    }
+    if (profile?.careerGoal != null && profile!.careerGoal!.isNotEmpty) {
+      context.writeln('   - Kariyer hedefini (${profile.careerGoal}) göz önünde bulundur');
+    }
+    context.writeln('');
+    context.writeln('3. ZORLUKLAR & HEDEFLER:');
+    if (profile != null && profile.currentChallenges.isNotEmpty) {
+      context.writeln('   - Şu anki zorluklarına (${profile.currentChallenges.join(", ")}) değin, destek ver');
+    }
+    if (profile != null && profile.lifeGoals.isNotEmpty) {
+      context.writeln('   - Hayat hedeflerine (${profile.lifeGoals.join(", ")}) yönelik motivasyon ver');
+    }
+    context.writeln('');
+    context.writeln('4. HAYAT DÖNEMİ:');
+    if (profile?.lifePhase != null) {
+      context.writeln('   - Hayat dönemine (${profile?.lifePhase}) uygun bir dil kullan');
+    }
+    context.writeln('');
+    context.writeln('5. ASTROLOJİYE BAKIŞ:');
+    if (profile?.spiritualInterest == 'skeptic') {
+      context.writeln('   - Şüpheci olduğu için daha pragmatik ve az mistik bir dil kullan');
+    } else if (profile?.spiritualInterest == 'believer') {
+      context.writeln('   - İnandığı için daha derin astrolojik detaylar verebilirsin');
+    } else if (profile?.spiritualInterest == 'just_fun') {
+      context.writeln('   - Eğlence için kullandığından hafif ve eğlenceli tut');
+    }
+    context.writeln('');
+    context.writeln('6. GENEL KURALLAR:');
+    context.writeln('   - Tutarlı ol, önceki yorumlarla çelişme');
+    context.writeln('   - Samimi ve direkt ol, gereksiz yere övme');
+    context.writeln('   - İlgi alanlarına (${profile?.interests.join(", ") ?? "genel"}) göre yorumu ağırlıkla o konulara odakla');
+    context.writeln('   - Şehrindeki (${profile?.currentCity ?? "bulunduğu yer"}) hava, etkinlik vb. şeylere atıfta bulunabilirsin');
+    context.writeln('   - Kısa ve öz tut, 2-3 paragrafı geçme');
 
     return context.toString();
   }

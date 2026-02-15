@@ -15,6 +15,8 @@ import '../widgets/feedback_widget.dart';
 import '../services/ad_service.dart';
 import '../services/firebase_service.dart';
 import '../services/storage_service.dart';
+import '../services/share_service.dart';
+import '../widgets/share_cards/daily_share_card.dart';
 
 class DailyScreen extends StatefulWidget {
   const DailyScreen({super.key});
@@ -592,6 +594,70 @@ class _DailyScreenState extends State<DailyScreen>
             ],
           ),
         ),
+        const SizedBox(height: 12),
+
+        // Paylaş butonu (görsel kart)
+        AnimatedCard(
+          delay: 350.ms,
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: AppColors.cosmicGradient,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.accentPurple.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  final card = DailyShareCard(
+                    zodiacSymbol: authProvider.selectedZodiac!.symbol,
+                    zodiacName: authProvider.selectedZodiac!.displayName,
+                    motto: horoscope.motto,
+                    commentary: horoscope.commentary,
+                    love: horoscope.love,
+                    money: horoscope.money,
+                    health: horoscope.health,
+                    career: horoscope.career,
+                    luckyColor: horoscope.luckyColor,
+                    luckyNumber: horoscope.luckyNumber,
+                  );
+                  ShareService().shareCardWidget(
+                    context,
+                    card,
+                    text: '${authProvider.selectedZodiac!.symbol} Günlük Fal — Zodi\n#Zodi #GünlükBurç',
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.share, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Hikaye Olarak Paylaş',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+
         const SizedBox(height: 12),
 
         // Feedback Card

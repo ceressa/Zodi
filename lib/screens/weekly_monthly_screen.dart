@@ -7,6 +7,8 @@ import '../constants/colors.dart';
 import '../widgets/animated_card.dart';
 import '../widgets/shimmer_loading.dart';
 import '../widgets/metric_card.dart';
+import '../services/ad_service.dart';
+import '../screens/premium_screen.dart';
 
 class WeeklyMonthlyScreen extends StatefulWidget {
   const WeeklyMonthlyScreen({super.key});
@@ -18,6 +20,7 @@ class WeeklyMonthlyScreen extends StatefulWidget {
 class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final AdService _adService = AdService();
 
   @override
   void initState() {
@@ -36,6 +39,18 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
 
   Future<void> _loadData() async {
     final authProvider = context.read<AuthProvider>();
+    
+    // Premium kontrolü
+    if (!authProvider.isPremium) {
+      final unlocked = await _adService.showRewardedAd(placement: 'weekly_monthly');
+      if (!unlocked) {
+        if (mounted) {
+          _showPremiumDialog();
+        }
+        return;
+      }
+    }
+    
     final horoscopeProvider = context.read<HoroscopeProvider>();
     
     if (authProvider.selectedZodiac != null) {
@@ -45,6 +60,32 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
         await horoscopeProvider.fetchMonthlyHoroscope(authProvider.selectedZodiac!);
       }
     }
+  }
+
+  void _showPremiumDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Premium Özellik'),
+        content: const Text('Haftalık ve aylık yorumlar premium kullanıcılar için özel bir özelliktir. Reklam izleyerek veya premium üyelikle erişebilirsin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tamam'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PremiumScreen()),
+              );
+            },
+            child: const Text('Premium\'a Geç'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../constants/colors.dart';
@@ -7,8 +8,10 @@ import '../constants/strings.dart';
 import '../services/notification_service.dart';
 import '../services/firebase_service.dart';
 import '../services/storage_service.dart';
+import '../models/user_profile.dart';
 import 'premium_screen.dart';
 import 'onboarding_screen.dart';
+import 'personalization_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -26,58 +29,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   TimeOfDay _notificationTime = const TimeOfDay(hour: 9, minute: 0);
   bool _isLoadingNotifications = false;
   String? _notificationPreview;
-
-  // Personal info fields
-  String? _relationshipStatus;
-  String? _partnerName;
-  String? _currentCity;
-  List<String> _interests = [];
+  
+  UserProfile? _profile;
   bool _isLoadingProfile = true;
-
-  final TextEditingController _partnerNameController = TextEditingController();
-  final TextEditingController _cityController = TextEditingController();
-
-  static const List<String> _turkishCities = [
-    'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya',
-    'Ankara', 'Antalya', 'Ardahan', 'Artvin', 'Aydın', 'Balıkesir',
-    'Bartın', 'Batman', 'Bayburt', 'Bilecik', 'Bingöl', 'Bitlis',
-    'Bolu', 'Burdur', 'Bursa', 'Çanakkale', 'Çankırı', 'Çorum',
-    'Denizli', 'Diyarbakır', 'Düzce', 'Edirne', 'Elazığ', 'Erzincan',
-    'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane',
-    'Hakkari', 'Hatay', 'Iğdır', 'Isparta', 'İstanbul', 'İzmir',
-    'Kahramanmaraş', 'Karabük', 'Karaman', 'Kars', 'Kastamonu',
-    'Kayseri', 'Kırıkkale', 'Kırklareli', 'Kırşehir', 'Kilis',
-    'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Mardin',
-    'Mersin', 'Muğla', 'Muş', 'Nevşehir', 'Niğde', 'Ordu', 'Osmaniye',
-    'Rize', 'Sakarya', 'Samsun', 'Şanlıurfa', 'Siirt', 'Sinop',
-    'Sivas', 'Şırnak', 'Tekirdağ', 'Tokat', 'Trabzon', 'Tunceli',
-    'Uşak', 'Van', 'Yalova', 'Yozgat', 'Zonguldak',
-  ];
-
-  static const List<String> _interestOptions = [
-    'Kariyer', 'Aşk', 'Sağlık', 'Para', 'Eğitim', 'Seyahat',
-  ];
-
-  static const Map<String, String> _relationshipLabels = {
-    'single': 'Bekar',
-    'relationship': 'Sevgilisi var',
-    'engaged': 'Nişanlı',
-    'married': 'Evli',
-    'separated': 'Ayrılmış',
-  };
 
   @override
   void initState() {
     super.initState();
     _loadNotificationSettings();
-    _loadPersonalInfo();
-  }
-
-  @override
-  void dispose() {
-    _partnerNameController.dispose();
-    _cityController.dispose();
-    super.dispose();
+    _loadProfile();
   }
 
   Future<void> _loadNotificationSettings() async {
@@ -98,55 +58,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _loadPersonalInfo() async {
+  Future<void> _loadProfile() async {
     try {
       final profile = await _firebaseService.getUserProfile();
-      if (profile != null && mounted) {
+      if (mounted) {
         setState(() {
-          _relationshipStatus = profile.relationshipStatus;
-          _partnerName = profile.partnerName;
-          _currentCity = profile.currentCity;
-          _interests = List<String>.from(profile.interests);
-          _partnerNameController.text = profile.partnerName ?? '';
-          _cityController.text = profile.currentCity ?? '';
+          _profile = profile;
           _isLoadingProfile = false;
         });
-      } else {
-        setState(() => _isLoadingProfile = false);
       }
     } catch (e) {
       setState(() => _isLoadingProfile = false);
-    }
-  }
-
-  Future<void> _savePersonalInfo() async {
-    try {
-      await _firebaseService.updateRelationshipInfo(
-        relationshipStatus: _relationshipStatus,
-        partnerName: _partnerName,
-        currentCity: _currentCity,
-      );
-      await _firebaseService.updateInterests(_interests);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Bilgilerin kaydedildi'),
-            backgroundColor: AppColors.positive,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Kaydetme sırasında bir hata oluştu'),
-            backgroundColor: AppColors.negative,
-          ),
-        );
-      }
     }
   }
 
@@ -198,13 +120,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Bildirim ayarlanırken sorun oluştu: ${e.toString().length > 80 ? e.toString().substring(0, 80) : e}'),
+            content: Text('Bildirim ayarlanırken sorun oluştu'),
             backgroundColor: AppColors.negative,
-            action: SnackBarAction(
-              label: 'Tekrar Dene',
-              textColor: Colors.white,
-              onPressed: () => _toggleNotifications(true, authProvider),
-            ),
           ),
         );
       }
@@ -297,20 +214,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Profile Card - Enhanced
+          // Profile Card
           _buildProfileCard(isDark, authProvider),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
 
-          // Personal Info Hub
-          _buildSectionHeader('Kişisel Bilgiler', Icons.person_outline, isDark),
-          const SizedBox(height: 12),
-          _buildPersonalInfoSection(isDark),
-          const SizedBox(height: 28),
-
-          // Interests
-          _buildSectionHeader('İlgi Alanları', Icons.interests, isDark),
-          const SizedBox(height: 12),
-          _buildInterestsSection(isDark),
+          // Personalization Card - Yeni eklenen kart!
+          _buildPersonalizationCard(isDark),
           const SizedBox(height: 28),
 
           // Notification Settings
@@ -321,19 +230,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // General Settings
           _buildSectionHeader('Genel Ayarlar', Icons.settings_outlined, isDark),
-          const SizedBox(height: 12),
-
-          // Theme Toggle
-          _SettingItem(
-            icon: Icons.palette_outlined,
-            title: AppStrings.settingsTheme,
-            subtitle: themeProvider.isDarkMode ? 'Karanlık' : 'Aydınlık',
-            trailing: Switch(
-              value: themeProvider.isDarkMode,
-              onChanged: (_) => themeProvider.toggleTheme(),
-              activeColor: AppColors.accentPurple,
-            ),
-          ),
           const SizedBox(height: 12),
 
           // Premium
@@ -512,6 +408,118 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildPersonalizationCard(bool isDark) {
+    final completionPercentage = _profile?.completionPercentage ?? 0;
+    final isComplete = completionPercentage >= 80;
+    
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PersonalizationScreen()),
+        );
+        // Geri dönünce profili yeniden yükle
+        _loadProfile();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isComplete
+                ? [AppColors.positive.withOpacity(0.15), AppColors.positive.withOpacity(0.05)]
+                : [AppColors.accentPurple.withOpacity(0.15), AppColors.accentBlue.withOpacity(0.1)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isComplete
+                ? AppColors.positive.withOpacity(0.3)
+                : AppColors.accentPurple.withOpacity(0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: isComplete
+                    ? LinearGradient(colors: [AppColors.positive, AppColors.positive.withOpacity(0.7)])
+                    : AppColors.purpleGradient,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                isComplete ? Icons.check_circle : Icons.auto_awesome,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Zodi Seni Tanısın',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isComplete
+                        ? 'Profil tamamlandı! ✨ Düzenlemek için dokun.'
+                        : 'Daha kişisel yorumlar için bilgilerini güncelle',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white70 : AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Progress bar
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: completionPercentage / 100,
+                            backgroundColor: isDark ? Colors.white24 : Colors.black12,
+                            valueColor: AlwaysStoppedAnimation(
+                              isComplete ? AppColors.positive : AppColors.accentPurple,
+                            ),
+                            minHeight: 6,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '%${completionPercentage.toInt()}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: isComplete ? AppColors.positive : AppColors.accentPurple,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right,
+              color: isDark ? Colors.white54 : AppColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.05, end: 0);
+  }
+
   Widget _buildSectionHeader(String title, IconData icon, bool isDark) {
     return Row(
       children: [
@@ -529,497 +537,131 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildPersonalInfoSection(bool isDark) {
-    if (_isLoadingProfile) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: CircularProgressIndicator(color: AppColors.accentPurple),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.cardLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: (isDark ? AppColors.textPrimary : AppColors.textDark).withOpacity(0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Relationship Status
-          _buildDropdownField(
-            label: 'İlişki Durumu',
-            value: _relationshipStatus,
-            items: _relationshipLabels.entries
-                .map((e) => DropdownMenuItem(
-                      value: e.key,
-                      child: Text(e.value),
-                    ))
-                .toList(),
-            onChanged: (value) {
-              setState(() => _relationshipStatus = value);
-            },
-            isDark: isDark,
-          ),
-          const SizedBox(height: 16),
-
-          // Partner Name
-          _buildTextField(
-            label: 'Sevdiğin Kişinin Adı',
-            hint: 'Opsiyonel',
-            controller: _partnerNameController,
-            onChanged: (value) => _partnerName = value.isEmpty ? null : value,
-            isDark: isDark,
-          ),
-          const SizedBox(height: 16),
-
-          // City
-          _buildCityAutocomplete(isDark),
-          const SizedBox(height: 20),
-
-          // Save Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _savePersonalInfo,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentPurple,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Kaydet',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDropdownField({
-    required String label,
-    required String? value,
-    required List<DropdownMenuItem<String>> items,
-    required ValueChanged<String?> onChanged,
-    required bool isDark,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textDark.withOpacity(0.6),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceDark : const Color(0xFFF5F1FF),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.accentPurple.withOpacity(0.2),
-            ),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: value,
-              hint: Text(
-                'Seçiniz',
-                style: TextStyle(
-                  color: isDark ? AppColors.textMuted : AppColors.textDark.withOpacity(0.4),
-                ),
-              ),
-              isExpanded: true,
-              icon: Icon(Icons.keyboard_arrow_down, color: AppColors.accentPurple),
-              dropdownColor: isDark ? AppColors.cardDark : Colors.white,
-              items: items,
-              onChanged: onChanged,
-              style: TextStyle(
-                fontSize: 15,
-                color: isDark ? Colors.white : AppColors.textDark,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTextField({
-    required String label,
-    required String hint,
-    required TextEditingController controller,
-    required ValueChanged<String> onChanged,
-    required bool isDark,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textDark.withOpacity(0.6),
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          onChanged: onChanged,
-          style: TextStyle(
-            fontSize: 15,
-            color: isDark ? Colors.white : AppColors.textDark,
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(
-              color: isDark ? AppColors.textMuted : AppColors.textDark.withOpacity(0.4),
-            ),
-            filled: true,
-            fillColor: isDark ? AppColors.surfaceDark : const Color(0xFFF5F1FF),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.accentPurple.withOpacity(0.2)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.accentPurple.withOpacity(0.2)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.accentPurple),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCityAutocomplete(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Yaşadığın Şehir',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textDark.withOpacity(0.6),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Autocomplete<String>(
-          initialValue: TextEditingValue(text: _currentCity ?? ''),
-          optionsBuilder: (TextEditingValue textEditingValue) {
-            if (textEditingValue.text.isEmpty) {
-              return const Iterable<String>.empty();
-            }
-            return _turkishCities.where((city) =>
-                city.toLowerCase().contains(textEditingValue.text.toLowerCase()));
-          },
-          onSelected: (String selection) {
-            setState(() => _currentCity = selection);
-          },
-          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-            return TextField(
-              controller: controller,
-              focusNode: focusNode,
-              onChanged: (value) => _currentCity = value.isEmpty ? null : value,
-              style: TextStyle(
-                fontSize: 15,
-                color: isDark ? Colors.white : AppColors.textDark,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Şehir seçiniz',
-                hintStyle: TextStyle(
-                  color: isDark ? AppColors.textMuted : AppColors.textDark.withOpacity(0.4),
-                ),
-                filled: true,
-                fillColor: isDark ? AppColors.surfaceDark : const Color(0xFFF5F1FF),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.accentPurple.withOpacity(0.2)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.accentPurple.withOpacity(0.2)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.accentPurple),
-                ),
-                suffixIcon: Icon(Icons.location_on_outlined, color: AppColors.accentPurple.withOpacity(0.5)),
-              ),
-            );
-          },
-          optionsViewBuilder: (context, onSelected, options) {
-            return Align(
-              alignment: Alignment.topLeft,
-              child: Material(
-                elevation: 4,
-                borderRadius: BorderRadius.circular(12),
-                color: isDark ? AppColors.cardDark : Colors.white,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 200, maxWidth: 300),
-                  child: ListView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    itemBuilder: (context, index) {
-                      final option = options.elementAt(index);
-                      return ListTile(
-                        dense: true,
-                        title: Text(
-                          option,
-                          style: TextStyle(
-                            color: isDark ? Colors.white : AppColors.textDark,
-                          ),
-                        ),
-                        onTap: () => onSelected(option),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInterestsSection(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.cardLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: (isDark ? AppColors.textPrimary : AppColors.textDark).withOpacity(0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Hangi konular seni ilgilendiriyor?',
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark ? Colors.white.withOpacity(0.7) : AppColors.textDark.withOpacity(0.6),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: _interestOptions.map((interest) {
-              final isSelected = _interests.contains(interest);
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (isSelected) {
-                      _interests.remove(interest);
-                    } else {
-                      _interests.add(interest);
-                    }
-                  });
-                  _savePersonalInfo();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.accentPurple.withOpacity(0.2)
-                        : (isDark ? AppColors.surfaceDark : const Color(0xFFF5F1FF)),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColors.accentPurple
-                          : AppColors.accentPurple.withOpacity(0.2),
-                      width: isSelected ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Text(
-                    interest,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      color: isSelected
-                          ? AppColors.accentPurple
-                          : (isDark ? Colors.white.withOpacity(0.7) : AppColors.textDark.withOpacity(0.6)),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildNotificationSection(bool isDark, AuthProvider authProvider) {
-    return Column(
-      children: [
-        _SettingItem(
-          icon: Icons.notifications_outlined,
-          title: 'Günlük Bildirimler',
-          subtitle: _notificationsEnabled
-              ? 'Günlük falın için bildirim al'
-              : 'Bildirimler kapalı',
-          trailing: Switch(
-            value: _notificationsEnabled,
-            onChanged: (value) => _toggleNotifications(value, authProvider),
-            activeColor: AppColors.accentPurple,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SettingItem(
-          icon: Icons.access_time,
-          title: 'Bildirim Saati',
-          subtitle: '${_notificationTime.hour.toString().padLeft(2, '0')}:${_notificationTime.minute.toString().padLeft(2, '0')}',
-          onTap: () => _selectNotificationTime(authProvider),
-        ),
-        if (_notificationsEnabled) ...[
-          const SizedBox(height: 12),
-          _buildNotificationPreview(isDark, authProvider),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildNotificationPreview(bool isDark, AuthProvider authProvider) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : AppColors.cardLight,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: (isDark ? AppColors.textPrimary : AppColors.textDark).withOpacity(0.1),
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.preview_outlined, color: AppColors.accentPurple, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Bildirim Önizlemesi',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.textPrimary : AppColors.textDark,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.accentPurple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: const Icon(Icons.notifications, color: AppColors.accentPurple),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: (isDark ? Colors.black : Colors.white).withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.accentPurple, AppColors.accentBlue],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Center(
-                        child: Text('🌟', style: TextStyle(fontSize: 16)),
+                    Text(
+                      'Günlük Bildirimler',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppColors.textPrimary : AppColors.textDark,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Zodi',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 2),
-                          Text(
-                            '🌟 Günlük Falın Hazır!',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark ? AppColors.textPrimary : AppColors.textDark,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      'Her gün burç yorumunu al',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.textSecondary : AppColors.textMuted,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                if (_isLoadingNotifications)
-                  const Center(
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
+              ),
+              Switch(
+                value: _notificationsEnabled,
+                onChanged: (value) => _toggleNotifications(value, authProvider),
+                activeColor: AppColors.accentPurple,
+              ),
+            ],
+          ),
+          if (_notificationsEnabled) ...[
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: () => _selectNotificationTime(authProvider),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (isDark ? AppColors.textPrimary : AppColors.textDark).withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.access_time, color: AppColors.accentPurple, size: 20),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Bildirim Saati',
+                      style: TextStyle(
+                        color: isDark ? AppColors.textPrimary : AppColors.textDark,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${_notificationTime.hour.toString().padLeft(2, '0')}:${_notificationTime.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
                         color: AppColors.accentPurple,
                       ),
                     ),
-                  )
-                else if (_notificationPreview != null)
-                  Text(
-                    _notificationPreview!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? AppColors.textMuted : AppColors.textDark.withOpacity(0.7),
-                    ),
-                  )
-                else
-                  Text(
-                    '${authProvider.selectedZodiac?.displayName ?? 'Koç'} burcu için bugünün falı seni bekliyor. Zodi ne diyor bakalım?',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? AppColors.textMuted : AppColors.textDark.withOpacity(0.7),
-                    ),
-                  ),
-              ],
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, color: AppColors.accentPurple, size: 20),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Her gün ${_notificationTime.hour.toString().padLeft(2, '0')}:${_notificationTime.minute.toString().padLeft(2, '0')}\'da bu şekilde bildirim alacaksın',
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
+            if (_notificationPreview != null || _isLoadingNotifications) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accentPurple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.preview, color: AppColors.accentPurple, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _isLoadingNotifications
+                          ? Text(
+                              'Önizleme yükleniyor...',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontStyle: FontStyle.italic,
+                                color: isDark ? Colors.white70 : AppColors.textMuted,
+                              ),
+                            )
+                          : Text(
+                              _notificationPreview ?? '',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? AppColors.textPrimary : AppColors.textDark,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );
@@ -1045,55 +687,57 @@ class _SettingItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : AppColors.cardLight,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: (isDark ? AppColors.textPrimary : AppColors.textDark).withOpacity(0.1),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : AppColors.cardLight,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: (isDark ? AppColors.textPrimary : AppColors.textDark).withOpacity(0.1),
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.accentPurple.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.accentPurple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppColors.accentPurple),
               ),
-              child: Icon(icon, color: AppColors.accentPurple, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? AppColors.textPrimary : AppColors.textDark,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppColors.textPrimary : AppColors.textDark,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.textSecondary : AppColors.textMuted,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (trailing != null) trailing!,
-          ],
+              if (trailing != null) trailing!,
+            ],
+          ),
         ),
       ),
     );

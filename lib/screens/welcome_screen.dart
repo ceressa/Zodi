@@ -8,7 +8,7 @@ class WelcomeScreen extends StatefulWidget {
   final String userName;
   final String zodiacName;
   final String zodiacSymbol;
-  
+
   const WelcomeScreen({
     super.key,
     required this.userName,
@@ -28,7 +28,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
     _confettiController.play();
-    
+
     // 3 saniye sonra ana ekrana geç
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
@@ -50,20 +50,47 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background
+          // Background — matching onboarding theme
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF1E1E3F),
-                  Color(0xFF0D0D1A),
+                  Color(0xFFFFE4EC),
+                  Color(0xFFFFCCE2),
+                  Color(0xFFFFB6C1),
                 ],
               ),
             ),
           ),
-          
+
+          // Decorative circles
+          Positioned(
+            top: -60,
+            left: -40,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primaryPink.withOpacity(0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -80,
+            right: -60,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accentPurple.withOpacity(0.06),
+              ),
+            ),
+          ),
+
           // Confetti
           Align(
             alignment: Alignment.topCenter,
@@ -72,13 +99,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               blastDirectionality: BlastDirectionality.explosive,
               colors: const [
                 AppColors.accentPurple,
-                AppColors.accentBlue,
+                AppColors.primaryPink,
                 AppColors.accentPink,
                 AppColors.gold,
               ],
             ),
           ),
-          
+
           // Content
           SafeArea(
             child: Center(
@@ -95,9 +122,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.accentPurple.withOpacity(0.5),
+                            color: AppColors.primaryPink.withOpacity(0.3),
                             blurRadius: 50,
-                            spreadRadius: 20,
+                            spreadRadius: 10,
                           ),
                         ],
                       ),
@@ -108,7 +135,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           errorBuilder: (context, error, stackTrace) => Container(
                             decoration: const BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: AppColors.purpleGradient,
+                              gradient: AppColors.cosmicGradient,
                             ),
                             child: const Icon(Icons.auto_awesome, size: 80, color: Colors.white),
                           ),
@@ -119,42 +146,42 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     .scale(duration: 600.ms, curve: Curves.elasticOut)
                     .then()
                     .shimmer(duration: 2.seconds),
-                    
+
                     const SizedBox(height: 40),
-                    
+
                     // Welcome Text
                     Text(
                       'Hoş Geldin!',
-                      style: const TextStyle(
-                        fontSize: 48,
+                      style: TextStyle(
+                        fontSize: 44,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white,
+                        color: AppColors.textDark,
                       ),
                     ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3, end: 0),
-                    
-                    const SizedBox(height: 16),
-                    
+
+                    const SizedBox(height: 12),
+
                     // User Name
                     Text(
                       widget.userName,
                       style: TextStyle(
-                        fontSize: 32,
+                        fontSize: 30,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.accentPurple,
+                        color: AppColors.primaryPink,
                       ),
                     ).animate().fadeIn(delay: 500.ms),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Zodiac Badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                       decoration: BoxDecoration(
-                        gradient: AppColors.goldGradient,
+                        gradient: AppColors.cosmicGradient,
                         borderRadius: BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.gold.withOpacity(0.5),
+                            color: AppColors.primaryPink.withOpacity(0.4),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -179,15 +206,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         ],
                       ),
                     ).animate().fadeIn(delay: 700.ms).scale(delay: 700.ms),
-                    
+
                     const SizedBox(height: 40),
-                    
+
                     // Message
-                    const Text(
+                    Text(
                       'Yıldızlar senin için konuşuyor...',
                       style: TextStyle(
                         fontSize: 16,
-                        color: AppColors.textSecondary,
+                        color: AppColors.textDark.withOpacity(0.5),
                         fontStyle: FontStyle.italic,
                       ),
                       textAlign: TextAlign.center,
