@@ -101,9 +101,15 @@ class FirebaseService {
 
       // Firebase'e giriş yap
       final userCredential = await _auth.signInWithCredential(credential);
-      
-      await _analytics.logLogin(loginMethod: 'google');
-      
+
+      // Yeni kullanıcı mı yoksa geri dönen kullanıcı mı?
+      final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+      if (isNewUser) {
+        await _analytics.logSignUp(signUpMethod: 'google');
+      } else {
+        await _analytics.logLogin(loginMethod: 'google');
+      }
+
       return userCredential;
     } catch (e) {
       await _crashlytics.recordError(e, StackTrace.current);

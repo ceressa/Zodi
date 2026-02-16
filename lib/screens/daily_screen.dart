@@ -123,6 +123,7 @@ class _DailyScreenState extends State<DailyScreen>
       final readStartTime = DateTime.now();
 
       await horoscopeProvider.fetchDailyHoroscope(authProvider.selectedZodiac!);
+      await _activityLog.logDailyHoroscope(authProvider.selectedZodiac!.name);
       _confettiController.play();
 
       // Premium değilse sayacı artır

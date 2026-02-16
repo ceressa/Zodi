@@ -7,9 +7,9 @@ import '../constants/colors.dart';
 import '../widgets/animated_card.dart';
 import '../services/firebase_service.dart';
 import '../services/ad_service.dart';
-import '../services/activity_log_service.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
+import '../services/activity_log_service.dart';
 
 class DreamScreen extends StatefulWidget {
   const DreamScreen({super.key});
@@ -49,12 +49,11 @@ class _DreamScreenState extends State<DreamScreen> {
 
     final horoscopeProvider = context.read<HoroscopeProvider>();
     await horoscopeProvider.interpretDream(_dreamController.text);
-    
-    // Log activity
+
     if (horoscopeProvider.dreamInterpretation != null) {
       await _activityLog.logDreamInterpretation(_dreamController.text);
     }
-    
+
     // Zengin profil güncellemeleri
     if (_firebaseService.isAuthenticated && horoscopeProvider.dreamInterpretation != null) {
       // 1. Özellik kullanımını artır

@@ -8,9 +8,9 @@ import '../widgets/animated_card.dart';
 import '../widgets/shimmer_loading.dart';
 import '../widgets/metric_card.dart';
 import '../services/ad_service.dart';
-import '../services/activity_log_service.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
+import '../services/activity_log_service.dart';
 
 class WeeklyMonthlyScreen extends StatefulWidget {
   const WeeklyMonthlyScreen({super.key});
@@ -59,11 +59,9 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
     if (authProvider.selectedZodiac != null) {
       if (_tabController.index == 0) {
         await horoscopeProvider.fetchWeeklyHoroscope(authProvider.selectedZodiac!);
-        // Log activity
         await _activityLog.logWeeklyHoroscope(authProvider.selectedZodiac!.name);
       } else {
         await horoscopeProvider.fetchMonthlyHoroscope(authProvider.selectedZodiac!);
-        // Log activity
         await _activityLog.logMonthlyHoroscope(authProvider.selectedZodiac!.name);
       }
     }

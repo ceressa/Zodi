@@ -12,6 +12,7 @@ import '../services/storage_service.dart';
 import '../constants/colors.dart';
 import 'premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
+import '../services/activity_log_service.dart';
 
 class BirthChartScreen extends StatefulWidget {
   const BirthChartScreen({super.key});
@@ -23,6 +24,7 @@ class BirthChartScreen extends StatefulWidget {
 class _BirthChartScreenState extends State<BirthChartScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final ActivityLogService _activityLog = ActivityLogService();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   final TextEditingController _cityController = TextEditingController();
@@ -249,6 +251,8 @@ class _BirthChartScreenState extends State<BirthChartScreen>
         _showChart = true;
         _isLoading = false;
       });
+
+      await _activityLog.logBirthChart(isOwnChart: !_isOtherPersonMode);
 
       // Cache if it's user's own chart
       if (!_isOtherPersonMode) {

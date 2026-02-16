@@ -16,9 +16,9 @@ class PremiumScreen extends StatefulWidget {
 class _PremiumScreenState extends State<PremiumScreen>
     with TickerProviderStateMixin {
   String _selectedPlan = 'yearly';
+  final ActivityLogService _activityLog = ActivityLogService();
   late final AnimationController _shimmerController;
   late final AnimationController _pulseController;
-  final ActivityLogService _activityLog = ActivityLogService();
 
   // Plan bilgileri: eski fiyat (üstü çizili) + yeni fiyat (indirimli)
   static const List<Map<String, dynamic>> _plans = [
@@ -839,14 +839,11 @@ class _PremiumScreenState extends State<PremiumScreen>
                         await context.read<AuthProvider>().upgradeToPremium(
                           subscriptionType: _selectedPlan,
                         );
-                        
-                        // Log premium purchase activity
-                        final planPrice = plan['price'] as String;
+                        final priceStr = plan['price'] as String;
                         final priceValue = double.tryParse(
-                          planPrice.replaceAll('₺', '').replaceAll(',', '.').trim()
+                          priceStr.replaceAll('₺', '').replaceAll('.', '').replaceAll(',', '.'),
                         ) ?? 0.0;
                         await _activityLog.logPremiumPurchase(priceValue);
-                        
                         if (context.mounted) {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(

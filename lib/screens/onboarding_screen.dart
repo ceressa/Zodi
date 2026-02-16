@@ -22,7 +22,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   final PageController _pageController = PageController();
   final _nameController = TextEditingController();
   final _nameFocus = FocusNode();
-  final ActivityLogService _activityLog = ActivityLogService();
   DateTime? _birthDate;
   ZodiacSign? _calculatedZodiac;
   int _currentStep = 0;
@@ -1124,10 +1123,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 .doc(FirebaseService().currentUser!.uid)
                 .update({'birthDate': _birthDate!.toIso8601String()});
           }
-          
-          // Log signup activity
-          await _activityLog.logSignup();
-          
+
+          // Yeni kayıt logu
+          await ActivityLogService().logSignup(method: 'google');
+
           if (mounted) {
             setState(() => _isLoading = false);
             Navigator.of(context).pushReplacement(
@@ -1222,6 +1221,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           await context.read<AuthProvider>().selectZodiac(zodiac);
         } catch (_) {}
       }
+
+      // Giriş logu (geri dönen kullanıcı)
+      await ActivityLogService().logLogin(method: 'google');
 
       if (mounted) {
         setState(() => _isLoading = false);

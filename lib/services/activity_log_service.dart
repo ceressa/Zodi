@@ -1,148 +1,189 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
+/// Tüm kullanıcı aktivitelerini Firebase'e loglar.
+/// Admin panelde canlı olarak görüntülenir.
 class ActivityLogService {
+  static final ActivityLogService _instance = ActivityLogService._internal();
+  factory ActivityLogService() => _instance;
+  ActivityLogService._internal();
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   // Aktivite tipleri
-  static const String TYPE_DAILY_HOROSCOPE = 'daily_horoscope';
-  static const String TYPE_TAROT_READING = 'tarot_reading';
-  static const String TYPE_DREAM_INTERPRETATION = 'dream_interpretation';
-  static const String TYPE_RISING_SIGN = 'rising_sign';
-  static const String TYPE_COMPATIBILITY = 'compatibility';
-  static const String TYPE_WEEKLY_HOROSCOPE = 'weekly_horoscope';
-  static const String TYPE_MONTHLY_HOROSCOPE = 'monthly_horoscope';
-  static const String TYPE_PREMIUM_PURCHASE = 'premium_purchase';
-  static const String TYPE_LOGIN = 'login';
-  static const String TYPE_SIGNUP = 'signup';
-  
-  // Aktivite logla
-  Future<void> logActivity({
+  static const String typeLogin = 'login';
+  static const String typeSignup = 'signup';
+  static const String typeAppOpen = 'app_open';
+  static const String typeDailyHoroscope = 'daily_horoscope';
+  static const String typeTarotReading = 'tarot_reading';
+  static const String typeDreamInterpretation = 'dream_interpretation';
+  static const String typeRisingSign = 'rising_sign';
+  static const String typeCompatibility = 'compatibility';
+  static const String typeWeeklyHoroscope = 'weekly_horoscope';
+  static const String typeMonthlyHoroscope = 'monthly_horoscope';
+  static const String typeBirthChart = 'birth_chart';
+  static const String typePremiumPurchase = 'premium_purchase';
+  static const String typeAdWatched = 'ad_watched';
+
+  /// Ana log fonksiyonu — tüm aktiviteler buradan geçer
+  Future<void> _log({
     required String type,
     required String action,
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-      final userName = prefs.getString('userName') ?? 'Anonim';
-      final zodiacSign = prefs.getString('zodiacSign') ?? '';
-      
-      if (userId == null) return;
-      
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      // Kullanıcı profilinden isim ve burç al
+      String userName = user.displayName ?? 'Anonim';
+      String zodiacSign = '';
+
+      try {
+        final userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
+        if (userDoc.exists && userDoc.data() != null) {
+          userName = userDoc.data()!['name'] ?? userName;
+          zodiacSign = userDoc.data()!['zodiacSign'] ?? '';
+        }
+      } catch (_) {}
+
       await _firestore.collection('activity_logs').add({
-        'userId': userId,
+        'userId': user.uid,
         'userName': userName,
+        'userEmail': user.email ?? '',
         'zodiacSign': zodiacSign,
         'type': type,
         'action': action,
         'metadata': metadata ?? {},
         'timestamp': FieldValue.serverTimestamp(),
-        'createdAt': FieldValue.serverTimestamp(),
       });
-      
-      print('✅ Aktivite loglandı: $action');
     } catch (e) {
-      print('❌ Aktivite loglama hatası: $e');
+      // Loglama hatası uygulamayı durdurmamalı
+      // ignore
     }
   }
-  
-  // Günlük yorum okundu
+
+  // ==================== AUTH ====================
+
+  /// Kullanıcı giriş yaptı (geri dönen kullanıcı)
+  Future<void> logLogin({String method = 'google'}) async {
+    await _log(
+      type: typeLogin,
+      action: 'Giriş yaptı',
+      metadata: {'method': method},
+    );
+  }
+
+  /// Yeni hesap oluşturuldu
+  Future<void> logSignup({String method = 'google'}) async {
+    await _log(
+      type: typeSignup,
+      action: 'Hesap oluşturdu',
+      metadata: {'method': method},
+    );
+  }
+
+  /// Uygulama açıldı (mevcut oturumla)
+  Future<void> logAppOpen() async {
+    await _log(
+      type: typeAppOpen,
+      action: 'Uygulamayı açtı',
+    );
+  }
+
+  // ==================== FEATURES ====================
+
+  /// Günlük burç yorumu okundu
   Future<void> logDailyHoroscope(String zodiacSign) async {
-    await logActivity(
-      type: TYPE_DAILY_HOROSCOPE,
+    await _log(
+      type: typeDailyHoroscope,
       action: 'Günlük yorumunu okudu',
       metadata: {'zodiacSign': zodiacSign},
     );
   }
-  
-  // Tarot kartı çekildi
+
+  /// Tarot kartı çekildi
   Future<void> logTarotReading(String cardName, int cardNumber) async {
-    await logActivity(
-      type: TYPE_TAROT_READING,
+    await _log(
+      type: typeTarotReading,
       action: 'Tarot kartı çekti',
-      metadata: {
-        'cardName': cardName,
-        'cardNumber': cardNumber,
-      },
+      metadata: {'cardName': cardName, 'cardNumber': cardNumber},
     );
   }
-  
-  // Rüya yorumu yapıldı
+
+  /// Rüya yorumlandı
   Future<void> logDreamInterpretation(String dreamText) async {
-    await logActivity(
-      type: TYPE_DREAM_INTERPRETATION,
+    await _log(
+      type: typeDreamInterpretation,
       action: 'Rüya yorumu yaptırdı',
-      metadata: {
-        'dreamLength': dreamText.length,
-      },
+      metadata: {'dreamLength': dreamText.length},
     );
   }
-  
-  // Yükselen burç hesaplandı
+
+  /// Yükselen burç hesaplandı
   Future<void> logRisingSign(String risingSign) async {
-    await logActivity(
-      type: TYPE_RISING_SIGN,
+    await _log(
+      type: typeRisingSign,
       action: 'Yükselen burç hesapladı',
       metadata: {'risingSign': risingSign},
     );
   }
-  
-  // Uyumluluk analizi yapıldı
+
+  /// Burç uyumluluğu analizi yapıldı
   Future<void> logCompatibility(String sign1, String sign2) async {
-    await logActivity(
-      type: TYPE_COMPATIBILITY,
+    await _log(
+      type: typeCompatibility,
       action: 'Uyumluluk analizi yaptı',
-      metadata: {
-        'sign1': sign1,
-        'sign2': sign2,
-      },
+      metadata: {'sign1': sign1, 'sign2': sign2},
     );
   }
-  
-  // Haftalık yorum okundu
+
+  /// Haftalık burç yorumu okundu
   Future<void> logWeeklyHoroscope(String zodiacSign) async {
-    await logActivity(
-      type: TYPE_WEEKLY_HOROSCOPE,
+    await _log(
+      type: typeWeeklyHoroscope,
       action: 'Haftalık yorumunu okudu',
       metadata: {'zodiacSign': zodiacSign},
     );
   }
-  
-  // Aylık yorum okundu
+
+  /// Aylık burç yorumu okundu
   Future<void> logMonthlyHoroscope(String zodiacSign) async {
-    await logActivity(
-      type: TYPE_MONTHLY_HOROSCOPE,
+    await _log(
+      type: typeMonthlyHoroscope,
       action: 'Aylık yorumunu okudu',
       metadata: {'zodiacSign': zodiacSign},
     );
   }
-  
-  // Premium satın alındı
+
+  /// Doğum haritası hesaplandı
+  Future<void> logBirthChart({bool isOwnChart = true}) async {
+    await _log(
+      type: typeBirthChart,
+      action: isOwnChart ? 'Doğum haritası hesapladı' : 'Başkasının haritasını hesapladı',
+      metadata: {'isOwnChart': isOwnChart},
+    );
+  }
+
+  // ==================== MONETIZATION ====================
+
+  /// Premium satın alındı
   Future<void> logPremiumPurchase(double price) async {
-    await logActivity(
-      type: TYPE_PREMIUM_PURCHASE,
+    await _log(
+      type: typePremiumPurchase,
       action: 'Premium satın aldı',
-      metadata: {
-        'price': price,
-        'currency': 'TRY',
-      },
+      metadata: {'price': price, 'currency': 'TRY'},
     );
   }
-  
-  // Login
-  Future<void> logLogin() async {
-    await logActivity(
-      type: TYPE_LOGIN,
-      action: 'Giriş yaptı',
-    );
-  }
-  
-  // Signup
-  Future<void> logSignup() async {
-    await logActivity(
-      type: TYPE_SIGNUP,
-      action: 'Hesap oluşturdu',
+
+  /// Reklam izlendi
+  Future<void> logAdWatched(String placement) async {
+    await _log(
+      type: typeAdWatched,
+      action: 'Reklam izledi',
+      metadata: {'placement': placement},
     );
   }
 }

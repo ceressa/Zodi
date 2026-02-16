@@ -7,10 +7,10 @@ import '../constants/colors.dart';
 import '../constants/strings.dart';
 import '../services/firebase_service.dart';
 import '../services/ad_service.dart';
-import '../services/activity_log_service.dart';
 import 'compatibility_report_screen.dart';
 import 'premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
+import '../services/activity_log_service.dart';
 
 class MatchScreen extends StatefulWidget {
   const MatchScreen({super.key});
@@ -35,13 +35,9 @@ class _MatchScreenState extends State<MatchScreen> {
         authProvider.selectedZodiac!,
         _selectedPartner!,
       );
-      
-      // Log activity
-      await _activityLog.logCompatibility(
-        authProvider.selectedZodiac!.name,
-        _selectedPartner!.name,
-      );
-      
+
+      await _activityLog.logCompatibility(authProvider.selectedZodiac!.name, _selectedPartner!.name);
+
       // Zengin profil güncellemeleri
       if (_firebaseService.isAuthenticated) {
         // 1. Özellik kullanımını artır
