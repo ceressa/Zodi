@@ -1,8 +1,13 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../constants/colors.dart';
+import '../providers/auth_provider.dart';
+import '../services/ad_service.dart';
+import '../services/usage_limit_service.dart';
+import '../widgets/limit_reached_dialog.dart';
 
 class RetroScreen extends StatefulWidget {
   const RetroScreen({super.key});
@@ -14,6 +19,9 @@ class RetroScreen extends StatefulWidget {
 class _RetroScreenState extends State<RetroScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _rotateController;
+  final AdService _adService = AdService();
+  final UsageLimitService _usageLimitService = UsageLimitService();
+  bool _analysisUnlocked = false;
 
   // 2025-2026 retro dönemleri (gerçek tarihler)
   static final List<_RetroPeriod> _retroPeriods = [
@@ -219,6 +227,11 @@ class _RetroScreenState extends State<RetroScreen>
                             ),
                           ),
                         ),
+
+                      const SizedBox(height: 24),
+
+                      // === KİŞİSEL RETRO ANALİZİ (PREMIUM/AD GATE) ===
+                      _buildPersonalAnalysisSection(isDark),
                     ],
                   ),
                 ),
@@ -542,6 +555,253 @@ class _RetroScreenState extends State<RetroScreen>
         ],
       ),
     ).animate(delay: Duration(milliseconds: index * 100)).fadeIn().slideX(begin: 0.2);
+  }
+
+  Widget _buildPersonalAnalysisSection(bool isDark) {
+    final authProvider = context.read<AuthProvider>();
+    final isPremium = authProvider.isPremium;
+    final active = _activeRetro;
+    final zodiac = authProvider.selectedZodiac;
+
+    if (isPremium || _analysisUnlocked) {
+      // Unlocked content
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [const Color(0xFF1A0533), const Color(0xFF2D1B69)]
+                : [Colors.white, const Color(0xFFF3E8FF)],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: AppColors.gold.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('🔮', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 10),
+                Text(
+                  'Kişisel Retro Analizi',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.textDark,
+                  ),
+                ),
+                const Spacer(),
+                if (isPremium)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'PRO',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.gold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (zodiac != null && active != null) ...[
+              _buildAnalysisItem(
+                '💫',
+                '${zodiac.displayName} & ${active.planet} Retrosu',
+                'Bu retro döneminde ${zodiac.displayName} burcu için özellikle dikkatli olunması gereken alanlar var. Duygusal kararlar vermekten kaçın.',
+                isDark,
+              ),
+              const SizedBox(height: 12),
+              _buildAnalysisItem(
+                '⚡',
+                'Enerji Tavsiyesi',
+                'Retro enerjisini lehine çevirmek için geçmişe dönük projeleri tamamlamaya odaklan. Yeni başlangıçları retro sonrasına ertele.',
+                isDark,
+              ),
+              const SizedBox(height: 12),
+              _buildAnalysisItem(
+                '🛡️',
+                'Korunma Rehberi',
+                'Bu dönemde kristal taşlardan ametist ve labradorit seni koruyabilir. Mor ve lacivert tonları tercih et.',
+                isDark,
+              ),
+            ] else ...[
+              _buildAnalysisItem(
+                '💫',
+                'Retro Hazırlık Rehberi',
+                'Bir sonraki retroya hazırlanmak için şimdiden projelerini gözden geçir ve önemli kararlarını tamamla.',
+                isDark,
+              ),
+              const SizedBox(height: 12),
+              _buildAnalysisItem(
+                '🌟',
+                'Genel Retro Enerjisi',
+                zodiac != null
+                    ? '${zodiac.displayName} burcu olarak retro dönemlerinde iç sesinizi dinlemeniz özellikle önemli.'
+                    : 'Retro dönemlerinde iç sesinizi dinlemeniz özellikle önemli.',
+                isDark,
+              ),
+            ],
+          ],
+        ),
+      ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
+    }
+
+    // Locked gate
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [const Color(0xFF1A0533).withOpacity(0.8), const Color(0xFF2D1B69).withOpacity(0.8)]
+              : [Colors.white.withOpacity(0.9), const Color(0xFFF3E8FF).withOpacity(0.9)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.accentPurple.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        children: [
+          const Text('🔒', style: TextStyle(fontSize: 48)),
+          const SizedBox(height: 12),
+          Text(
+            'Kişisel Retro Analizi',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Retro dönemlerinin sana özel etkisini,\nkorunma tavsiyelerini ve enerji rehberini gör!',
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.white60 : AppColors.textMuted,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+
+          // Reklam İzle butonu
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final canView = await _usageLimitService.canViewRetroAnalysis();
+                if (!canView) {
+                  if (mounted) {
+                    LimitReachedDialog.showRetroLimit(context, onAdWatched: () {
+                      setState(() => _analysisUnlocked = true);
+                    });
+                  }
+                  return;
+                }
+                final success = await _adService.showRewardedAd(
+                  placement: 'limit_unlock_retro_analysis',
+                );
+                if (success && mounted) {
+                  await _usageLimitService.incrementRetroAnalysis();
+                  setState(() => _analysisUnlocked = true);
+                }
+              },
+              icon: const Icon(Icons.play_circle_outline, size: 22),
+              label: const Text('Reklam İzle & Kilidi Aç'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.accentPurple,
+                side: BorderSide(color: AppColors.accentPurple.withOpacity(0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Premium butonu
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(context, '/premium');
+              },
+              icon: const Icon(Icons.diamond, size: 20),
+              label: const Text('Premium ile Sınırsız Aç'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentPurple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
+  }
+
+  Widget _buildAnalysisItem(String emoji, String title, String desc, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withOpacity(0.05)
+            : AppColors.accentPurple.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  desc,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white60 : AppColors.textMuted,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _shareRetroStatus() {

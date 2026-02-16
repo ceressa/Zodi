@@ -7,6 +7,10 @@ import '../providers/auth_provider.dart';
 import '../providers/horoscope_provider.dart';
 import '../constants/colors.dart';
 import '../widgets/animated_card.dart';
+import '../services/usage_limit_service.dart';
+import '../services/ad_service.dart';
+import '../widgets/limit_reached_dialog.dart';
+import '../screens/premium_screen.dart';
 
 class RisingSignScreen extends StatefulWidget {
   const RisingSignScreen({super.key});
@@ -17,6 +21,8 @@ class RisingSignScreen extends StatefulWidget {
 
 class _RisingSignScreenState extends State<RisingSignScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final UsageLimitService _usageLimitService = UsageLimitService();
+  final AdService _adService = AdService();
   DateTime? _birthDate;
   final _birthTimeController = TextEditingController();
   final _birthPlaceController = TextEditingController();
@@ -693,6 +699,10 @@ class _RisingSignScreenState extends State<RisingSignScreen> with TickerProvider
                           horoscopeProvider.risingSignResult!.relationships,
                           isDark,
                         ),
+                        
+                        // Detaylı Yorum Butonu (Premium/Ad Gate)
+                        const Divider(height: 32),
+                        _buildDetailedCommentButton(isDark),
                       ],
                     ),
                   ),
@@ -946,6 +956,173 @@ class _RisingSignScreenState extends State<RisingSignScreen> with TickerProvider
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDetailedCommentButton(bool isDark) {
+    final authProvider = context.watch<AuthProvider>();
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.accentPurple.withOpacity(0.1),
+            AppColors.accentBlue.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.accentPurple.withOpacity(0.3),
+          width: 2,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: AppColors.purpleGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Detaylı Kişisel Yorum',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.textPrimary : AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Burç üçlüne özel derinlemesine analiz',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? AppColors.textSecondary : AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (!authProvider.isPremium)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final canView = await _usageLimitService.canViewRisingSignDetail();
+                      if (!canView) {
+                        if (mounted) {
+                          LimitReachedDialog.showRisingSignLimit(
+                            context,
+                            onAdWatched: () {
+                              _showDetailedComment();
+                            },
+                          );
+                        }
+                        return;
+                      }
+                      
+                      final success = await _adService.showRewardedAd(
+                        placement: 'rising_sign_detail',
+                      );
+                      if (success) {
+                        await _usageLimitService.incrementRisingSignDetail();
+                        _showDetailedComment();
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.accentPurple,
+                      side: const BorderSide(color: AppColors.accentPurple, width: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.play_circle_outline, size: 20),
+                    label: const Text(
+                      'Reklam İzle',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentPurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.workspace_premium, size: 20),
+                    label: const Text(
+                      'Premium',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _showDetailedComment,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentPurple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.auto_awesome, size: 20),
+                label: const Text(
+                  'Detaylı Yorumu Gör',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showDetailedComment() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Detaylı Kişisel Yorum'),
+        content: const Text('Burç üçlüne özel derinlemesine analiz yakında eklenecek!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tamam'),
+          ),
+        ],
+      ),
     );
   }
 }

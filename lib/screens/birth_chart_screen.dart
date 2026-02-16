@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
+import '../providers/auth_provider.dart';
+import '../services/ad_service.dart';
+import '../constants/colors.dart';
+import 'premium_screen.dart';
 
 class BirthChartScreen extends StatefulWidget {
   const BirthChartScreen({super.key});
@@ -15,6 +20,8 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
   TimeOfDay? _selectedTime;
   final TextEditingController _cityController = TextEditingController();
   bool _showChart = false;
+  final AdService _adService = AdService();
+  bool _chartUnlockedByAd = false;
 
   final List<Map<String, dynamic>> _planets = [
     {
@@ -83,12 +90,124 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
     }
   }
 
-  void _submitForm() {
-    if (_formKey.currentState!.validate() &&
+  void _submitForm() async {
+    if (!(_formKey.currentState!.validate() &&
         _selectedDate != null &&
-        _selectedTime != null) {
-      setState(() => _showChart = true);
+        _selectedTime != null)) {
+      return;
     }
+
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.isPremium || _chartUnlockedByAd) {
+      setState(() => _showChart = true);
+      return;
+    }
+
+    // Show gate dialog
+    _showChartGateDialog();
+  }
+
+  void _showChartGateDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding: const EdgeInsets.all(24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7C3AED), Color(0xFF9333EA)],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withOpacity(0.3),
+                    blurRadius: 16,
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text('🪐', style: TextStyle(fontSize: 36)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Doğum Haritanı Gör',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Gezegen konumlarını ve kişisel yorumunu görmek için reklam izle veya premium\'a geç!',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  final success = await _adService.showRewardedAd(
+                    placement: 'birth_chart_unlock',
+                  );
+                  if (success && mounted) {
+                    setState(() {
+                      _chartUnlockedByAd = true;
+                      _showChart = true;
+                    });
+                  }
+                },
+                icon: const Icon(Icons.play_circle_outline),
+                label: const Text('Reklam İzle & Haritayı Gör'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF7C3AED),
+                  side: const BorderSide(color: Color(0xFF7C3AED)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                  );
+                },
+                icon: const Icon(Icons.diamond, size: 18),
+                label: const Text('Premium\'a Geç'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7C3AED),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -222,16 +341,39 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
                 ),
                 elevation: 8,
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.auto_awesome),
-                  SizedBox(width: 8),
-                  Text(
-                    'Haritamı Oluştur',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
+              child: Builder(
+                builder: (ctx) {
+                  final isPremium = ctx.read<AuthProvider>().isPremium;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.auto_awesome),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Haritamı Oluştur',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      if (!isPremium && !_chartUnlockedByAd) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.play_circle_outline, color: Colors.white, size: 14),
+                              SizedBox(width: 3),
+                              Text('AD', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ),

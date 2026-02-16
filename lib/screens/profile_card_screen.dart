@@ -6,6 +6,9 @@ import '../constants/colors.dart';
 import '../providers/auth_provider.dart';
 import '../models/zodiac_sign.dart';
 import '../services/share_service.dart';
+import '../services/ad_service.dart';
+import '../services/usage_limit_service.dart';
+import '../widgets/limit_reached_dialog.dart';
 
 class ProfileCardScreen extends StatefulWidget {
   const ProfileCardScreen({super.key});
@@ -16,6 +19,8 @@ class ProfileCardScreen extends StatefulWidget {
 
 class _ProfileCardScreenState extends State<ProfileCardScreen> {
   final GlobalKey _cardKey = GlobalKey();
+  final AdService _adService = AdService();
+  final UsageLimitService _usageLimitService = UsageLimitService();
 
   // Element bilgileri
   static const Map<String, Map<String, dynamic>> _elementInfo = {
@@ -53,11 +58,42 @@ class _ProfileCardScreenState extends State<ProfileCardScreen> {
     });
   }
 
-  void _shareCard() {
-    ShareService().shareWidgetAsImage(
-      _cardKey,
-      text: '✨ Astrolojik Profilim — Zodi\n📱 Sen de profilini oluştur!\n#Zodi #AstrolojikProfil',
+  Future<void> _shareCard() async {
+    final authProvider = context.read<AuthProvider>();
+
+    if (authProvider.isPremium) {
+      ShareService().shareWidgetAsImage(
+        _cardKey,
+        text: '✨ Astrolojik Profilim — Zodi\n📱 Sen de profilini oluştur!\n#Zodi #AstrolojikProfil',
+      );
+      return;
+    }
+
+    // Free user - check usage limit
+    final canShare = await _usageLimitService.canShareProfileCard();
+    if (!canShare) {
+      if (mounted) {
+        LimitReachedDialog.showProfileShareLimit(context, onAdWatched: () {
+          ShareService().shareWidgetAsImage(
+            _cardKey,
+            text: '✨ Astrolojik Profilim — Zodi\n📱 Sen de profilini oluştur!\n#Zodi #AstrolojikProfil',
+          );
+        });
+      }
+      return;
+    }
+
+    // Show rewarded ad before sharing
+    final success = await _adService.showRewardedAd(
+      placement: 'limit_unlock_profile_share',
     );
+    if (success && mounted) {
+      await _usageLimitService.incrementProfileShare();
+      ShareService().shareWidgetAsImage(
+        _cardKey,
+        text: '✨ Astrolojik Profilim — Zodi\n📱 Sen de profilini oluştur!\n#Zodi #AstrolojikProfil',
+      );
+    }
   }
 
   @override
@@ -124,37 +160,67 @@ class _ProfileCardScreenState extends State<ProfileCardScreen> {
                       const SizedBox(height: 32),
 
                       // Paylaş butonu
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          gradient: AppColors.cosmicGradient,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: _shareCard,
-                            borderRadius: BorderRadius.circular(20),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.share, color: Colors.white),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Profilimi Paylaş',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                      Builder(
+                        builder: (ctx) {
+                          final isPremium = ctx.read<AuthProvider>().isPremium;
+                          return Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              gradient: AppColors.cosmicGradient,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _shareCard,
+                                borderRadius: BorderRadius.circular(20),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.share, color: Colors.white),
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        'Profilimi Paylaş',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      if (!isPremium) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.25),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.play_circle_outline, color: Colors.white, size: 14),
+                                              SizedBox(width: 3),
+                                              Text(
+                                                'AD',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ).animate().fadeIn(delay: 600.ms),
 
                       const SizedBox(height: 16),

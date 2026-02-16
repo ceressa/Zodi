@@ -9,9 +9,12 @@ import '../providers/auth_provider.dart';
 import '../services/cosmic_calendar_service.dart';
 import '../services/gemini_service.dart';
 import '../services/share_service.dart';
+import '../services/usage_limit_service.dart';
 import '../widgets/moon_phase_widget.dart';
 import '../widgets/beauty_rating_row.dart';
 import '../widgets/share_cards/beauty_share_card.dart';
+import '../widgets/limit_reached_dialog.dart';
+import '../screens/premium_screen.dart';
 
 class CosmicCalendarScreen extends StatefulWidget {
   const CosmicCalendarScreen({super.key});
@@ -23,6 +26,7 @@ class CosmicCalendarScreen extends StatefulWidget {
 class _CosmicCalendarScreenState extends State<CosmicCalendarScreen> {
   final CosmicCalendarService _calendarService = CosmicCalendarService();
   final GeminiService _geminiService = GeminiService();
+  final UsageLimitService _usageLimitService = UsageLimitService();
 
   int _selectedTab = 0; // 0 = Astroloji, 1 = Güzellik
   late DateTime _currentMonth;
@@ -319,7 +323,22 @@ class _CosmicCalendarScreenState extends State<CosmicCalendarScreen> {
 
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () {
+                    onTap: () async {
+                      final authProvider = context.read<AuthProvider>();
+                      final today = DateTime.now();
+                      final daysFromToday = date.difference(DateTime(today.year, today.month, today.day)).inDays;
+                      
+                      // Premium değilse ve bugün+3 günden sonrasıysa paywall göster
+                      if (!authProvider.isPremium) {
+                        final canView = await _usageLimitService.canViewCalendarDay(daysFromToday);
+                        if (!canView) {
+                          if (mounted) {
+                            LimitReachedDialog.showCalendarLimit(context);
+                          }
+                          return;
+                        }
+                      }
+                      
                       setState(() => _selectedDay = dayIndex);
                       _loadDailyTip();
                     },

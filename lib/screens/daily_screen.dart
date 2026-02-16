@@ -16,7 +16,9 @@ import '../services/ad_service.dart';
 import '../services/firebase_service.dart';
 import '../services/storage_service.dart';
 import '../services/share_service.dart';
+import '../services/usage_limit_service.dart';
 import '../widgets/share_cards/daily_share_card.dart';
+import '../widgets/limit_reached_dialog.dart';
 
 class DailyScreen extends StatefulWidget {
   const DailyScreen({super.key});
@@ -30,6 +32,7 @@ class _DailyScreenState extends State<DailyScreen>
   final AdService _adService = AdService();
   final FirebaseService _firebaseService = FirebaseService();
   final StorageService _storageService = StorageService();
+  final UsageLimitService _usageLimitService = UsageLimitService();
   late ConfettiController _confettiController;
   late AnimationController _pulseController;
   bool _showTomorrowPreview = false;
@@ -97,11 +100,47 @@ class _DailyScreenState extends State<DailyScreen>
     final authProvider = context.read<AuthProvider>();
     final horoscopeProvider = context.read<HoroscopeProvider>();
 
+    // Premium değilse limit kontrolü
+    if (!authProvider.isPremium) {
+      final canView = await _usageLimitService.canViewDailyComment();
+      if (!canView) {
+        if (mounted) {
+          LimitReachedDialog.showDailyCommentLimit(
+            context,
+            onAdWatched: () {
+              // Reklam izlendikten sonra yeniden yükle
+              _loadHoroscope();
+            },
+          );
+        }
+        return;
+      }
+    }
+
     if (authProvider.selectedZodiac != null) {
       final readStartTime = DateTime.now();
 
       await horoscopeProvider.fetchDailyHoroscope(authProvider.selectedZodiac!);
       _confettiController.play();
+
+      // Premium değilse sayacı artır
+      if (!authProvider.isPremium) {
+        await _usageLimitService.incrementDailyComment();
+        
+        // Kalan hakkı göster
+        final remaining = await _usageLimitService.getRemainingDailyComments();
+        if (mounted && remaining > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Bugün için $remaining yorum hakkın kaldı'),
+              backgroundColor: AppColors.warning,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
 
       if (_firebaseService.isAuthenticated) {
         _firebaseService.incrementFeatureUsage('daily_horoscope');
