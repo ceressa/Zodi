@@ -27,32 +27,39 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _dialController;
+  late AnimationController _pulseController;
   int _selectedCategory = 0;
 
   static const _categories = ['Fallar', 'Araçlar', 'Keşif'];
 
-  // Category-based features
+  // Cohesive purple/violet palette — NO random colors
+  static const _palettePrimary = Color(0xFF7C3AED);    // violet-600
+  static const _paletteSecondary = Color(0xFF8B5CF6);  // violet-500
+  static const _paletteTertiary = Color(0xFFA78BFA);   // violet-400
+  static const _paletteAccent = Color(0xFF6D28D9);     // violet-700
+  static const _paletteDark = Color(0xFF4C1D95);       // violet-900
+  static const _paletteWarm = Color(0xFF9333EA);       // purple-600
+
   static const List<List<_FeatureItem>> _featuresByCategory = [
     // Fallar
     [
-      _FeatureItem(emoji: '🃏', label: 'Tarot', color: Color(0xFF9333EA), screenIndex: 0),
-      _FeatureItem(emoji: '☕', label: 'Kahve Falı', color: Color(0xFFD97706), screenIndex: 1),
-      _FeatureItem(emoji: '🌙', label: 'Rüya', color: Color(0xFF7C3AED), screenIndex: 2),
-      _FeatureItem(emoji: '📅', label: 'Haftalık', color: Color(0xFF2563EB), screenIndex: 3),
+      _FeatureItem(icon: Icons.style_rounded, label: 'Tarot', screenIndex: 0),
+      _FeatureItem(icon: Icons.coffee_rounded, label: 'Kahve Falı', screenIndex: 1),
+      _FeatureItem(icon: Icons.nightlight_round, label: 'Rüya Yorumu', screenIndex: 2),
+      _FeatureItem(icon: Icons.date_range_rounded, label: 'Haftalık & Aylık', screenIndex: 3),
     ],
     // Araçlar
     [
-      _FeatureItem(emoji: '⬆️', label: 'Yükselen', color: Color(0xFFE91E8C), screenIndex: 4),
-      _FeatureItem(emoji: '🔮', label: 'AI Sohbet', color: Color(0xFF1E1B4B), screenIndex: 5),
-      _FeatureItem(emoji: '🪐', label: 'Retro', color: Color(0xFF4B0082), screenIndex: 6),
-      _FeatureItem(emoji: '🌍', label: 'Doğum Haritası', color: Color(0xFF7C3AED), screenIndex: 7),
+      _FeatureItem(icon: Icons.north_rounded, label: 'Yükselen Burç', screenIndex: 4),
+      _FeatureItem(icon: Icons.smart_toy_rounded, label: 'AI Sohbet', screenIndex: 5),
+      _FeatureItem(icon: Icons.sync_rounded, label: 'Retro Takip', screenIndex: 6),
+      _FeatureItem(icon: Icons.public_rounded, label: 'Doğum Haritası', screenIndex: 7),
     ],
     // Keşif
     [
-      _FeatureItem(emoji: '📅', label: 'Takvim', color: Color(0xFF1A237E), screenIndex: 8),
-      _FeatureItem(emoji: '✨', label: 'Profilim', color: Color(0xFFD4A800), screenIndex: 9),
-      _FeatureItem(emoji: '🎁', label: 'Kozmik Kutu', color: Color(0xFF9333EA), screenIndex: 10),
+      _FeatureItem(icon: Icons.calendar_month_rounded, label: 'Kozmik Takvim', screenIndex: 8),
+      _FeatureItem(icon: Icons.badge_rounded, label: 'Astro Profilim', screenIndex: 9),
+      _FeatureItem(icon: Icons.card_giftcard_rounded, label: 'Kozmik Kutu', screenIndex: 10),
     ],
   ];
 
@@ -76,15 +83,15 @@ class _ExploreScreenState extends State<ExploreScreen>
   @override
   void initState() {
     super.initState();
-    _dialController = AnimationController(
+    _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 30),
-    )..repeat();
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _dialController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -103,135 +110,86 @@ class _ExploreScreenState extends State<ExploreScreen>
     ).toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // === HEADER ===
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Keşfet',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? AppColors.textPrimary : AppColors.textDark,
-                      ),
-                    ),
-                    if (zodiac != null)
-                      Text(
-                        '${zodiac.symbol} ${zodiac.displayName}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDark ? AppColors.textSecondary : AppColors.textMuted,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (zodiac != null)
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.cosmicGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.accentPurple.withOpacity(0.3),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(zodiac.symbol, style: const TextStyle(fontSize: 24)),
-                  ),
-                ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // === RETRO UYARI (varsa) ===
+          // === RETRO / KOZMİK UYARI ===
           if (activeRetro.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildCompactAlert(
-                emoji: '⚠️',
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _buildAlertBanner(
+                icon: Icons.warning_amber_rounded,
                 title: '${activeRetro.first.title} Aktif!',
-                color: const Color(0xFFFF6347),
                 isDark: isDark,
+                isWarning: true,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const RetroScreen()),
                 ),
               ),
             ),
-
-          // === KOZMİK OLAY (retro yoksa) ===
           if (todayEvents.isNotEmpty && activeRetro.isEmpty)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildCompactAlert(
-                emoji: todayEvents.first.emoji,
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _buildAlertBanner(
+                icon: Icons.auto_awesome_rounded,
                 title: todayEvents.first.title,
-                color: AppColors.accentPurple,
                 isDark: isDark,
               ),
             ),
 
-          // === KOZMIK DIAL HUB ===
-          _buildDialHub(context, isDark, zodiac, horoscope),
+          // === HERO DIAL ===
+          _buildHeroDial(context, isDark, zodiac),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // === KATEGORİ SEÇİCİ ===
-          _buildCategorySelector(isDark),
+          _buildCategoryTabs(isDark),
 
           const SizedBox(height: 16),
 
           // === ÖZELLİK GRİD ===
           _buildFeatureGrid(context, isDark),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          // === GÜNLÜK ENERJİ ÖZET ===
+          // === GÜNLÜK ENERJİ (varsa) ===
           if (horoscope != null && zodiac != null)
             _buildEnergyCard(isDark, zodiac, horoscope),
 
-          const SizedBox(height: 16),
+          if (horoscope != null && zodiac != null)
+            const SizedBox(height: 16),
 
           // === YAKINDA ===
-          _buildComingSoonBanner(isDark),
+          _buildComingSoon(isDark),
         ],
       ),
     );
   }
 
-  Widget _buildCompactAlert({
-    required String emoji,
+  // ─── ALERT BANNER ───
+  Widget _buildAlertBanner({
+    required IconData icon,
     required String title,
-    required Color color,
     required bool isDark,
+    bool isWarning = false,
     VoidCallback? onTap,
   }) {
+    final color = isWarning ? const Color(0xFFEF4444) : _palettePrimary;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withOpacity(isDark ? 0.12 : 0.06),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: color.withOpacity(0.15)),
         ),
         child: Row(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 10),
+            Icon(icon, size: 22, color: color),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 title,
@@ -245,127 +203,140 @@ class _ExploreScreenState extends State<ExploreScreen>
               ),
             ),
             if (onTap != null)
-              Icon(Icons.arrow_forward_ios, size: 14, color: color),
+              Icon(Icons.chevron_right_rounded, size: 20, color: color.withOpacity(0.6)),
           ],
         ),
       ),
     ).animate().fadeIn(duration: 400.ms);
   }
 
-  Widget _buildDialHub(BuildContext context, bool isDark, dynamic zodiac, dynamic horoscope) {
-    final screenW = MediaQuery.of(context).size.width;
-    final dialSize = screenW - 40; // full width minus padding
-
+  // ─── HERO DIAL ───
+  Widget _buildHeroDial(BuildContext context, bool isDark, dynamic zodiac) {
     return Center(
       child: SizedBox(
-        width: dialSize,
-        height: dialSize * 0.65,
+        height: 200,
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Outer rotating ring
+            // Subtle outer ring
             AnimatedBuilder(
-              animation: _dialController,
-              builder: (context, child) {
-                return CustomPaint(
-                  size: Size(dialSize * 0.85, dialSize * 0.85),
-                  painter: _DialRingPainter(
-                    rotation: _dialController.value * 2 * pi,
-                    isDark: isDark,
+              animation: _pulseController,
+              builder: (_, __) {
+                final t = _pulseController.value;
+                return Container(
+                  width: 180 + (t * 8),
+                  height: 180 + (t * 8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _palettePrimary.withOpacity(0.08 + t * 0.04),
+                      width: 1.5,
+                    ),
                   ),
                 );
               },
             ),
-
-            // Center zodiac circle
+            // Middle ring
             Container(
-              width: 100,
-              height: 100,
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: _palettePrimary.withOpacity(isDark ? 0.12 : 0.08),
+                  width: 1,
+                ),
+              ),
+            ),
+            // Inner orbit icons
+            ..._buildOrbitIcons(60, isDark),
+            // Center zodiac
+            Container(
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF9333EA), Color(0xFFFF1493)],
+                  colors: [_paletteSecondary, _palettePrimary],
                 ),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF9333EA).withOpacity(0.4),
-                    blurRadius: 24,
-                    spreadRadius: 4,
+                    color: _palettePrimary.withOpacity(0.35),
+                    blurRadius: 28,
+                    spreadRadius: 2,
                   ),
                 ],
               ),
               child: Center(
                 child: Text(
-                  zodiac?.symbol ?? '✨',
-                  style: const TextStyle(fontSize: 48),
+                  zodiac?.symbol ?? '✦',
+                  style: const TextStyle(fontSize: 42, color: Colors.white),
                 ),
               ),
             ).animate().scale(
-                  begin: const Offset(0.8, 0.8),
-                  duration: 600.ms,
-                  curve: Curves.elasticOut,
+                  begin: const Offset(0.85, 0.85),
+                  duration: 500.ms,
+                  curve: Curves.easeOutBack,
                 ),
-
-            // Orbiting feature dots
-            ..._buildOrbitingDots(dialSize * 0.35, isDark),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildOrbitingDots(double radius, bool isDark) {
-    final features = [
-      ('🃏', const Color(0xFF9333EA)),
-      ('☕', const Color(0xFFD97706)),
-      ('🌙', const Color(0xFF7C3AED)),
-      ('🔮', const Color(0xFF1E1B4B)),
-      ('⬆️', const Color(0xFFE91E8C)),
-      ('🪐', const Color(0xFF4B0082)),
+  List<Widget> _buildOrbitIcons(double radius, bool isDark) {
+    const orbitItems = [
+      Icons.style_rounded,
+      Icons.coffee_rounded,
+      Icons.nightlight_round,
+      Icons.smart_toy_rounded,
+      Icons.sync_rounded,
+      Icons.public_rounded,
     ];
 
-    return features.asMap().entries.map((entry) {
+    return orbitItems.asMap().entries.map((entry) {
       final idx = entry.key;
-      final feat = entry.value;
-      final angle = (idx * (360 / features.length) - 90) * (pi / 180);
+      final icon = entry.value;
+      final angle = (idx * (360 / orbitItems.length) - 90) * (pi / 180);
       final x = cos(angle) * radius;
-      final y = sin(angle) * (radius * 0.6);
+      final y = sin(angle) * radius;
 
       return Positioned(
-        left: (MediaQuery.of(context).size.width - 40) / 2 + x - 20,
-        top: (MediaQuery.of(context).size.width - 40) * 0.65 / 2 + y - 20,
+        left: 100 + x - 16, // center offset (200/2 = 100, icon half = 16)
+        top: 100 + y - 16,
         child: Container(
-          width: 40,
-          height: 40,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             color: isDark
-                ? feat.$2.withOpacity(0.3)
-                : feat.$2.withOpacity(0.15),
+                ? _palettePrimary.withOpacity(0.18)
+                : _palettePrimary.withOpacity(0.08),
             shape: BoxShape.circle,
-            border: Border.all(
-              color: feat.$2.withOpacity(0.3),
-              width: 1.5,
-            ),
           ),
-          child: Center(
-            child: Text(feat.$1, style: const TextStyle(fontSize: 18)),
+          child: Icon(
+            icon,
+            size: 16,
+            color: isDark
+                ? _paletteTertiary
+                : _palettePrimary,
           ),
-        ).animate(delay: Duration(milliseconds: idx * 80))
-            .fadeIn(duration: 500.ms),
+        ).animate(delay: Duration(milliseconds: idx * 60))
+            .fadeIn(duration: 400.ms),
       );
     }).toList();
   }
 
-  Widget _buildCategorySelector(bool isDark) {
+  // ─── CATEGORY TABS ───
+  Widget _buildCategoryTabs(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.06)
-            : Colors.grey.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(16),
+            ? Colors.white.withOpacity(0.05)
+            : _palettePrimary.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: _categories.asMap().entries.map((entry) {
@@ -378,14 +349,16 @@ class _ExploreScreenState extends State<ExploreScreen>
               onTap: () => setState(() => _selectedCategory = idx),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: 11),
                 decoration: BoxDecoration(
-                  gradient: isSelected ? AppColors.cosmicGradient : null,
-                  borderRadius: BorderRadius.circular(12),
+                  color: isSelected
+                      ? _palettePrimary
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(11),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: AppColors.accentPurple.withOpacity(0.2),
+                            color: _palettePrimary.withOpacity(0.25),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -399,7 +372,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     fontWeight: FontWeight.w700,
                     color: isSelected
                         ? Colors.white
-                        : (isDark ? Colors.white54 : AppColors.textMuted),
+                        : (isDark ? Colors.white38 : AppColors.textMuted),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -411,11 +384,12 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
   }
 
+  // ─── FEATURE GRID ───
   Widget _buildFeatureGrid(BuildContext context, bool isDark) {
     final features = _featuresByCategory[_selectedCategory];
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 250),
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
       child: GridView.builder(
@@ -426,13 +400,11 @@ class _ExploreScreenState extends State<ExploreScreen>
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.6,
+          childAspectRatio: 1.55,
         ),
         itemCount: features.length,
-        itemBuilder: (context, index) {
-          final feat = features[index];
-          return _buildFeatureTile(context, feat, isDark, index);
-        },
+        itemBuilder: (context, index) =>
+            _buildFeatureTile(context, features[index], isDark, index),
       ),
     );
   }
@@ -443,24 +415,26 @@ class _ExploreScreenState extends State<ExploreScreen>
     bool isDark,
     int index,
   ) {
+    // All tiles use the same purple family - differentiated by shade
+    final shades = [_palettePrimary, _paletteAccent, _paletteSecondary, _paletteDark];
+    final shade = shades[index % shades.length];
+
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            feat.color,
-            feat.color.withOpacity(0.7),
-          ],
-        ),
+        color: isDark ? shade.withOpacity(0.15) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: feat.color.withOpacity(0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? shade.withOpacity(0.2) : _palettePrimary.withOpacity(0.1),
+        ),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: _palettePrimary.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -470,7 +444,7 @@ class _ExploreScreenState extends State<ExploreScreen>
             MaterialPageRoute(builder: (_) => _getScreen(feat.screenIndex)),
           ),
           borderRadius: BorderRadius.circular(20),
-          splashColor: Colors.white.withOpacity(0.2),
+          splashColor: _palettePrimary.withOpacity(0.1),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -480,20 +454,36 @@ class _ExploreScreenState extends State<ExploreScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(feat.emoji, style: const TextStyle(fontSize: 28)),
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? shade.withOpacity(0.25)
+                            : _palettePrimary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        feat.icon,
+                        size: 22,
+                        color: isDark ? _paletteTertiary : _palettePrimary,
+                      ),
+                    ),
                     Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: Colors.white.withOpacity(0.6),
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: isDark
+                          ? Colors.white24
+                          : _palettePrimary.withOpacity(0.3),
                     ),
                   ],
                 ),
                 Text(
                   feat.label,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: isDark ? Colors.white : AppColors.textDark,
                   ),
                 ),
               ],
@@ -501,31 +491,38 @@ class _ExploreScreenState extends State<ExploreScreen>
           ),
         ),
       ),
-    ).animate(delay: Duration(milliseconds: index * 60))
-        .fadeIn(duration: 400.ms, curve: Curves.easeOut);
+    ).animate(delay: Duration(milliseconds: index * 50))
+        .fadeIn(duration: 350.ms, curve: Curves.easeOut);
   }
 
+  // ─── ENERGY CARD ───
   Widget _buildEnergyCard(bool isDark, dynamic zodiac, dynamic horoscope) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.06) : Colors.white,
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: AppColors.accentPurple.withOpacity(0.06),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-        ],
+        border: Border.all(
+          color: isDark
+              ? _palettePrimary.withOpacity(0.1)
+              : _palettePrimary.withOpacity(0.06),
+        ),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: _palettePrimary.withOpacity(0.05),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(zodiac.symbol, style: const TextStyle(fontSize: 20)),
+              Icon(Icons.bolt_rounded, size: 20, color: _paletteWarm),
               const SizedBox(width: 8),
               Text(
                 'Bugünkü Enerjin',
@@ -540,61 +537,61 @@ class _ExploreScreenState extends State<ExploreScreen>
           const SizedBox(height: 14),
           Row(
             children: [
-              _buildMiniMetric('💕', horoscope.love, const Color(0xFFFF1493)),
+              _buildMetric(Icons.favorite_rounded, 'Aşk', horoscope.love, isDark),
               const SizedBox(width: 8),
-              _buildMiniMetric('💰', horoscope.money, const Color(0xFFFFD700)),
+              _buildMetric(Icons.paid_rounded, 'Para', horoscope.money, isDark),
               const SizedBox(width: 8),
-              _buildMiniMetric('💪', horoscope.health, const Color(0xFF00FA9A)),
+              _buildMetric(Icons.fitness_center_rounded, 'Sağlık', horoscope.health, isDark),
               const SizedBox(width: 8),
-              _buildMiniMetric('💼', horoscope.career, const Color(0xFF00BFFF)),
+              _buildMetric(Icons.work_rounded, 'Kariyer', horoscope.career, isDark),
             ],
           ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.accentPurple.withOpacity(isDark ? 0.1 : 0.05),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '"${horoscope.motto}"',
-              style: TextStyle(
-                fontSize: 13,
-                fontStyle: FontStyle.italic,
-                color: isDark
-                    ? Colors.white.withOpacity(0.7)
-                    : AppColors.textDark.withOpacity(0.7),
-                height: 1.3,
+          if (horoscope.motto != null && horoscope.motto.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: _palettePrimary.withOpacity(isDark ? 0.08 : 0.04),
+                borderRadius: BorderRadius.circular(12),
               ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              child: Text(
+                '"${horoscope.motto}"',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  color: isDark ? Colors.white60 : AppColors.textMuted,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
+          ],
         ],
       ),
-    ).animate().fadeIn(duration: 500.ms);
+    ).animate().fadeIn(duration: 400.ms);
   }
 
-  Widget _buildMiniMetric(String emoji, int value, Color color) {
+  Widget _buildMetric(IconData icon, String label, int value, bool isDark) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: _palettePrimary.withOpacity(isDark ? 0.08 : 0.04),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 18)),
+            Icon(icon, size: 18, color: _paletteSecondary),
             const SizedBox(height: 4),
             Text(
               '%$value',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: color,
+                color: isDark ? Colors.white : _palettePrimary,
               ),
             ),
           ],
@@ -603,27 +600,32 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
   }
 
-  Widget _buildComingSoonBanner(bool isDark) {
+  // ─── COMING SOON ───
+  Widget _buildComingSoon(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
+        color: isDark ? Colors.white.withOpacity(0.03) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.warning.withOpacity(0.2),
+          color: isDark
+              ? Colors.white.withOpacity(0.06)
+              : _palettePrimary.withOpacity(0.06),
         ),
       ),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.1),
-              shape: BoxShape.circle,
+              color: _palettePrimary.withOpacity(isDark ? 0.12 : 0.06),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Center(
-              child: Text('🚀', style: TextStyle(fontSize: 22)),
+            child: Icon(
+              Icons.rocket_launch_rounded,
+              size: 20,
+              color: isDark ? _paletteTertiary : _palettePrimary,
             ),
           ),
           const SizedBox(width: 14),
@@ -634,16 +636,16 @@ class _ExploreScreenState extends State<ExploreScreen>
                 Text(
                   'Yakında',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: isDark ? Colors.white : AppColors.textDark,
                   ),
                 ),
                 Text(
-                  'Günlük Afirmasyon & Meditasyon',
+                  'Afirmasyon & Meditasyon',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? Colors.white54 : AppColors.textMuted,
+                    color: isDark ? Colors.white38 : AppColors.textMuted,
                   ),
                 ),
               ],
@@ -652,80 +654,33 @@ class _ExploreScreenState extends State<ExploreScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
+              color: _palettePrimary.withOpacity(isDark ? 0.12 : 0.06),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text(
+            child: Text(
               'YAKINDA',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: AppColors.warning,
+                color: isDark ? _paletteTertiary : _palettePrimary,
               ),
             ),
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 500.ms);
+    ).animate().fadeIn(duration: 400.ms);
   }
 }
 
-// === Dial ring painter ===
-class _DialRingPainter extends CustomPainter {
-  final double rotation;
-  final bool isDark;
-
-  _DialRingPainter({required this.rotation, required this.isDark});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-
-    // Outer dashed ring
-    final dashPaint = Paint()
-      ..color = (isDark ? Colors.white : AppColors.accentPurple).withOpacity(0.12)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    const dashCount = 36;
-    for (var i = 0; i < dashCount; i++) {
-      final angle = rotation + (i * 2 * pi / dashCount);
-      final start = Offset(
-        center.dx + cos(angle) * (radius - 8),
-        center.dy + sin(angle) * (radius - 8),
-      );
-      final end = Offset(
-        center.dx + cos(angle) * radius,
-        center.dy + sin(angle) * radius,
-      );
-      canvas.drawLine(start, end, dashPaint);
-    }
-
-    // Inner ring
-    final innerPaint = Paint()
-      ..color = (isDark ? Colors.white : AppColors.accentPurple).withOpacity(0.06)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    canvas.drawCircle(center, radius * 0.7, innerPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DialRingPainter oldDelegate) =>
-      oldDelegate.rotation != rotation;
-}
-
-// === Feature data model ===
+// ─── Feature Data Model ───
 class _FeatureItem {
-  final String emoji;
+  final IconData icon;
   final String label;
-  final Color color;
   final int screenIndex;
 
   const _FeatureItem({
-    required this.emoji,
+    required this.icon,
     required this.label,
-    required this.color,
     required this.screenIndex,
   });
 }

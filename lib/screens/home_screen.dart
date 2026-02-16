@@ -93,8 +93,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: _pageController,
                 onPageChanged: _onPageChanged,
                 children: const [
-                  DailyScreen(),
                   ExploreScreen(),
+                  DailyScreen(),
                   MatchScreen(),
                   StatisticsScreen(showAppBar: false),
                   SettingsScreen(),
@@ -244,15 +244,15 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(0, Icons.home_outlined, Icons.home,
+          _buildNavItem(0, Icons.grid_view_outlined, Icons.grid_view_rounded,
               AppStrings.navHome),
-          _buildNavItem(1, Icons.explore_outlined, Icons.explore,
-              AppStrings.navExplore),
+          _buildNavItem(1, Icons.wb_sunny_outlined, Icons.wb_sunny_rounded,
+              AppStrings.navDaily),
           _buildNavItem(
-              2, Icons.favorite_border, Icons.favorite, AppStrings.navMatch),
-          _buildNavItem(3, Icons.bar_chart_outlined, Icons.bar_chart,
+              2, Icons.favorite_outline_rounded, Icons.favorite_rounded, AppStrings.navMatch),
+          _buildNavItem(3, Icons.insights_outlined, Icons.insights_rounded,
               AppStrings.navStatistics),
-          _buildNavItem(4, Icons.person_outline, Icons.person,
+          _buildNavItem(4, Icons.person_outline_rounded, Icons.person_rounded,
               AppStrings.navProfile),
         ],
       ),
