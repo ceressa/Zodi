@@ -1,9 +1,14 @@
+import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'dart:math' as math;
 import '../providers/auth_provider.dart';
 import '../services/ad_service.dart';
+import '../services/astronomy_service.dart';
+import '../services/gemini_service.dart';
+import '../services/storage_service.dart';
 import '../constants/colors.dart';
 import 'premium_screen.dart';
 
@@ -14,58 +19,149 @@ class BirthChartScreen extends StatefulWidget {
   State<BirthChartScreen> createState() => _BirthChartScreenState();
 }
 
-class _BirthChartScreenState extends State<BirthChartScreen> {
+class _BirthChartScreenState extends State<BirthChartScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   final TextEditingController _cityController = TextEditingController();
-  bool _showChart = false;
   final AdService _adService = AdService();
-  bool _chartUnlockedByAd = false;
+  final StorageService _storageService = StorageService();
+  final GeminiService _geminiService = GeminiService();
 
-  final List<Map<String, dynamic>> _planets = [
-    {
-      'name': 'Güneş',
-      'sign': '♋ Yengeç',
-      'house': '10. Ev',
-      'colors': [Color(0xFFFBBF24), Color(0xFFF59E0B)]
-    },
-    {
-      'name': 'Ay',
-      'sign': '♉ Boğa',
-      'house': '7. Ev',
-      'colors': [Color(0xFFBFDBFE), Color(0xFF93C5FD)]
-    },
-    {
-      'name': 'Merkür',
-      'sign': '♊ İkizler',
-      'house': '9. Ev',
-      'colors': [Color(0xFF34D399), Color(0xFF10B981)]
-    },
-    {
-      'name': 'Venüs',
-      'sign': '♌ Aslan',
-      'house': '11. Ev',
-      'colors': [Color(0xFFF472B6), Color(0xFFBE185D)]
-    },
-    {
-      'name': 'Mars',
-      'sign': '♈ Koç',
-      'house': '6. Ev',
-      'colors': [Color(0xFFFB7185), Color(0xFFE11D48)]
-    },
-    {
-      'name': 'Jüpiter',
-      'sign': '♐ Yay',
-      'house': '2. Ev',
-      'colors': [Color(0xFFA78BFA), Color(0xFF7C3AED)]
-    },
+  // State
+  bool _showChart = false;
+  bool _isLoading = false;
+  bool _chartUnlockedByAd = false;
+  bool _isOtherPersonMode = false;
+  bool _hasPrefilledProfileData = false;
+  bool _isBirthDateLocked = false;
+  String? _error;
+
+  // Calculated data
+  List<Map<String, dynamic>> _planets = [];
+  Map<String, dynamic>? _ascendant;
+  String? _interpretation;
+
+  // Loading animation
+  late AnimationController _spinController;
+  int _loadingMessageIndex = 0;
+  static const _loadingMessages = [
+    'Gezegenleri konumlandırıyorum...',
+    'Evleri hesaplıyorum...',
+    'Yükselen burcunu arıyorum...',
+    'Kozmik haritanı çiziyorum...',
+    'Yorumunu yazıyorum...',
   ];
+
+  // Cache key
+  static const String _cacheKeyMyChart = 'myBirthChartData';
+  static const String _cacheKeyMyChartInterpretation = 'myBirthChartInterpretation';
+
+  // Turkish cities for autocomplete
+  static const List<String> _turkishCities = [
+    'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Aksaray', 'Amasya',
+    'Ankara', 'Antalya', 'Ardahan', 'Artvin', 'Aydın', 'Balıkesir',
+    'Bartın', 'Batman', 'Bayburt', 'Bilecik', 'Bingöl', 'Bitlis',
+    'Bolu', 'Burdur', 'Bursa', 'Çanakkale', 'Çankırı', 'Çorum',
+    'Denizli', 'Diyarbakır', 'Düzce', 'Edirne', 'Elazığ', 'Erzincan',
+    'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane',
+    'Hakkari', 'Hatay', 'Iğdır', 'Isparta', 'İstanbul', 'İzmir',
+    'Kahramanmaraş', 'Karabük', 'Karaman', 'Kars', 'Kastamonu',
+    'Kayseri', 'Kırıkkale', 'Kırklareli', 'Kırşehir', 'Kilis',
+    'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Mardin',
+    'Mersin', 'Muğla', 'Muş', 'Nevşehir', 'Niğde', 'Ordu',
+    'Osmaniye', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop',
+    'Sivas', 'Şanlıurfa', 'Şırnak', 'Tekirdağ', 'Tokat', 'Trabzon',
+    'Tunceli', 'Uşak', 'Van', 'Yalova', 'Yozgat', 'Zonguldak',
+  ];
+
+  // Planet colors for UI
+  static const _planetColors = {
+    'Güneş': [Color(0xFFFBBF24), Color(0xFFF59E0B)],
+    'Ay': [Color(0xFFBFDBFE), Color(0xFF93C5FD)],
+    'Merkür': [Color(0xFF34D399), Color(0xFF10B981)],
+    'Venüs': [Color(0xFFF472B6), Color(0xFFBE185D)],
+    'Mars': [Color(0xFFFB7185), Color(0xFFE11D48)],
+    'Jüpiter': [Color(0xFFA78BFA), Color(0xFF7C3AED)],
+    'Satürn': [Color(0xFF9CA3AF), Color(0xFF6B7280)],
+    'Uranüs': [Color(0xFF67E8F9), Color(0xFF06B6D4)],
+    'Neptün': [Color(0xFF818CF8), Color(0xFF6366F1)],
+    'Plüton': [Color(0xFFC084FC), Color(0xFF9333EA)],
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _spinController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+    _adService.loadRewardedAd();
+    _tryLoadCachedChart();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_hasPrefilledProfileData) return;
+
+    final profile = Provider.of<AuthProvider>(context).userProfile;
+    if (profile == null) return;
+
+    if (profile.birthDate.year > 1900) {
+      _selectedDate = profile.birthDate;
+      _isBirthDateLocked = true;
+    }
+
+    if (profile.birthTime.trim().isNotEmpty) {
+      final parts = profile.birthTime.trim().split(':');
+      if (parts.length == 2) {
+        _selectedTime = TimeOfDay(
+          hour: int.tryParse(parts[0]) ?? 12,
+          minute: int.tryParse(parts[1]) ?? 0,
+        );
+      }
+    }
+
+    if (profile.birthPlace.trim().isNotEmpty) {
+      _cityController.text = profile.birthPlace.trim();
+    }
+
+    _hasPrefilledProfileData = true;
+  }
 
   @override
   void dispose() {
     _cityController.dispose();
+    _spinController.dispose();
     super.dispose();
+  }
+
+  /// Try to load cached birth chart from SharedPreferences
+  Future<void> _tryLoadCachedChart() async {
+    if (_isOtherPersonMode) return;
+
+    final cachedJson = await _storageService.getString(_cacheKeyMyChart);
+    final cachedInterpretation = await _storageService.getString(_cacheKeyMyChartInterpretation);
+
+    if (cachedJson != null && cachedInterpretation != null) {
+      try {
+        final data = jsonDecode(cachedJson);
+        if (mounted) {
+          setState(() {
+            _planets = List<Map<String, dynamic>>.from(
+              (data['planets'] as List).map((p) => Map<String, dynamic>.from(p)),
+            );
+            _ascendant = Map<String, dynamic>.from(data['ascendant']);
+            _interpretation = cachedInterpretation;
+            _showChart = true;
+          });
+        }
+      } catch (e) {
+        debugPrint('⚠️ Failed to parse cached birth chart: $e');
+      }
+    }
   }
 
   Future<void> _selectDate() async {
@@ -90,7 +186,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
     }
   }
 
-  void _submitForm() async {
+  Future<void> _calculateChart() async {
     if (!(_formKey.currentState!.validate() &&
         _selectedDate != null &&
         _selectedTime != null)) {
@@ -98,16 +194,95 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
     }
 
     final authProvider = context.read<AuthProvider>();
-    if (authProvider.isPremium || _chartUnlockedByAd) {
-      setState(() => _showChart = true);
-      return;
+
+    // For other person mode, require premium or ad
+    if (_isOtherPersonMode) {
+      if (!authProvider.isPremium && !_chartUnlockedByAd) {
+        _showOtherPersonGateDialog();
+        return;
+      }
     }
 
-    // Show gate dialog
-    _showChartGateDialog();
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _loadingMessageIndex = 0;
+    });
+
+    // Start cycling loading messages
+    _cycleLoadingMessages();
+
+    try {
+      final birthTimeStr =
+          '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}';
+
+      // Step 1: Calculate planet positions with Swiss Ephemeris
+      await AstronomyService.initialize();
+      final chartData = await AstronomyService.calculateBirthChart(
+        birthDate: _selectedDate!,
+        birthTime: birthTimeStr,
+        birthPlace: _cityController.text,
+      );
+
+      final planets = List<Map<String, dynamic>>.from(
+        (chartData['planets'] as List).map((p) => Map<String, dynamic>.from(p as Map)),
+      );
+      final ascendant = Map<String, dynamic>.from(chartData['ascendant'] as Map);
+
+      // Step 2: Generate interpretation with Gemini
+      final birthDateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(_selectedDate!);
+      final interpretation = await _geminiService.generateBirthChartInterpretation(
+        planets: planets,
+        ascendant: ascendant,
+        birthDateStr: birthDateStr,
+        birthTimeStr: birthTimeStr,
+        birthPlace: _cityController.text,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _planets = planets;
+        _ascendant = ascendant;
+        _interpretation = interpretation;
+        _showChart = true;
+        _isLoading = false;
+      });
+
+      // Cache if it's user's own chart
+      if (!_isOtherPersonMode) {
+        await _storageService.saveString(
+          _cacheKeyMyChart,
+          jsonEncode(chartData),
+        );
+        await _storageService.saveString(
+          _cacheKeyMyChartInterpretation,
+          interpretation,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Doğum haritası hesaplanırken bir hata oluştu. Lütfen tekrar deneyin.';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
-  void _showChartGateDialog() {
+  void _cycleLoadingMessages() {
+    Future.delayed(const Duration(seconds: 2), () {
+      if (_isLoading && mounted) {
+        setState(() {
+          _loadingMessageIndex =
+              (_loadingMessageIndex + 1) % _loadingMessages.length;
+        });
+        _cycleLoadingMessages();
+      }
+    });
+  }
+
+  void _showOtherPersonGateDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -137,15 +312,12 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Doğum Haritanı Gör',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              'Başkasının Haritası',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Gezegen konumlarını ve kişisel yorumunu görmek için reklam izle veya premium\'a geç!',
+              'Başka birinin doğum haritasını görmek için reklam izle veya premium\'a geç!',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -160,13 +332,11 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
                 onPressed: () async {
                   Navigator.pop(ctx);
                   final success = await _adService.showRewardedAd(
-                    placement: 'birth_chart_unlock',
+                    placement: 'birth_chart_other_person',
                   );
                   if (success && mounted) {
-                    setState(() {
-                      _chartUnlockedByAd = true;
-                      _showChart = true;
-                    });
+                    setState(() => _chartUnlockedByAd = true);
+                    _calculateChart();
                   }
                 },
                 icon: const Icon(Icons.play_circle_outline),
@@ -212,27 +382,35 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFDDD6FE), Color(0xFFFAE8FF), Color(0xFFFECDD3)],
+            colors: isDark
+                ? [AppColors.bgDark, AppColors.cardDark]
+                : [const Color(0xFFDDD6FE), const Color(0xFFFAE8FF), const Color(0xFFFECDD3)],
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              _buildAppBar(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: _showChart ? _buildChartView() : _buildFormView(),
+          child: _isLoading
+              ? _buildLoadingOverlay()
+              : Column(
+                  children: [
+                    _buildAppBar(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: _showChart
+                            ? _buildChartView()
+                            : _buildFormView(),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -246,8 +424,16 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Color(0xFF6B21A8)),
             onPressed: () {
-              if (_showChart) {
-                setState(() => _showChart = false);
+              if (_showChart && _isOtherPersonMode) {
+                setState(() {
+                  _showChart = false;
+                  _planets = [];
+                  _ascendant = null;
+                  _interpretation = null;
+                });
+              } else if (_showChart) {
+                // For own chart, go back to form but keep cache
+                Navigator.pop(context);
               } else {
                 Navigator.pop(context);
               }
@@ -259,6 +445,8 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
   }
 
   Widget _buildFormView() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Form(
       key: _formKey,
       child: Column(
@@ -281,117 +469,270 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Kozmik kimliğini keşfet 🌟',
+            'Kozmik kimliğini keşfet',
             style: TextStyle(
               fontSize: 16,
               color: Color(0xFF7C3AED),
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 32),
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Doğum Haritası Nedir?',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF7C3AED),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Doğduğun an gökyüzündeki gezegenlerin konumlarını gösteren haritadır. Kişiliğin, yeteneklerin ve yaşam yolun hakkında derin bilgiler verir.',
-                  style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
-                ),
-              ],
-            ),
-          ),
+
+          // Mode toggle
           const SizedBox(height: 24),
+          _buildModeToggle(isDark),
+
+          const SizedBox(height: 24),
+
+          if (_error != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: Colors.red, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (!_isOtherPersonMode) ...[
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: (isDark ? AppColors.cardDark : Colors.white).withOpacity(0.8),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Doğum Haritası Nedir?',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.textPrimary : const Color(0xFF7C3AED),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Doğduğun an gökyüzündeki gezegenlerin konumlarını gösteren haritadır. '
+                    'Swiss Ephemeris ile astronomik olarak hassas hesaplama yapılır.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? AppColors.textSecondary : Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+
           _buildDateField(),
           const SizedBox(height: 16),
           _buildTimeField(),
           const SizedBox(height: 16),
-          _buildCityField(),
+          _buildCityField(isDark),
           const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _submitForm,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7C3AED),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 8,
-              ),
-              child: Builder(
-                builder: (ctx) {
-                  final isPremium = ctx.read<AuthProvider>().isPremium;
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.auto_awesome),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Haritamı Oluştur',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      if (!isPremium && !_chartUnlockedByAd) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.play_circle_outline, color: Colors.white, size: 14),
-                              SizedBox(width: 3),
-                              Text('AD', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
+          _buildSubmitButton(),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFDDD6FE),
+              color: const Color(0xFFDDD6FE).withOpacity(isDark ? 0.2 : 1.0),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFF7C3AED), width: 2),
             ),
-            child: const Text(
-              '💡 Doğum saatinizi bilmiyorsanız, 12:00 yazabilirsiniz',
-              style: TextStyle(fontSize: 14, color: Color(0xFF6B21A8)),
+            child: Text(
+              'Doğum saatinizi bilmiyorsanız, 12:00 yazabilirsiniz',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? AppColors.textSecondary : const Color(0xFF6B21A8),
+              ),
               textAlign: TextAlign.center,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModeToggle(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: (isDark ? AppColors.cardDark : Colors.white).withOpacity(0.8),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isOtherPersonMode = false;
+                  _chartUnlockedByAd = false;
+                  _showChart = false;
+                  _planets = [];
+                  _ascendant = null;
+                  _interpretation = null;
+                });
+                _tryLoadCachedChart();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: !_isOtherPersonMode
+                      ? const Color(0xFF7C3AED).withOpacity(0.2)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  'Benim Haritam',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: !_isOtherPersonMode
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: !_isOtherPersonMode
+                        ? const Color(0xFF7C3AED)
+                        : (isDark ? AppColors.textSecondary : AppColors.textMuted),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isOtherPersonMode = true;
+                  _chartUnlockedByAd = false;
+                  _showChart = false;
+                  _planets = [];
+                  _ascendant = null;
+                  _interpretation = null;
+                  _selectedDate = null;
+                  _selectedTime = null;
+                  _cityController.clear();
+                  _isBirthDateLocked = false;
+                });
+              },
+              child: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: _isOtherPersonMode
+                          ? const Color(0xFF7C3AED).withOpacity(0.2)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Başkasının Haritası',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: _isOtherPersonMode
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: _isOtherPersonMode
+                            ? const Color(0xFF7C3AED)
+                            : (isDark ? AppColors.textSecondary : AppColors.textMuted),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'PRO',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    final authProvider = context.read<AuthProvider>();
+    final showAdBadge = _isOtherPersonMode &&
+        !authProvider.isPremium &&
+        !_chartUnlockedByAd;
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _calculateChart,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF7C3AED),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 8,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.auto_awesome),
+            const SizedBox(width: 8),
+            const Text(
+              'Haritayı Hesapla',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            if (showAdBadge) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_circle_outline, color: Colors.white, size: 14),
+                    SizedBox(width: 3),
+                    Text('AD',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -435,7 +776,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
 
   Widget _buildDateField() {
     return GestureDetector(
-      onTap: _selectDate,
+      onTap: _isBirthDateLocked ? null : _selectDate,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -458,6 +799,10 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
                     : const Color(0xFF7C3AED),
               ),
             ),
+            if (_isBirthDateLocked) ...[
+              const Spacer(),
+              Icon(Icons.lock, color: Colors.grey[400], size: 16),
+            ],
           ],
         ),
       ),
@@ -495,33 +840,107 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
     );
   }
 
-  Widget _buildCityField() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFA78BFA), width: 2),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.location_on, color: Color(0xFF7C3AED)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextFormField(
-              controller: _cityController,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Doğduğun şehir',
-                hintStyle: TextStyle(color: Color(0xFFA78BFA)),
+  Widget _buildCityField(bool isDark) {
+    return Autocomplete<String>(
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.isEmpty) {
+          return const Iterable<String>.empty();
+        }
+        return _turkishCities.where((String city) {
+          return city.toLowerCase().contains(textEditingValue.text.toLowerCase());
+        });
+      },
+      onSelected: (String selection) {
+        _cityController.text = selection;
+      },
+      fieldViewBuilder: (
+        BuildContext context,
+        TextEditingController fieldTextEditingController,
+        FocusNode fieldFocusNode,
+        VoidCallback onFieldSubmitted,
+      ) {
+        fieldTextEditingController.text = _cityController.text;
+        fieldTextEditingController.addListener(() {
+          _cityController.text = fieldTextEditingController.text;
+        });
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFA78BFA), width: 2),
+          ),
+          child: Row(
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 16),
+                child: Icon(Icons.location_on, color: Color(0xFF7C3AED)),
               ),
-              style: const TextStyle(fontSize: 16, color: Color(0xFF7C3AED)),
-              validator: (value) =>
-                  value?.isEmpty ?? true ? 'Lütfen şehir girin' : null,
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: fieldTextEditingController,
+                  focusNode: fieldFocusNode,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: 'Doğduğun şehir',
+                    hintStyle: TextStyle(color: Color(0xFFA78BFA)),
+                  ),
+                  style: const TextStyle(fontSize: 16, color: Color(0xFF7C3AED)),
+                  validator: (value) =>
+                      value?.isEmpty ?? true ? 'Lütfen şehir girin' : null,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      optionsViewBuilder: (
+        BuildContext context,
+        AutocompleteOnSelected<String> onSelected,
+        Iterable<String> options,
+      ) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 200),
+              width: MediaQuery.of(context).size.width - 40,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.cardDark : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (BuildContext context, int index) {
+                  final String option = options.elementAt(index);
+                  return InkWell(
+                    onTap: () => onSelected(option),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_city,
+                              size: 16, color: Color(0xFF7C3AED)),
+                          const SizedBox(width: 12),
+                          Text(option),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -529,9 +948,9 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
     return Column(
       children: [
         const SizedBox(height: 20),
-        const Text(
-          'Senin Doğum Haritam',
-          style: TextStyle(
+        Text(
+          _isOtherPersonMode ? 'Doğum Haritası' : 'Senin Doğum Haritam',
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
             color: Color(0xFF7C3AED),
@@ -541,17 +960,73 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year} - ${_selectedTime!.format(context)} - ${_cityController.text}',
+              '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year} - '
+              '${_selectedTime!.hour}:${_selectedTime!.minute.toString().padLeft(2, '0')} - '
+              '${_cityController.text}',
               style: const TextStyle(fontSize: 14, color: Color(0xFF9333EA)),
             ),
           ),
+
+        // Ascendant badge
+        if (_ascendant != null) ...[
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF7C3AED), Color(0xFF9333EA)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF7C3AED).withOpacity(0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _ascendant!['signSymbol'] ?? '',
+                  style: const TextStyle(fontSize: 32),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Yükselen Burç',
+                      style: TextStyle(fontSize: 12, color: Colors.white70),
+                    ),
+                    Text(
+                      '${_ascendant!['sign']} ${_ascendant!['degree']}°',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ).animate().fadeIn().scale(
+                begin: const Offset(0.8, 0.8),
+                duration: 600.ms,
+                curve: Curves.elasticOut,
+              ),
+        ],
+
         const SizedBox(height: 32),
         _buildZodiacWheel(),
         const SizedBox(height: 32),
+
         const Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            '🪐 Gezegen Konumların',
+            'Gezegen Konumların',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -560,19 +1035,25 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
           ),
         ),
         const SizedBox(height: 16),
+
+        // Planet cards
         ..._planets.asMap().entries.map((entry) {
           final index = entry.key;
           final planet = entry.value;
+          final name = planet['name'] as String;
+          final colors = _planetColors[name] ??
+              [const Color(0xFFA78BFA), const Color(0xFF7C3AED)];
+
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: planet['colors']),
+                gradient: LinearGradient(colors: colors),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: planet['colors'][0].withOpacity(0.3),
+                    color: colors[0].withOpacity(0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
@@ -585,7 +1066,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        planet['name'],
+                        name,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -593,7 +1074,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
                         ),
                       ),
                       Text(
-                        planet['house'],
+                        '${planet['house']}. Ev  •  ${planet['degree']}°',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.white.withOpacity(0.9),
@@ -602,9 +1083,9 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
                     ],
                   ),
                   Text(
-                    planet['sign'],
+                    '${planet['signSymbol']} ${planet['sign']}',
                     style: const TextStyle(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -612,98 +1093,121 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
                 ],
               ),
             )
-                .animate(delay: Duration(milliseconds: index * 100))
+                .animate(delay: Duration(milliseconds: index * 80))
                 .fadeIn()
                 .slideX(begin: -0.2, end: 0),
           );
-        }).toList(),
-        const SizedBox(height: 24),
+        }),
+
+        // Interpretation
+        if (_interpretation != null) ...[
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Zodi\'nin Yorumu',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF7C3AED),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _interpretation!,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+          )
+              .animate()
+              .fadeIn(delay: 800.ms)
+              .slideY(begin: 0.1, end: 0),
+        ],
+
+        // Methodology note
+        const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.8),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+            color: const Color(0xFFDDD6FE).withOpacity(0.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, size: 16, color: Color(0xFF7C3AED)),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Gezegen pozisyonları Swiss Ephemeris ile astronomik olarak hesaplandı. Tropical Zodyak + Placidus ev sistemi.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF6B21A8)),
+                ),
               ),
             ],
           ),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '📖 Kısa Yorum',
+        ),
+
+        const SizedBox(height: 24),
+
+        if (_isOtherPersonMode)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  _showChart = false;
+                  _planets = [];
+                  _ascendant = null;
+                  _interpretation = null;
+                  _selectedDate = null;
+                  _selectedTime = null;
+                  _cityController.clear();
+                });
+              },
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                side: const BorderSide(color: Color(0xFF7C3AED)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text(
+                'Başka Birinin Haritasını Oluştur',
                 style: TextStyle(
-                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF7C3AED),
                 ),
               ),
-              SizedBox(height: 12),
-              Text(
-                'Güneşin Yengeç burcunda olması duygusal derinliğine ve empati yeteneğine işaret eder. Ay\'ın Boğa\'da olması seni sakinlik arayışında ve güvenlik odaklı yapar. Yükselen burcun Aslan ise karizmatik ve yaratıcı bir kişiliğe sahip olduğunu gösterir.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                  height: 1.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.download),
-                SizedBox(width: 8),
-                Text('Haritayı İndir', style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () => setState(() => _showChart = false),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: const BorderSide(color: Color(0xFF7C3AED)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: const Text(
-              'Yeni Harita Oluştur',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF7C3AED),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
 
   Widget _buildZodiacWheel() {
-    final zodiacSigns = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
+    final zodiacSigns = [
+      '♈', '♉', '♊', '♋', '♌', '♍',
+      '♎', '♏', '♐', '♑', '♒', '♓',
+    ];
+
     return SizedBox(
       width: 280,
       height: 280,
@@ -737,7 +1241,13 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
               ),
             ),
           ),
-          const Text('🌟', style: TextStyle(fontSize: 48)),
+          if (_ascendant != null)
+            Text(
+              _ascendant!['signSymbol'] ?? '✨',
+              style: const TextStyle(fontSize: 48),
+            )
+          else
+            const Text('✨', style: TextStyle(fontSize: 48)),
           ...zodiacSigns.asMap().entries.map((entry) {
             final index = entry.key;
             final sign = entry.value;
@@ -753,9 +1263,122 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
                 style: const TextStyle(fontSize: 24, color: Color(0xFF7C3AED)),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
-    ).animate().scale(begin: const Offset(0, 0), duration: 1.seconds, curve: Curves.elasticOut);
+    ).animate().scale(
+        begin: const Offset(0, 0),
+        duration: 1.seconds,
+        curve: Curves.elasticOut);
+  }
+
+  Widget _buildLoadingOverlay() {
+    return AnimatedBuilder(
+      animation: _spinController,
+      builder: (context, child) {
+        final zodiacSymbols = [
+          '♈', '♉', '♊', '♋', '♌', '♍',
+          '♎', '♏', '♐', '♑', '♒', '♓',
+        ];
+
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 250,
+                height: 250,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    ...List.generate(12, (index) {
+                      final angle =
+                          (index * 30.0 + _spinController.value * 360) *
+                              math.pi /
+                              180;
+                      const radius = 100.0;
+                      return Positioned(
+                        left: 125 + radius * math.cos(angle) - 14,
+                        top: 125 + radius * math.sin(angle) - 14,
+                        child: Text(
+                          zodiacSymbols[index],
+                          style: TextStyle(
+                            fontSize: 28,
+                            color: const Color(0xFF7C3AED).withOpacity(
+                              0.4 +
+                                  0.6 *
+                                      ((math.sin(angle +
+                                                  _spinController.value *
+                                                      math.pi *
+                                                      2) +
+                                              1) /
+                                          2),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(0xFF7C3AED).withOpacity(0.6),
+                            const Color(0xFF7C3AED).withOpacity(0.0),
+                          ],
+                        ),
+                      ),
+                      child: const Center(
+                        child: Text('🪐', style: TextStyle(fontSize: 36)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 500),
+                child: Text(
+                  _loadingMessages[_loadingMessageIndex],
+                  key: ValueKey(_loadingMessageIndex),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF7C3AED),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(3, (index) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF7C3AED).withOpacity(
+                        0.3 +
+                            0.7 *
+                                ((math.sin(_spinController.value *
+                                            math.pi *
+                                            2 +
+                                        index * 1.0) +
+                                    1) /
+                                2),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

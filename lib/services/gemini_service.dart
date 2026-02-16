@@ -326,6 +326,78 @@ Yanıtı şu JSON formatında ver:
     }
   }
 
+  /// Doğum haritası yorumu (Swiss Ephemeris ile hesaplanmış gezegen pozisyonlarını yorumlar)
+  Future<String> generateBirthChartInterpretation({
+    required List<Map<String, dynamic>> planets,
+    required Map<String, dynamic> ascendant,
+    required String birthDateStr,
+    required String birthTimeStr,
+    required String birthPlace,
+  }) async {
+    final systemPrompt = await _getPersonalizedPrompt();
+
+    final planetLines = planets.map((p) {
+      final name = p['name'] ?? '';
+      final sign = p['sign'] ?? '';
+      final degree = p['degree'] ?? '';
+      final house = p['house'];
+      return '- $name: $sign $degree° (${house}. Ev)';
+    }).join('\n');
+
+    final ascSign = ascendant['sign'] ?? '';
+    final ascDegree = ascendant['degree'] ?? '';
+
+    final prompt = '''
+$systemPrompt
+
+DOĞUM HARİTASI YORUMU
+
+Doğum Bilgileri:
+- Doğum Tarihi: $birthDateStr
+- Doğum Saati: $birthTimeStr
+- Doğum Yeri: $birthPlace
+
+Yükselen Burç (Ascendant): $ascSign $ascDegree°
+
+Gezegen Pozisyonları (Swiss Ephemeris ile astronomik olarak hesaplanmıştır):
+$planetLines
+
+ÖNEMLİ: Yukarıdaki tüm gezegen pozisyonları ve yükselen burç, Swiss Ephemeris kütüphanesi tarafından astronomik olarak hassas şekilde hesaplanmıştır. Senin görevin bu pozisyonları YENIDEN HESAPLAMAK DEĞİL, sadece astrolojik olarak YORUMLAMAK.
+
+Zodi olarak bu doğum haritasını analiz et. 3-4 paragraf halinde kişilik analizi yap:
+1. Genel kişilik profili - Güneş, Ay ve Yükselen burcun birleşimi
+2. Duygusal dünya ve iç motivasyonlar - Ay ve Venüs pozisyonları
+3. İletişim tarzı ve zihinsel yapı - Merkür ve Mars etkileri
+4. Yaşam yolculuğu ve potansiyel - dış gezegenlerin etkisi
+
+Samimi, dürüst ve Zodi tarzında yaz. Düz metin olarak yanıtla, JSON formatı kullanma.
+''';
+
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final text = response.text ?? '';
+
+      await _historyService.addInteraction(
+        InteractionHistory(
+          timestamp: DateTime.now(),
+          interactionType: 'birth_chart',
+          content: text.length > 200 ? text.substring(0, 200) : text,
+          context: {
+            'birthDate': birthDateStr,
+            'birthTime': birthTimeStr,
+            'birthPlace': birthPlace,
+            'ascendant': '$ascSign $ascDegree°',
+          },
+        ),
+      );
+
+      return text.trim();
+    } catch (e) {
+      debugPrint('❌ Birth chart interpretation error: $e');
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> interpretDream(String dreamText) async {
     final systemPrompt = await _getPersonalizedPrompt();
     

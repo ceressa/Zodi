@@ -130,6 +130,157 @@ class AstronomyService {
     }
   }
 
+  /// Calculate full birth chart with all planet positions and house placements
+  static Future<Map<String, dynamic>> calculateBirthChart({
+    required DateTime birthDate,
+    required String birthTime, // HH:mm format
+    required String birthPlace,
+  }) async {
+    if (!_initialized) {
+      await initialize();
+    }
+
+    try {
+      // Parse birth time
+      final timeParts = birthTime.split(':');
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+
+      // Convert local birth time (Turkey) to UTC for Swiss Ephemeris
+      final istanbulLocation = tz.getLocation('Europe/Istanbul');
+      final birthDateTimeLocal = tz.TZDateTime(
+        istanbulLocation,
+        birthDate.year,
+        birthDate.month,
+        birthDate.day,
+        hour,
+        minute,
+      );
+      final birthDateTimeUtc = birthDateTimeLocal.toUtc();
+
+      // Get coordinates for birth place
+      final coords = _getCoordinates(birthPlace);
+
+      // Calculate Julian day
+      final julianDay = Sweph.swe_julday(
+        birthDateTimeUtc.year,
+        birthDateTimeUtc.month,
+        birthDateTimeUtc.day,
+        birthDateTimeUtc.hour +
+            birthDateTimeUtc.minute / 60.0 +
+            birthDateTimeUtc.second / 3600.0,
+        CalendarType.SE_GREG_CAL,
+      );
+
+      // Calculate houses (Placidus system)
+      final houses = Sweph.swe_houses(
+        julianDay,
+        coords['latitude']!,
+        coords['longitude']!,
+        Hsys.P, // Placidus house system
+      );
+
+      // House cusps: houses.cusps[1] = 1st house cusp (ascendant), ..., houses.cusps[12] = 12th house cusp
+      final List<double> houseCusps = List.generate(12, (i) => houses.cusps[i + 1]);
+
+      // Ascendant
+      final ascendantDegree = houses.cusps[1];
+      final ascSign = _degreeToZodiacSignTurkish(ascendantDegree);
+      final ascSymbol = _degreeToZodiacSymbol(ascendantDegree);
+      final ascDegreeInSign = ascendantDegree % 30;
+
+      // Planet definitions: HeavenlyBody constant, Turkish name
+      final planetDefs = [
+        {'body': HeavenlyBody.SE_SUN, 'name': 'Güneş'},
+        {'body': HeavenlyBody.SE_MOON, 'name': 'Ay'},
+        {'body': HeavenlyBody.SE_MERCURY, 'name': 'Merkür'},
+        {'body': HeavenlyBody.SE_VENUS, 'name': 'Venüs'},
+        {'body': HeavenlyBody.SE_MARS, 'name': 'Mars'},
+        {'body': HeavenlyBody.SE_JUPITER, 'name': 'Jüpiter'},
+        {'body': HeavenlyBody.SE_SATURN, 'name': 'Satürn'},
+        {'body': HeavenlyBody.SE_URANUS, 'name': 'Uranüs'},
+        {'body': HeavenlyBody.SE_NEPTUNE, 'name': 'Neptün'},
+        {'body': HeavenlyBody.SE_PLUTO, 'name': 'Plüton'},
+      ];
+
+      // Calculate each planet's position
+      final List<Map<String, dynamic>> planets = [];
+      for (final planetDef in planetDefs) {
+        final body = planetDef['body'] as HeavenlyBody;
+        final name = planetDef['name'] as String;
+
+        final calc = Sweph.swe_calc_ut(
+          julianDay,
+          body,
+          SwephFlag.SEFLG_SWIEPH,
+        );
+        final longitude = calc.longitude;
+        final sign = _degreeToZodiacSignTurkish(longitude);
+        final symbol = _degreeToZodiacSymbol(longitude);
+        final degreeInSign = double.parse((longitude % 30).toStringAsFixed(1));
+        final house = _determineHouse(longitude, houseCusps);
+
+        planets.add({
+          'name': name,
+          'sign': sign,
+          'signSymbol': symbol,
+          'degree': degreeInSign,
+          'house': house,
+          'longitude': double.parse(longitude.toStringAsFixed(4)),
+        });
+      }
+
+      debugPrint('🌌 Birth chart calculated for $birthPlace on $birthDate at $birthTime');
+      for (final p in planets) {
+        debugPrint('  ${p['name']}: ${p['sign']} ${p['signSymbol']} ${p['degree']}° (Ev ${p['house']})');
+      }
+
+      return {
+        'planets': planets,
+        'houses': houseCusps,
+        'ascendant': {
+          'sign': ascSign,
+          'signSymbol': ascSymbol,
+          'degree': double.parse(ascDegreeInSign.toStringAsFixed(1)),
+        },
+      };
+    } catch (e) {
+      debugPrint('❌ Error calculating birth chart: $e');
+      rethrow;
+    }
+  }
+
+  /// Determine which house (1-12) a planet falls in based on house cusps
+  static int _determineHouse(double planetLongitude, List<double> houseCusps) {
+    final planet = planetLongitude % 360;
+    for (int i = 0; i < 12; i++) {
+      final cuspStart = houseCusps[i] % 360;
+      final cuspEnd = houseCusps[(i + 1) % 12] % 360;
+
+      if (cuspStart < cuspEnd) {
+        // Normal case: cusp doesn't cross 0°
+        if (planet >= cuspStart && planet < cuspEnd) {
+          return i + 1;
+        }
+      } else {
+        // Cusp crosses 0° Aries (e.g., 350° to 20°)
+        if (planet >= cuspStart || planet < cuspEnd) {
+          return i + 1;
+        }
+      }
+    }
+    // Fallback: should not happen, but return house 1
+    return 1;
+  }
+
+  /// Convert ecliptic longitude to zodiac symbol
+  static String _degreeToZodiacSymbol(double degree) {
+    final normalizedDegree = degree % 360;
+    final signIndex = (normalizedDegree / 30).floor();
+    const symbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
+    return symbols[signIndex % 12];
+  }
+
   /// Verilen tarih için ay fazını hesapla (Swiss Ephemeris ile)
   static Future<MoonPhase> getMoonPhase(DateTime date) async {
     if (!_initialized) {
