@@ -73,7 +73,7 @@ class ExploreScreen extends StatelessWidget {
           ],
 
           // ─── FEATURE SECTIONS ───
-          const _SectionTitle(emoji: '🔮', title: 'Fallar & Kehanetler'),
+          const _SectionTitle(emoji: '🔮', title: 'Fallar'),
           const SizedBox(height: 12),
           _FeatureRow(
             features: [
@@ -194,7 +194,7 @@ class ExploreScreen extends StatelessWidget {
               // Coming Soon placeholder
               Expanded(
                 child: Container(
-                  height: 100,
+                  height: 110,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -591,7 +591,7 @@ class _FeatureTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 100,
+      height: 110,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
