@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:confetti/confetti.dart';
 import '../providers/auth_provider.dart';
 import '../services/firebase_service.dart';
+import '../services/activity_log_service.dart';
 import '../models/zodiac_sign.dart';
 import '../constants/colors.dart';
 import 'welcome_screen.dart';
@@ -1122,6 +1123,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 .doc(FirebaseService().currentUser!.uid)
                 .update({'birthDate': _birthDate!.toIso8601String()});
           }
+
+          // Yeni kayıt logu
+          await ActivityLogService().logSignup(method: 'google');
+
           if (mounted) {
             setState(() => _isLoading = false);
             Navigator.of(context).pushReplacement(
@@ -1216,6 +1221,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           await context.read<AuthProvider>().selectZodiac(zodiac);
         } catch (_) {}
       }
+
+      // Giriş logu (geri dönen kullanıcı)
+      await ActivityLogService().logLogin(method: 'google');
 
       if (mounted) {
         setState(() => _isLoading = false);

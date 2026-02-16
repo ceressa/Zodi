@@ -10,6 +10,7 @@ import '../services/ad_service.dart';
 import 'compatibility_report_screen.dart';
 import 'premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
+import '../services/activity_log_service.dart';
 
 class MatchScreen extends StatefulWidget {
   const MatchScreen({super.key});
@@ -21,6 +22,7 @@ class MatchScreen extends StatefulWidget {
 class _MatchScreenState extends State<MatchScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   final AdService _adService = AdService();
+  final ActivityLogService _activityLog = ActivityLogService();
   ZodiacSign? _selectedPartner;
   bool _reportUnlockedByAd = false;
 
@@ -33,7 +35,9 @@ class _MatchScreenState extends State<MatchScreen> {
         authProvider.selectedZodiac!,
         _selectedPartner!,
       );
-      
+
+      await _activityLog.logCompatibility(authProvider.selectedZodiac!.name, _selectedPartner!.name);
+
       // Zengin profil güncellemeleri
       if (_firebaseService.isAuthenticated) {
         // 1. Özellik kullanımını artır

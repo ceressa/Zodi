@@ -10,6 +10,7 @@ import '../widgets/metric_card.dart';
 import '../services/ad_service.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
+import '../services/activity_log_service.dart';
 
 class WeeklyMonthlyScreen extends StatefulWidget {
   const WeeklyMonthlyScreen({super.key});
@@ -22,6 +23,7 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final AdService _adService = AdService();
+  final ActivityLogService _activityLog = ActivityLogService();
 
   @override
   void initState() {
@@ -57,8 +59,10 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
     if (authProvider.selectedZodiac != null) {
       if (_tabController.index == 0) {
         await horoscopeProvider.fetchWeeklyHoroscope(authProvider.selectedZodiac!);
+        await _activityLog.logWeeklyHoroscope(authProvider.selectedZodiac!.name);
       } else {
         await horoscopeProvider.fetchMonthlyHoroscope(authProvider.selectedZodiac!);
+        await _activityLog.logMonthlyHoroscope(authProvider.selectedZodiac!.name);
       }
     }
   }

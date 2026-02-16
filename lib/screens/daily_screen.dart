@@ -17,6 +17,7 @@ import '../services/firebase_service.dart';
 import '../services/storage_service.dart';
 import '../services/share_service.dart';
 import '../services/usage_limit_service.dart';
+import '../services/activity_log_service.dart';
 import '../widgets/share_cards/daily_share_card.dart';
 import '../widgets/limit_reached_dialog.dart';
 
@@ -33,6 +34,7 @@ class _DailyScreenState extends State<DailyScreen>
   final FirebaseService _firebaseService = FirebaseService();
   final StorageService _storageService = StorageService();
   final UsageLimitService _usageLimitService = UsageLimitService();
+  final ActivityLogService _activityLog = ActivityLogService();
   late ConfettiController _confettiController;
   late AnimationController _pulseController;
   bool _showTomorrowPreview = false;
@@ -121,6 +123,7 @@ class _DailyScreenState extends State<DailyScreen>
       final readStartTime = DateTime.now();
 
       await horoscopeProvider.fetchDailyHoroscope(authProvider.selectedZodiac!);
+      await _activityLog.logDailyHoroscope(authProvider.selectedZodiac!.name);
       _confettiController.play();
 
       // Premium değilse sayacı artır
