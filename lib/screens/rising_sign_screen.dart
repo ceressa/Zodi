@@ -9,6 +9,7 @@ import '../constants/colors.dart';
 import '../widgets/animated_card.dart';
 import '../services/usage_limit_service.dart';
 import '../services/ad_service.dart';
+import '../services/activity_log_service.dart';
 import '../widgets/limit_reached_dialog.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
@@ -24,6 +25,7 @@ class _RisingSignScreenState extends State<RisingSignScreen> with TickerProvider
   final _formKey = GlobalKey<FormState>();
   final UsageLimitService _usageLimitService = UsageLimitService();
   final AdService _adService = AdService();
+  final ActivityLogService _activityLog = ActivityLogService();
   DateTime? _birthDate;
   final _birthTimeController = TextEditingController();
   final _birthPlaceController = TextEditingController();
@@ -267,6 +269,11 @@ class _RisingSignScreenState extends State<RisingSignScreen> with TickerProvider
     if (horoscopeProvider.risingSignResult != null && mounted) {
       _messageController.stop();
       _confettiController.play();
+      
+      // Log activity
+      await _activityLog.logRisingSign(
+        horoscopeProvider.risingSignResult!.risingSign.name,
+      );
     }
   }
 

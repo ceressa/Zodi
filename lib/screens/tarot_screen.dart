@@ -8,6 +8,7 @@ import '../services/gemini_service.dart';
 import '../services/firebase_service.dart';
 import '../services/ad_service.dart';
 import '../services/share_service.dart';
+import '../services/activity_log_service.dart';
 import '../models/tarot_card.dart';
 import '../widgets/tarot_card_widget.dart';
 import '../widgets/candy_loading.dart';
@@ -27,6 +28,7 @@ class _TarotScreenState extends State<TarotScreen> {
   late TarotService _tarotService;
   final FirebaseService _firebaseService = FirebaseService();
   final AdService _adService = AdService();
+  final ActivityLogService _activityLog = ActivityLogService();
   TarotReading? _dailyReading;
   TarotReading? _threeCardReading;
   bool _isLoadingDaily = false;
@@ -84,6 +86,14 @@ class _TarotScreenState extends State<TarotScreen> {
           _dailyReading = reading;
           _isLoadingDaily = false;
         });
+        
+        // Log activity
+        if (reading.cards.isNotEmpty) {
+          await _activityLog.logTarotReading(
+            reading.cards.first.name,
+            reading.cards.first.number,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -188,6 +198,14 @@ class _TarotScreenState extends State<TarotScreen> {
           _threeCardReading = reading;
           _isLoadingThree = false;
         });
+        
+        // Log activity (log first card as representative)
+        if (reading.cards.isNotEmpty) {
+          await _activityLog.logTarotReading(
+            reading.cards.first.name,
+            reading.cards.first.number,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

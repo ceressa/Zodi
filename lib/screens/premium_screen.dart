@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/auth_provider.dart';
 import '../constants/colors.dart';
+import '../services/activity_log_service.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -17,6 +18,7 @@ class _PremiumScreenState extends State<PremiumScreen>
   String _selectedPlan = 'yearly';
   late final AnimationController _shimmerController;
   late final AnimationController _pulseController;
+  final ActivityLogService _activityLog = ActivityLogService();
 
   // Plan bilgileri: eski fiyat (üstü çizili) + yeni fiyat (indirimli)
   static const List<Map<String, dynamic>> _plans = [
@@ -837,6 +839,14 @@ class _PremiumScreenState extends State<PremiumScreen>
                         await context.read<AuthProvider>().upgradeToPremium(
                           subscriptionType: _selectedPlan,
                         );
+                        
+                        // Log premium purchase activity
+                        final planPrice = plan['price'] as String;
+                        final priceValue = double.tryParse(
+                          planPrice.replaceAll('₺', '').replaceAll(',', '.').trim()
+                        ) ?? 0.0;
+                        await _activityLog.logPremiumPurchase(priceValue);
+                        
                         if (context.mounted) {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(

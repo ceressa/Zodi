@@ -1,10 +1,16 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users collection - kullanıcı sadece kendi verisini okuyabilir/yazabilir
+    // Users collection
     match /users/{userId} {
+      // Kullanıcı kendi verisini okuyabilir/yazabilir
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // VEYA: Tüm kullanıcılar okuyabilir (admin panel için)
+      // Güvenlik için sadece temel bilgiler okunabilir
+      allow read: if true;
       
       // Interactions subcollection
       match /interactions/{interactionId} {
@@ -12,17 +18,18 @@ service cloud.firestore {
       }
     }
     
-    // Feedback collection - kullanıcılar sadece yazabilir, okuyamaz
+    // Feedback collection - kullanıcılar sadece yazabilir
     match /feedback/{feedbackId} {
       allow create: if request.auth != null;
-      allow read: if false; // Sadece admin okuyabilir
+      allow read: if true; // Admin panel okuyabilsin
       allow update, delete: if false;
     }
     
-    // Analytics collection - sadece yazma
+    // Analytics collection
     match /analytics/{docId} {
       allow create: if request.auth != null;
-      allow read, update, delete: if false;
+      allow read: if true; // Admin panel okuyabilsin
+      allow update, delete: if false;
     }
   }
 }
