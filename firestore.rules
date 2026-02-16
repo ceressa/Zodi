@@ -31,5 +31,12 @@ service cloud.firestore {
       allow read: if true; // Admin panel okuyabilsin
       allow update, delete: if false;
     }
+
+    // Activity logs collection — uygulama yazar, admin panel okur
+    match /activity_logs/{logId} {
+      allow create: if request.auth != null;
+      allow read: if true;
+      allow update, delete: if false;
+    }
   }
 }
