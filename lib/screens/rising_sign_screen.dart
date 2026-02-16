@@ -11,6 +11,7 @@ import '../services/usage_limit_service.dart';
 import '../services/ad_service.dart';
 import '../widgets/limit_reached_dialog.dart';
 import '../screens/premium_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class RisingSignScreen extends StatefulWidget {
   const RisingSignScreen({super.key});
@@ -1065,7 +1066,7 @@ class _RisingSignScreenState extends State<RisingSignScreen> with TickerProvider
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                        CosmicBottomSheetRoute(page: const PremiumScreen()),
                       );
                     },
                     style: ElevatedButton.styleFrom(

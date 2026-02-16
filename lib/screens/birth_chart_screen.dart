@@ -11,6 +11,7 @@ import '../services/gemini_service.dart';
 import '../services/storage_service.dart';
 import '../constants/colors.dart';
 import 'premium_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class BirthChartScreen extends StatefulWidget {
   const BirthChartScreen({super.key});
@@ -359,7 +360,7 @@ class _BirthChartScreenState extends State<BirthChartScreen>
                   Navigator.pop(ctx);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                    CosmicBottomSheetRoute(page: const PremiumScreen()),
                   );
                 },
                 icon: const Icon(Icons.diamond, size: 18),

@@ -8,6 +8,7 @@ import '../widgets/animated_card.dart';
 import '../services/firebase_service.dart';
 import '../services/ad_service.dart';
 import '../screens/premium_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class DreamScreen extends StatefulWidget {
   const DreamScreen({super.key});
@@ -89,7 +90,7 @@ class _DreamScreenState extends State<DreamScreen> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                CosmicBottomSheetRoute(page: const PremiumScreen()),
               );
             },
             child: const Text('Premium\'a Geç'),

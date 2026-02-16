@@ -9,6 +9,7 @@ import '../widgets/shimmer_loading.dart';
 import '../widgets/metric_card.dart';
 import '../services/ad_service.dart';
 import '../screens/premium_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class WeeklyMonthlyScreen extends StatefulWidget {
   const WeeklyMonthlyScreen({super.key});
@@ -78,7 +79,7 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                CosmicBottomSheetRoute(page: const PremiumScreen()),
               );
             },
             child: const Text('Premium\'a Geç'),

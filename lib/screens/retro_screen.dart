@@ -8,6 +8,8 @@ import '../providers/auth_provider.dart';
 import '../services/ad_service.dart';
 import '../services/usage_limit_service.dart';
 import '../widgets/limit_reached_dialog.dart';
+import '../theme/cosmic_page_route.dart';
+import 'premium_screen.dart';
 
 class RetroScreen extends StatefulWidget {
   const RetroScreen({super.key});
@@ -742,7 +744,7 @@ class _RetroScreenState extends State<RetroScreen>
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                Navigator.pushNamed(context, '/premium');
+                Navigator.push(context, CosmicBottomSheetRoute(page: const PremiumScreen()));
               },
               icon: const Icon(Icons.diamond, size: 20),
               label: const Text('Premium ile Sınırsız Aç'),

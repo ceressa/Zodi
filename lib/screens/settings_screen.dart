@@ -12,6 +12,7 @@ import '../models/user_profile.dart';
 import 'premium_screen.dart';
 import 'onboarding_screen.dart';
 import 'personalization_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -258,7 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                  CosmicBottomSheetRoute(page: const PremiumScreen()),
                 );
               },
             ),
@@ -273,7 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               await authProvider.logout();
               if (context.mounted) {
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                  CosmicFadeRoute(page: const OnboardingScreen()),
                 );
               }
             },
@@ -416,7 +417,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       onTap: () async {
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const PersonalizationScreen()),
+          CosmicPageRoute(page: const PersonalizationScreen()),
         );
         // Geri dönünce profili yeniden yükle
         _loadProfile();

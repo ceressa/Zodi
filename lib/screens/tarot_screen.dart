@@ -13,6 +13,8 @@ import '../widgets/tarot_card_widget.dart';
 import '../widgets/candy_loading.dart';
 import '../widgets/premium_lock_overlay.dart';
 import '../widgets/share_cards/tarot_share_card.dart';
+import '../theme/cosmic_page_route.dart';
+import 'premium_screen.dart';
 
 class TarotScreen extends StatefulWidget {
   const TarotScreen({super.key});
@@ -214,7 +216,7 @@ class _TarotScreenState extends State<TarotScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pushNamed(context, '/premium');
+              Navigator.push(context, CosmicBottomSheetRoute(page: const PremiumScreen()));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.accentPurple,
@@ -567,7 +569,7 @@ class _TarotScreenState extends State<TarotScreen> {
         title: 'Üç Kart Yayılımı',
         description:
             'Geçmiş, şimdi ve gelecek için üç kart çekerek daha detaylı bir okuma yapın.',
-        onUnlock: () => Navigator.pushNamed(context, '/premium'),
+        onUnlock: () => Navigator.push(context, CosmicBottomSheetRoute(page: const PremiumScreen())),
         onWatchAd: _unlockThreeCardWithAd,
       );
     }

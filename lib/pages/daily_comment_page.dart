@@ -7,6 +7,7 @@ import '../providers/horoscope_provider.dart';
 import '../screens/daily_screen.dart';
 import '../screens/analysis_screen.dart';
 import '../screens/match_screen.dart';
+import '../theme/cosmic_page_route.dart';
 import 'package:intl/intl.dart';
 
 class DailyCommentPage extends StatelessWidget {
@@ -162,7 +163,7 @@ class DailyCommentPage extends StatelessWidget {
                 if (context.mounted) {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const DailyScreen()),
+                    CosmicPageRoute(page: const DailyScreen()),
                   );
                 }
               }

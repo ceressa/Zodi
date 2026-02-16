@@ -9,6 +9,7 @@ import '../services/firebase_service.dart';
 import '../services/ad_service.dart';
 import 'compatibility_report_screen.dart';
 import 'premium_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class MatchScreen extends StatefulWidget {
   const MatchScreen({super.key});
@@ -67,8 +68,8 @@ class _MatchScreenState extends State<MatchScreen> {
     if (authProvider.isPremium || _reportUnlockedByAd) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => CompatibilityReportScreen(
+        CosmicPageRoute(
+          page: CompatibilityReportScreen(
             userSign: authProvider.selectedZodiac!,
             partnerSign: _selectedPartner!,
           ),
@@ -127,7 +128,7 @@ class _MatchScreenState extends State<MatchScreen> {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const PremiumScreen()));
+              Navigator.push(context, CosmicBottomSheetRoute(page: const PremiumScreen()));
             },
             icon: const Icon(Icons.diamond, size: 18),
             label: const Text('Premium'),

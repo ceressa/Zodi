@@ -13,6 +13,7 @@ import '../services/share_service.dart';
 import '../widgets/share_cards/coffee_share_card.dart';
 import '../widgets/premium_lock_overlay.dart';
 import '../screens/premium_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class CoffeeFortuneScreen extends StatefulWidget {
   const CoffeeFortuneScreen({super.key});
@@ -106,7 +107,7 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                CosmicBottomSheetRoute(page: const PremiumScreen()),
               );
             },
             child: const Text('Premium\'a Geç'),

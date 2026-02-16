@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 import '../screens/premium_screen.dart';
 import '../services/ad_service.dart';
+import '../theme/cosmic_page_route.dart';
 
 /// Limit aşıldığında gösterilen dialog - Reklam veya Premium seçeneği
 class LimitReachedDialog extends StatelessWidget {
@@ -83,7 +84,7 @@ class LimitReachedDialog extends StatelessWidget {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                    CosmicBottomSheetRoute(page: const PremiumScreen()),
                   );
                 },
                 style: ElevatedButton.styleFrom(

@@ -5,6 +5,7 @@ import '../providers/horoscope_provider.dart';
 import '../constants/colors.dart';
 import '../constants/strings.dart';
 import 'premium_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
@@ -57,7 +58,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                CosmicBottomSheetRoute(page: const PremiumScreen()),
               );
             },
             style: ElevatedButton.styleFrom(

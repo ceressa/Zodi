@@ -4,7 +4,9 @@ import '../models/streak_data.dart';
 import '../services/streak_service.dart';
 import '../providers/auth_provider.dart';
 import '../constants/colors.dart';
+import '../theme/cosmic_page_route.dart';
 import '../widgets/metric_card.dart';
+import 'premium_screen.dart';
 
 class StatisticsScreen extends StatefulWidget {
   final bool showAppBar;
@@ -418,7 +420,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
-              Navigator.pushNamed(context, '/premium');
+              Navigator.push(context, CosmicBottomSheetRoute(page: const PremiumScreen()));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.gold,

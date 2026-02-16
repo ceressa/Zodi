@@ -17,6 +17,7 @@ import 'profile_card_screen.dart';
 import 'retro_screen.dart';
 import 'cosmic_calendar_screen.dart';
 import 'birth_chart_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -125,7 +126,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                 isWarning: true,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const RetroScreen()),
+                  CosmicPageRoute(page: const RetroScreen()),
                 ),
               ),
             ),
@@ -441,7 +442,7 @@ class _ExploreScreenState extends State<ExploreScreen>
         child: InkWell(
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => _getScreen(feat.screenIndex)),
+            CosmicPageRoute(page: _getScreen(feat.screenIndex)),
           ),
           borderRadius: BorderRadius.circular(20),
           splashColor: _palettePrimary.withOpacity(0.1),

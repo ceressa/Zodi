@@ -11,6 +11,7 @@ import '../services/ad_service.dart';
 import '../services/share_service.dart';
 import '../widgets/share_cards/compatibility_share_card.dart';
 import 'premium_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class CompatibilityReportScreen extends StatefulWidget {
   final ZodiacSign userSign;
@@ -285,7 +286,7 @@ Yanıtı aşağıdaki JSON formatında ver:
                   child: InkWell(
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                      CosmicBottomSheetRoute(page: const PremiumScreen()),
                     ),
                     borderRadius: BorderRadius.circular(16),
                     child: const Padding(

@@ -4,6 +4,8 @@ import '../providers/auth_provider.dart';
 import '../services/theme_service.dart';
 import '../models/theme_config.dart';
 import '../constants/colors.dart';
+import '../theme/cosmic_page_route.dart';
+import 'premium_screen.dart';
 
 class ThemeCustomizationScreen extends StatefulWidget {
   const ThemeCustomizationScreen({super.key});
@@ -339,7 +341,7 @@ class _ThemeCustomizationScreenState extends State<ThemeCustomizationScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pushNamed(context, '/premium');
+              Navigator.push(context, CosmicBottomSheetRoute(page: const PremiumScreen()));
             },
             child: const Text('Aç'),
           ),
@@ -370,7 +372,7 @@ class _ThemeCustomizationScreenState extends State<ThemeCustomizationScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pushNamed(context, '/premium');
+              Navigator.push(context, CosmicBottomSheetRoute(page: const PremiumScreen()));
             },
             child: const Text('Aç'),
           ),
