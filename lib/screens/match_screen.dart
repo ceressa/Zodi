@@ -23,8 +23,16 @@ class _MatchScreenState extends State<MatchScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   final AdService _adService = AdService();
   final ActivityLogService _activityLog = ActivityLogService();
+  final _scrollController = ScrollController();
+  final _resultKey = GlobalKey();
   ZodiacSign? _selectedPartner;
   bool _reportUnlockedByAd = false;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _loadCompatibility() async {
     final authProvider = context.read<AuthProvider>();
@@ -37,6 +45,18 @@ class _MatchScreenState extends State<MatchScreen> {
       );
 
       await _activityLog.logCompatibility(authProvider.selectedZodiac!.name, _selectedPartner!.name);
+
+      // Sonuç kısmına scroll et
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_resultKey.currentContext != null) {
+          Scrollable.ensureVisible(
+            _resultKey.currentContext!,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutCubic,
+            alignment: 0.0,
+          );
+        }
+      });
 
       // Zengin profil güncellemeleri
       if (_firebaseService.isAuthenticated) {
@@ -154,6 +174,7 @@ class _MatchScreenState extends State<MatchScreen> {
     final horoscopeProvider = context.watch<HoroscopeProvider>();
     
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,10 +276,9 @@ class _MatchScreenState extends State<MatchScreen> {
             runSpacing: 12,
             children: ZodiacSign.values.map((sign) {
               final isSelected = _selectedPartner == sign;
-              final isUserSign = authProvider.selectedZodiac == sign;
               
               return InkWell(
-                onTap: isUserSign ? null : () {
+                onTap: () {
                   setState(() => _selectedPartner = sign);
                   _loadCompatibility();
                 },
@@ -272,9 +292,7 @@ class _MatchScreenState extends State<MatchScreen> {
                         : (isDark ? AppColors.cardDark : AppColors.cardLight),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isUserSign
-                          ? AppColors.textMuted.withOpacity(0.3)
-                          : (isSelected ? AppColors.accentPurple : AppColors.borderLight),
+                      color: isSelected ? AppColors.accentPurple : AppColors.borderLight,
                       width: 2,
                     ),
                   ),
@@ -284,9 +302,7 @@ class _MatchScreenState extends State<MatchScreen> {
                         sign.symbol,
                         style: TextStyle(
                           fontSize: 32,
-                          color: isUserSign
-                              ? AppColors.textMuted
-                              : (isSelected ? Colors.white : AppColors.accentBlue),
+                          color: isSelected ? Colors.white : AppColors.accentBlue,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -295,9 +311,7 @@ class _MatchScreenState extends State<MatchScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: isUserSign
-                              ? AppColors.textMuted
-                              : (isSelected ? Colors.white : (isDark ? AppColors.textPrimary : AppColors.textDark)),
+                          color: isSelected ? Colors.white : (isDark ? AppColors.textPrimary : AppColors.textDark),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -310,14 +324,16 @@ class _MatchScreenState extends State<MatchScreen> {
           
           if (horoscopeProvider.isLoadingCompatibility) ...[
             const SizedBox(height: 32),
-            const Center(
-              child: CircularProgressIndicator(color: AppColors.accentPurple),
+            Center(
+              key: _resultKey,
+              child: const CircularProgressIndicator(color: AppColors.accentPurple),
             ),
           ] else if (horoscopeProvider.compatibilityResult != null && _selectedPartner != null) ...[
             const SizedBox(height: 32),
-            
+
             // Score
             Container(
+              key: _resultKey,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
