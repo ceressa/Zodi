@@ -12,10 +12,10 @@ class BottomNav extends StatelessWidget {
   });
   
   static const _items = [
-    _NavItem(icon: Icons.auto_awesome, label: 'Ana Sayfa'),
-    _NavItem(icon: Icons.pie_chart_rounded, label: 'Analiz'),
-    _NavItem(icon: Icons.favorite_rounded, label: 'Uyum'),
     _NavItem(icon: Icons.explore_rounded, label: 'Keşfet'),
+    _NavItem(icon: Icons.auto_awesome, label: 'Günlük'),
+    _NavItem(icon: Icons.favorite_rounded, label: 'Uyum'),
+    _NavItem(icon: Icons.pie_chart_rounded, label: 'Analiz'),
     _NavItem(icon: Icons.person_rounded, label: 'Profil'),
   ];
   

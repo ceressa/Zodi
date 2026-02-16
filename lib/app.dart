@@ -15,7 +15,7 @@ import 'models/streak_data.dart';
 
 class ZodiApp extends StatelessWidget {
   const ZodiApp({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -29,7 +29,7 @@ class ZodiApp extends StatelessWidget {
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
-  
+
   @override
   State<MainShell> createState() => _MainShellState();
 }
@@ -38,25 +38,25 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
   StreakData? _streakData;
   final StreakService _streakService = StreakService();
-  
+
   final _pages = const [
-    DailyCommentPage(),
-    AnalysisPage(),
-    CompatibilityPage(),
     DiscoverPage(),
+    DailyCommentPage(),
+    CompatibilityPage(),
+    AnalysisPage(),
     SettingsPage(),
   ];
-  
+
   @override
   void initState() {
     super.initState();
     _loadStreakData();
   }
-  
+
   Future<void> _loadStreakData() async {
     final authProvider = context.read<AuthProvider>();
     final userId = authProvider.userId;
-    
+
     if (userId != null) {
       final streakData = await _streakService.getStreakData(userId);
       if (mounted) {
@@ -66,7 +66,7 @@ class _MainShellState extends State<MainShell> {
       }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -82,7 +82,21 @@ class _MainShellState extends State<MainShell> {
               coinCount: 0,
             ),
             Expanded(
-              child: _pages[_currentIndex],
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey<int>(_currentIndex),
+                  child: _pages[_currentIndex],
+                ),
+              ),
             ),
           ],
         ),
