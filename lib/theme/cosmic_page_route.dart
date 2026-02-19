@@ -11,11 +11,7 @@ class CosmicPageRoute<T> extends PageRouteBuilder<T> {
           transitionDuration: const Duration(milliseconds: 350),
           reverseTransitionDuration: const Duration(milliseconds: 280),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            // Giden sayfa: hafif küçülme + fade out
-            final secondaryTween = Tween<double>(begin: 1.0, end: 0.92);
-            final secondaryFade = Tween<double>(begin: 1.0, end: 0.5);
-
-            // Gelen sayfa: aşağıdan yukarı slide + fade in + scale
+            // Simplified: slide-up + fade (removed nested Scale for performance)
             final slideTween = Tween<Offset>(
               begin: const Offset(0.0, 0.06),
               end: Offset.zero,
@@ -24,31 +20,12 @@ class CosmicPageRoute<T> extends PageRouteBuilder<T> {
             final fadeTween = Tween<double>(begin: 0.0, end: 1.0)
                 .chain(CurveTween(curve: Curves.easeOut));
 
-            final scaleTween = Tween<double>(begin: 0.96, end: 1.0)
-                .chain(CurveTween(curve: Curves.easeOutCubic));
-
-            return Stack(
-              children: [
-                // Giden sayfa (arka plan)
-                ScaleTransition(
-                  scale: secondaryTween.animate(secondaryAnimation),
-                  child: FadeTransition(
-                    opacity: secondaryFade.animate(secondaryAnimation),
-                    child: child,
-                  ),
-                ),
-                // Gelen sayfa
-                SlideTransition(
-                  position: slideTween.animate(animation),
-                  child: FadeTransition(
-                    opacity: fadeTween.animate(animation),
-                    child: ScaleTransition(
-                      scale: scaleTween.animate(animation),
-                      child: child,
-                    ),
-                  ),
-                ),
-              ],
+            return SlideTransition(
+              position: slideTween.animate(animation),
+              child: FadeTransition(
+                opacity: fadeTween.animate(animation),
+                child: child,
+              ),
             );
           },
         );

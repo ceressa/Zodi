@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -17,48 +19,85 @@ import 'services/notification_service.dart';
 import 'services/streak_service.dart';
 import 'services/astronomy_service.dart';
 import 'utils/navigation_helper.dart';
-import 'theme/app_theme.dart'; // Yeni tema
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  // Initialize Firebase Service
-  await FirebaseService.initialize();
-  
-  // Initialize Swiss Ephemeris for astronomical calculations
-  await AstronomyService.initialize();
-  
-  await dotenv.load(fileName: '.env');
-  await initializeDateFormatting('tr_TR', null);
-  
-  // Initialize Ad Service
-  final adService = AdService();
-  await adService.initialize();
-  
-  // Preload ads for better UX
-  adService.loadInterstitialAd();
-  adService.loadRewardedAd();
-  adService.loadBannerAd();
-  
-  // Initialize Notification Service with navigation callback
-  await NotificationService().initialize(
-    onNotificationTap: NavigationHelper.handleNotificationPayload,
-  );
-  
-  // Check if app was launched from a notification (cold start)
-  await NotificationService().checkLaunchNotification();
-  
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-  
-  runApp(const ZodiApp());
+
+  // Global error handler for Flutter framework errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    if (kDebugMode) {
+      debugPrint('FlutterError: ${details.exception}');
+    }
+  };
+
+  // Catch async errors not handled by Flutter framework
+  runZonedGuarded(() async {
+    // Initialize Firebase
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // Initialize Firebase Service
+    await FirebaseService.initialize();
+
+    // Initialize Swiss Ephemeris (non-critical, app can work without it)
+    try {
+      await AstronomyService.initialize();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('AstronomyService init failed (non-critical): $e');
+      }
+    }
+
+    try {
+      await dotenv.load(fileName: '.env');
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('.env load failed: $e');
+      }
+    }
+
+    await initializeDateFormatting('tr_TR', null);
+
+    // Initialize Ad Service (non-critical)
+    try {
+      final adService = AdService();
+      await adService.initialize();
+      adService.loadInterstitialAd();
+      adService.loadRewardedAd();
+      adService.loadBannerAd();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('AdService init failed (non-critical): $e');
+      }
+    }
+
+    // Initialize Notification Service (non-critical)
+    try {
+      await NotificationService().initialize(
+        onNotificationTap: NavigationHelper.handleNotificationPayload,
+      );
+      await NotificationService().checkLaunchNotification();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('NotificationService init failed (non-critical): $e');
+      }
+    }
+
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
+    runApp(const ZodiApp());
+  }, (error, stackTrace) {
+    if (kDebugMode) {
+      debugPrint('Uncaught error: $error');
+      debugPrint('Stack trace: $stackTrace');
+    }
+  });
 }
 
 class ZodiApp extends StatelessWidget {
@@ -87,7 +126,7 @@ class ZodiApp extends StatelessWidget {
               Locale('tr', 'TR'),
             ],
             locale: const Locale('tr', 'TR'),
-            theme: AppTheme.lightTheme, // Yeni tema kullan
+            theme: AppTheme.lightTheme,
             themeMode: ThemeMode.light,
             home: const SplashScreen(),
           );

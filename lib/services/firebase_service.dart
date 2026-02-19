@@ -1056,16 +1056,19 @@ class FirebaseService {
 
   // ============ TAROT OKUMA YÖNETİMİ ============
 
-  // Tarot okumasını kaydet
+  // Tarot okumasını kaydet - her zaman authenticated kullanıcının uid'sini kullanır
   Future<void> saveTarotReading(
     String userId,
     String readingId,
     Map<String, dynamic> reading,
   ) async {
+    if (currentUser == null) return;
+    // Güvenlik: her zaman authenticated kullanıcının uid'sini kullan
+    final safeUserId = currentUser!.uid;
     try {
       await _firestore
           .collection('users')
-          .doc(userId)
+          .doc(safeUserId)
           .collection('tarotReadings')
           .doc(readingId)
           .set(reading);
@@ -1073,7 +1076,6 @@ class FirebaseService {
       await _analytics.logEvent(
         name: 'tarot_reading_saved',
         parameters: {
-          'user_id': userId,
           'type': reading['type'],
         },
       );
@@ -1083,12 +1085,14 @@ class FirebaseService {
     }
   }
 
-  // Kullanıcının tarot okumalarını getir
+  // Kullanıcının tarot okumalarını getir - her zaman authenticated kullanıcının uid'sini kullanır
   Future<List<dynamic>> getTarotReadings(String userId) async {
+    if (currentUser == null) return [];
+    final safeUserId = currentUser!.uid;
     try {
       final snapshot = await _firestore
           .collection('users')
-          .doc(userId)
+          .doc(safeUserId)
           .collection('tarotReadings')
           .orderBy('date', descending: true)
           .limit(50)
@@ -1101,15 +1105,17 @@ class FirebaseService {
     }
   }
 
-  // Belirli bir tarot okumasını getir
+  // Belirli bir tarot okumasını getir - her zaman authenticated kullanıcının uid'sini kullanır
   Future<Map<String, dynamic>?> getTarotReading(
     String userId,
     String readingId,
   ) async {
+    if (currentUser == null) return null;
+    final safeUserId = currentUser!.uid;
     try {
       final doc = await _firestore
           .collection('users')
-          .doc(userId)
+          .doc(safeUserId)
           .collection('tarotReadings')
           .doc(readingId)
           .get();

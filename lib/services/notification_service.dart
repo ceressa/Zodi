@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -106,13 +107,16 @@ class NotificationService {
   /// Handle notification tap - called when user taps on a notification
   /// Works for both cold start (app not running) and background scenarios
   void _handleNotificationTap(NotificationResponse response) {
-    // The payload can contain routing information
-    // For daily horoscope notifications, we'll use 'daily_horoscope' as payload
     final payload = response.payload;
-    
-    // Call the registered callback if available
+
     if (_onNotificationTap != null) {
-      _onNotificationTap!(payload);
+      try {
+        _onNotificationTap!(payload);
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('Error handling notification tap: $e');
+        }
+      }
     }
   }
 

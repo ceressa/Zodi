@@ -119,7 +119,10 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
 
   Future<void> _analyzeCoffeeCup() async {
     try {
-      final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+      final apiKey = dotenv.env['GEMINI_API_KEY'];
+      if (apiKey == null || apiKey.isEmpty) {
+        throw StateError('GEMINI_API_KEY not configured');
+      }
       final model = GenerativeModel(
         model: 'gemini-2.5-flash',
         apiKey: apiKey,
@@ -157,7 +160,11 @@ Yorumunu aşağıdaki JSON formatında ver:
       final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
       final jsonStr = jsonMatch?.group(1) ?? text;
 
-      final result = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final decoded = jsonDecode(jsonStr);
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('Invalid response format');
+      }
+      final result = decoded;
 
       _readingCount++;
 

@@ -30,9 +30,9 @@ class AstronomyService {
         ],
       );
       _initialized = true;
-      debugPrint('✅ Swiss Ephemeris initialized');
+      if (kDebugMode) debugPrint('Swiss Ephemeris initialized');
     } catch (e) {
-      debugPrint('❌ Error initializing Swiss Ephemeris: $e');
+      if (kDebugMode) debugPrint('Error initializing Swiss Ephemeris: $e');
       rethrow;
     }
   }
@@ -111,10 +111,12 @@ class AstronomyService {
       final sunSign = _degreeToZodiacSign(sunDegree);
       final moonSign = _degreeToZodiacSign(moonDegree);
 
-      debugPrint('🌟 Calculated: Sun=$sunSign, Rising=$risingSign, Moon=$moonSign');
-      debugPrint('🕒 Local birth time: $birthDateTimeLocal');
-      debugPrint('🕒 UTC birth time: $birthDateTimeUtc');
-      debugPrint('📍 Degrees: Sun=${sunDegree.toStringAsFixed(2)}°, Asc=${ascendantDegree.toStringAsFixed(2)}°, Moon=${moonDegree.toStringAsFixed(2)}°');
+      if (kDebugMode) {
+        debugPrint('Calculated: Sun=$sunSign, Rising=$risingSign, Moon=$moonSign');
+        debugPrint('Local birth time: $birthDateTimeLocal');
+        debugPrint('UTC birth time: $birthDateTimeUtc');
+        debugPrint('Degrees: Sun=${sunDegree.toStringAsFixed(2)}, Asc=${ascendantDegree.toStringAsFixed(2)}, Moon=${moonDegree.toStringAsFixed(2)}');
+      }
 
       return {
         'sunSign': sunSign,
@@ -125,7 +127,7 @@ class AstronomyService {
         'moonDegree': moonDegree,
       };
     } catch (e) {
-      debugPrint('❌ Error calculating rising sign: $e');
+      if (kDebugMode) debugPrint('Error calculating rising sign: $e');
       rethrow;
     }
   }
@@ -230,9 +232,11 @@ class AstronomyService {
         });
       }
 
-      debugPrint('🌌 Birth chart calculated for $birthPlace on $birthDate at $birthTime');
-      for (final p in planets) {
-        debugPrint('  ${p['name']}: ${p['sign']} ${p['signSymbol']} ${p['degree']}° (Ev ${p['house']})');
+      if (kDebugMode) {
+        debugPrint('Birth chart calculated for $birthPlace on $birthDate at $birthTime');
+        for (final p in planets) {
+          debugPrint('  ${p['name']}: ${p['sign']} ${p['signSymbol']} ${p['degree']} (Ev ${p['house']})');
+        }
       }
 
       return {
@@ -245,7 +249,7 @@ class AstronomyService {
         },
       };
     } catch (e) {
-      debugPrint('❌ Error calculating birth chart: $e');
+      if (kDebugMode) debugPrint('Error calculating birth chart: $e');
       rethrow;
     }
   }
@@ -332,7 +336,7 @@ class AstronomyService {
         return MoonPhase.waningCrescent;
       }
     } catch (e) {
-      debugPrint('❌ Error calculating moon phase: $e');
+      if (kDebugMode) debugPrint('Error calculating moon phase: $e');
       // Fallback: basit hesaplama
       return _simpleMoonPhase(date);
     }
@@ -362,7 +366,7 @@ class AstronomyService {
 
       return _degreeToZodiacSignTurkish(moonCalc.longitude);
     } catch (e) {
-      debugPrint('❌ Error calculating moon sign: $e');
+      if (kDebugMode) debugPrint('Error calculating moon sign: $e');
       return 'Koç'; // Fallback
     }
   }
@@ -559,13 +563,13 @@ class AstronomyService {
     // Try to find the city name within the input
     for (final entry in cities.entries) {
       if (placeLower.contains(entry.key)) {
-        debugPrint('✅ Found city: ${entry.key} in "$place"');
+        if (kDebugMode) debugPrint('Found city: ${entry.key} in "$place"');
         return entry.value;
       }
     }
 
     // Default to Ankara if city not found
-    debugPrint('⚠️ City not found: $place, using Ankara coordinates');
+    if (kDebugMode) debugPrint('City not found: $place, using Ankara coordinates');
     return cities['ankara']!;
   }
 }

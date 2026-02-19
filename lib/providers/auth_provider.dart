@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../services/storage_service.dart';
 import '../services/firebase_service.dart';
@@ -7,7 +9,8 @@ import '../models/user_profile.dart';
 class AuthProvider with ChangeNotifier {
   final StorageService _storage = StorageService();
   final FirebaseService _firebaseService = FirebaseService();
-  
+  StreamSubscription<User?>? _authStateSubscription;
+
   String? _userName;
   String? _userEmail;
   ZodiacSign? _selectedZodiac;
@@ -27,6 +30,26 @@ class AuthProvider with ChangeNotifier {
 
   AuthProvider() {
     _loadUserData();
+    _listenToAuthState();
+  }
+
+  void _listenToAuthState() {
+    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user == null && _userName != null) {
+        // User signed out externally
+        _userName = null;
+        _userEmail = null;
+        _isPremium = false;
+        _userProfile = null;
+        notifyListeners();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
@@ -114,11 +137,11 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> upgradeToPremium({String subscriptionType = 'lifetime'}) async {
-    await _storage.saveIsPremium(true);
     _isPremium = true;
-    
-    // Firebase'e premium durumunu kaydet
+
+    // Firebase'e premium durumunu kaydet (source of truth)
     if (_firebaseService.isAuthenticated) {
+      await _storage.saveIsPremium(true);
       await _firebaseService.updatePremiumStatus(true);
       
       // Premium başlangıç tarihini kaydet

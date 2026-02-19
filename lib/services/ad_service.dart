@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -281,7 +282,7 @@ class AdService {
     if (_rewardedShownToday >= _maxRewardedPerDay) {
       _lastRewardedDecision = 'blocked_daily_limit';
 
-      print('❌ Rewarded daily limit reached: $_rewardedShownToday/$_maxRewardedPerDay');
+      if (kDebugMode) debugPrint('Rewarded daily limit reached: $_rewardedShownToday/$_maxRewardedPerDay');
       return false;
     }
 
@@ -289,7 +290,7 @@ class AdService {
       final mins = DateTime.now().difference(_lastRewardedShownAt!).inMinutes;
       if (mins < _minMinutesBetweenRewarded) {
         _lastRewardedDecision = 'blocked_cooldown';
-        print('❌ Rewarded cooldown active: $mins/$_minMinutesBetweenRewarded minutes');
+        if (kDebugMode) debugPrint('Rewarded cooldown active: $mins/$_minMinutesBetweenRewarded minutes');
         return false;
       }
     }
@@ -337,13 +338,13 @@ class AdService {
       final minutesSinceLast = DateTime.now().difference(_lastInterstitialShownAt!).inMinutes;
       if (minutesSinceLast < _minMinutesBetweenInterstitials) {
         _lastInterstitialDecision = 'blocked_cooldown';
-        print('❌ Cooldown active: $minutesSinceLast/$_minMinutesBetweenInterstitials minutes');
+        if (kDebugMode) debugPrint('Cooldown active: $minutesSinceLast/$_minMinutesBetweenInterstitials minutes');
         return false;
       }
     }
 
     _lastInterstitialDecision = 'eligible';
-    print('✅ Should show interstitial (newUser=${_isNewUser()}, daily=$_interstitialShownToday/$maxPerDay)');
+    if (kDebugMode) debugPrint('Should show interstitial (newUser=${_isNewUser()}, daily=$_interstitialShownToday/$maxPerDay)');
     return true;
   }
 
@@ -355,7 +356,7 @@ class AdService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_interstitialShownTodayKey, _interstitialShownToday);
     await prefs.setString(_lastInterstitialShownAtKey, _lastInterstitialShownAt!.toIso8601String());
-    print('✅ Interstitial marked as shown. Today: $_interstitialShownToday/${_maxInterstitialsPerDay()}');
+    if (kDebugMode) debugPrint('Interstitial marked as shown. Today: $_interstitialShownToday/${_maxInterstitialsPerDay()}');
   }
 
   void loadBannerAd() {
@@ -368,7 +369,7 @@ class AdService {
           _isBannerAdReady = true;
         },
         onAdFailedToLoad: (ad, error) {
-          print('❌ Banner ad failed to load: ${error.message}');
+          if (kDebugMode) debugPrint('Banner ad failed to load: ${error.message}');
           _isBannerAdReady = false;
           ad.dispose();
           _bannerAd = null;
@@ -415,7 +416,7 @@ class AdService {
       onAdShowedFullScreenContent: (ad) {
         _markRewardedShown();
         _lastRewardedDecision = 'shown';
-        print('✅ Rewarded ad showed (placement: $placement)');
+        if (kDebugMode) debugPrint('Rewarded ad showed (placement: $placement)');
       },
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
@@ -494,7 +495,11 @@ class AdService {
       },
     );
 
-    await _interstitialAd!.show();
+    try {
+      await _interstitialAd!.show();
+    } catch (_) {
+      if (!completer.isCompleted) completer.complete(false);
+    }
     return completer.future;
   }
 

@@ -143,7 +143,8 @@ class ParticlesPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(ParticlesPainter oldDelegate) => true;
+  bool shouldRepaint(ParticlesPainter oldDelegate) =>
+      animation.value != oldDelegate.animation.value;
 }
 
 class Particle {
@@ -196,7 +197,8 @@ class GradientAnimationPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(GradientAnimationPainter oldDelegate) => true;
+  bool shouldRepaint(GradientAnimationPainter oldDelegate) =>
+      animation.value != oldDelegate.animation.value;
 }
 
 /// Constellation animation painter
@@ -302,5 +304,6 @@ class ZodiacSymbolPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(ZodiacSymbolPainter oldDelegate) => true;
+  bool shouldRepaint(ZodiacSymbolPainter oldDelegate) =>
+      animation.value != oldDelegate.animation.value;
 }

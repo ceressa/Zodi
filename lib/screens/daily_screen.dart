@@ -123,7 +123,6 @@ class _DailyScreenState extends State<DailyScreen>
       final readStartTime = DateTime.now();
 
       await horoscopeProvider.fetchDailyHoroscope(authProvider.selectedZodiac!);
-      await _activityLog.logDailyHoroscope(authProvider.selectedZodiac!.name);
       _confettiController.play();
 
       // Premium değilse sayacı artır
@@ -145,21 +144,22 @@ class _DailyScreenState extends State<DailyScreen>
         }
       }
 
-      // Log activity
-      await _activityLog.logDailyHoroscope(authProvider.selectedZodiac!.name);
-      
+      // Firebase analytics - fire-and-forget in parallel (non-blocking)
       if (_firebaseService.isAuthenticated) {
-        _firebaseService.incrementFeatureUsage('daily_horoscope');
-        _firebaseService.updateConsecutiveDays();
-        _firebaseService
-            .updateLastViewedZodiacSign(authProvider.selectedZodiac!.name);
+        final zodiacName = authProvider.selectedZodiac!.name;
         final readDuration = DateTime.now().difference(readStartTime).inSeconds;
-        _firebaseService.updateReadingPatterns('daily', readDuration);
-        _firebaseService.updatePreferredReadingTime();
-        _firebaseService.updateFavoriteTopics('daily_horoscope');
-        _firebaseService.updateUserTags();
-        _firebaseService.logHoroscopeView(
-            authProvider.selectedZodiac!.name, 'daily');
+        // Run all Firebase tracking in parallel, don't await
+        Future.wait([
+          _activityLog.logDailyHoroscope(zodiacName),
+          _firebaseService.incrementFeatureUsage('daily_horoscope'),
+          _firebaseService.updateConsecutiveDays(),
+          _firebaseService.updateLastViewedZodiacSign(zodiacName),
+          _firebaseService.updateReadingPatterns('daily', readDuration),
+          _firebaseService.updatePreferredReadingTime(),
+          _firebaseService.updateFavoriteTopics('daily_horoscope'),
+          _firebaseService.updateUserTags(),
+          _firebaseService.logHoroscopeView(zodiacName, 'daily'),
+        ]).catchError((_) {});
       }
     }
   }

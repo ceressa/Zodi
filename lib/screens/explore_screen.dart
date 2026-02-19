@@ -17,11 +17,40 @@ import 'cosmic_calendar_screen.dart';
 import 'birth_chart_screen.dart';
 import '../theme/cosmic_page_route.dart';
 
-class ExploreScreen extends StatelessWidget {
+class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
   @override
+  State<ExploreScreen> createState() => _ExploreScreenState();
+}
+
+class _ExploreScreenState extends State<ExploreScreen>
+    with AutomaticKeepAliveClientMixin {
+  late List<dynamic> _todayEvents;
+  late List<dynamic> _activeRetro;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _computeEvents();
+  }
+
+  void _computeEvents() {
+    final today = DateTime.now();
+    _todayEvents = AstroData.getEventsForDay(today);
+    _activeRetro = _todayEvents
+        .where((e) =>
+            e.type.name.contains('Retrograde') ||
+            e.type.name.contains('retrograde'))
+        .toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final authProvider = context.watch<AuthProvider>();
     final horoscopeProvider = context.watch<HoroscopeProvider>();
     final zodiac = authProvider.selectedZodiac;
@@ -29,13 +58,7 @@ class ExploreScreen extends StatelessWidget {
     final userName = authProvider.userName ?? '';
     final firstName = userName.split(' ').first;
 
-    final today = DateTime.now();
-    final todayEvents = AstroData.getEventsForDay(today);
-    final activeRetro = todayEvents
-        .where((e) =>
-            e.type.name.contains('Retrograde') ||
-            e.type.name.contains('retrograde'))
-        .toList();
+    final activeRetro = _activeRetro;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),

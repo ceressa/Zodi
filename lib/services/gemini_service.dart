@@ -37,17 +37,58 @@ KURALLAR:
 - Bazen sert eleştir, bazen sıcak iltifat et - ama her zaman samimi ol
 ''';
 
+  // Prompt cache for reducing redundant API calls
+  String? _cachedPrompt;
+  DateTime? _promptCacheTime;
+
   GeminiService() {
-    final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+    final apiKey = dotenv.env['GEMINI_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('GEMINI_API_KEY not found in .env file');
+      }
+    }
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
-      apiKey: apiKey,
+      apiKey: apiKey ?? '',
     );
   }
 
   Future<String> _getPersonalizedPrompt() async {
-    final context = await _historyService.generatePersonalizedContext();
-    return '$_baseSystemPrompt\n\n$context';
+    final now = DateTime.now();
+    if (_cachedPrompt != null &&
+        _promptCacheTime != null &&
+        now.difference(_promptCacheTime!).inMinutes < 5) {
+      return _cachedPrompt!;
+    }
+    try {
+      final context = await _historyService.generatePersonalizedContext();
+      _cachedPrompt = '$_baseSystemPrompt\n\n$context';
+    } catch (_) {
+      _cachedPrompt = _baseSystemPrompt;
+    }
+    _promptCacheTime = now;
+    return _cachedPrompt!;
+  }
+
+  /// Safely parse JSON from Gemini response text
+  Map<String, dynamic> _safeJsonParse(String text) {
+    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+    final jsonStr = jsonMatch?.group(1) ?? text;
+    final decoded = jsonDecode(jsonStr);
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+    throw const FormatException('Response is not a JSON object');
+  }
+
+  /// Sanitize user input to prevent prompt injection
+  String _sanitizeInput(String input, {int maxLength = 2000}) {
+    if (input.length > maxLength) {
+      input = input.substring(0, maxLength);
+    }
+    // Remove line breaks that could break prompt structure
+    return input.replaceAll(RegExp(r'[\r\n]+'), ' ').trim();
   }
 
   Future<DailyHoroscope> fetchDailyHoroscope(ZodiacSign sign) async {
@@ -75,13 +116,10 @@ Yanıtı şu JSON formatında ver:
     try {
       final response = await _model.generateContent([Content.text(prompt)]);
       final text = response.text ?? '{}';
-      
-      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-      final jsonStr = jsonMatch?.group(1) ?? text;
-      
-      final json = jsonDecode(jsonStr);
+
+      final json = _safeJsonParse(text);
       final horoscope = DailyHoroscope.fromJson(json);
-      
+
       // Etkileşimi kaydet
       await _historyService.addInteraction(
         InteractionHistory(
@@ -95,9 +133,17 @@ Yanıtı şu JSON formatında ver:
           },
         ),
       );
-      
+
       return horoscope;
+    } on FormatException catch (e) {
+      if (kDebugMode) {
+        debugPrint('JSON parse error in fetchDailyHoroscope: $e');
+      }
+      rethrow;
     } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in fetchDailyHoroscope: $e');
+      }
       rethrow;
     }
   }
@@ -121,30 +167,33 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    final json = jsonDecode(jsonStr);
-    final analysis = DetailedAnalysis.fromJson(json);
-    
-    // Etkileşimi kaydet
-    await _historyService.addInteraction(
-      InteractionHistory(
-        timestamp: DateTime.now(),
-        interactionType: 'analysis',
-        content: analysis.content,
-        context: {
-          'zodiac': sign.displayName,
-          'category': category,
-          'topic': category,
-        },
-      ),
-    );
-    
-    return analysis;
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final text = response.text ?? '{}';
+
+      final json = _safeJsonParse(text);
+      final analysis = DetailedAnalysis.fromJson(json);
+
+      await _historyService.addInteraction(
+        InteractionHistory(
+          timestamp: DateTime.now(),
+          interactionType: 'analysis',
+          content: analysis.content,
+          context: {
+            'zodiac': sign.displayName,
+            'category': category,
+            'topic': category,
+          },
+        ),
+      );
+
+      return analysis;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in fetchDetailedAnalysis: $e');
+      }
+      rethrow;
+    }
   }
 
   Future<CompatibilityResult> fetchCompatibility(
@@ -170,14 +219,18 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    final json = jsonDecode(jsonStr);
-    return CompatibilityResult.fromJson(json);
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final text = response.text ?? '{}';
+
+      final json = _safeJsonParse(text);
+      return CompatibilityResult.fromJson(json);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in fetchCompatibility: $e');
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> fetchWeeklyHoroscope(ZodiacSign sign) async {
@@ -206,13 +259,16 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    return jsonDecode(jsonStr);
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final text = response.text ?? '{}';
+      return _safeJsonParse(text);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in fetchWeeklyHoroscope: $e');
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> fetchMonthlyHoroscope(ZodiacSign sign) async {
@@ -242,13 +298,16 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    return jsonDecode(jsonStr);
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final text = response.text ?? '{}';
+      return _safeJsonParse(text);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in fetchMonthlyHoroscope: $e');
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> calculateRisingSign({
@@ -302,11 +361,8 @@ Yanıtı şu JSON formatında ver:
 
       final response = await _model.generateContent([Content.text(prompt)]);
       final text = response.text ?? '{}';
-      
-      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-      final jsonStr = jsonMatch?.group(1) ?? text;
-      
-      final result = Map<String, dynamic>.from(jsonDecode(jsonStr) as Map);
+
+      final result = Map<String, dynamic>.from(_safeJsonParse(text));
 
       // Never trust AI for sign calculation fields: enforce astronomical values.
       // Gemini is used only for text analysis/personality copy.
@@ -321,7 +377,9 @@ Yanıtı şu JSON formatında ver:
 
       return result;
     } catch (e) {
-      debugPrint('❌ Error in calculateRisingSign: $e');
+      if (kDebugMode) {
+        debugPrint('Error in calculateRisingSign: $e');
+      }
       rethrow;
     }
   }
@@ -393,24 +451,32 @@ Samimi, dürüst ve Zodi tarzında yaz. Düz metin olarak yanıtla, JSON format�
 
       return text.trim();
     } catch (e) {
-      debugPrint('❌ Birth chart interpretation error: $e');
+      if (kDebugMode) {
+        debugPrint('Birth chart interpretation error: $e');
+      }
       rethrow;
     }
   }
 
   Future<Map<String, dynamic>> interpretDream(String dreamText) async {
+    // Input validation
+    if (dreamText.trim().isEmpty) {
+      throw ArgumentError('Rüya metni boş olamaz');
+    }
+    final sanitized = _sanitizeInput(dreamText);
+
     final systemPrompt = await _getPersonalizedPrompt();
-    
+
     final prompt = '''
 $systemPrompt
 
-Rüya: "$dreamText"
+Rüya: "$sanitized"
 
 Bu rüyayı Zodi tarzında yorumla. Psikolojik ve sembolik anlamlarını açıkla.
 
 Yanıtı şu JSON formatında ver:
 {
-  "dreamText": "$dreamText",
+  "dreamText": "kullanıcının rüyası",
   "interpretation": "Rüyanın genel yorumu (2-3 paragraf, Zodi tarzında)",
   "symbolism": "Sembollerin anlamı",
   "emotionalMeaning": "Duygusal ve psikolojik anlam",
@@ -420,13 +486,16 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    return jsonDecode(jsonStr);
+    try {
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final text = response.text ?? '{}';
+      return _safeJsonParse(text);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in interpretDream: $e');
+      }
+      rethrow;
+    }
   }
 
   Future<String> fetchTomorrowPreview(ZodiacSign sign) async {
@@ -451,15 +520,19 @@ Yanıtı düz metin olarak ver, JSON formatında değil. Sadece önizleme metnin
       // Eğer JSON formatında geldiyse temizle
       final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
       if (jsonMatch != null) {
-        final jsonStr = jsonMatch.group(1) ?? text;
-        final json = jsonDecode(jsonStr);
-        return json['preview'] ?? json['text'] ?? text;
+        try {
+          final json = _safeJsonParse(text);
+          return json['preview'] ?? json['text'] ?? text;
+        } catch (_) {
+          return text.trim();
+        }
       }
-      
-      // Düz metin olarak döndür
+
       return text.trim();
     } catch (e) {
-      debugPrint('❌ Error fetching tomorrow preview: $e');
+      if (kDebugMode) {
+        debugPrint('Error fetching tomorrow preview: $e');
+      }
       rethrow;
     }
   }
@@ -493,13 +566,12 @@ Yanıtı şu JSON formatında ver:
       final response = await _model.generateContent([Content.text(prompt)]);
       final text = response.text ?? '{}';
       
-      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-      final jsonStr = jsonMatch?.group(1) ?? text;
-      
-      final json = jsonDecode(jsonStr);
+      final json = _safeJsonParse(text);
       return DailyHoroscope.fromJson(json);
     } catch (e) {
-      debugPrint('❌ Error fetching tomorrow horoscope: $e');
+      if (kDebugMode) {
+        debugPrint('Error fetching tomorrow horoscope: $e');
+      }
       rethrow;
     }
   }
@@ -517,7 +589,9 @@ Yanıtı şu JSON formatında ver:
 
       return text.trim();
     } catch (e) {
-      debugPrint('❌ Tarot interpretation error: $e');
+      if (kDebugMode) {
+        debugPrint('Tarot interpretation error: $e');
+      }
       rethrow;
     }
   }
@@ -544,7 +618,9 @@ Sadece düz metin olarak yanıtla, JSON formatı kullanma. Maksimum 80 kelime.
       final response = await _model.generateContent([Content.text(prompt)]);
       return response.text?.trim() ?? 'Bugün yıldızlar senin için sessiz.';
     } catch (e) {
-      debugPrint('❌ Astro tip error: $e');
+      if (kDebugMode) {
+        debugPrint('Astro tip error: $e');
+      }
       return 'Kozmik enerjiler bugün sakin. İçsel sesini dinle.';
     }
   }
@@ -572,7 +648,9 @@ Sadece düz metin olarak yanıtla, JSON formatı kullanma. Maksimum 60 kelime.
       final response = await _model.generateContent([Content.text(prompt)]);
       return response.text?.trim() ?? 'Bugün kendine biraz vakit ayır!';
     } catch (e) {
-      debugPrint('❌ Beauty tip error: $e');
+      if (kDebugMode) {
+        debugPrint('Beauty tip error: $e');
+      }
       return 'Ay enerjisi bugün güzelliğini destekliyor. Kendine iyi bak!';
     }
   }
