@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/membership_config.dart';
 
-/// Kullanıcının altın (coin) bakiyesini yöneten provider
+/// Kullanıcının Yıldız Tozu bakiyesini yöneten provider
 class CoinProvider with ChangeNotifier {
   static const String _keyBalance = 'coin_balance';
   static const String _keyLastDailyBonus = 'coin_last_daily_bonus_date';
@@ -61,7 +61,7 @@ class CoinProvider with ChangeNotifier {
   /// Yeterli bakiye var mı kontrol et
   bool canAfford(int amount) => _balance >= amount;
 
-  /// Altın harca — yeterli bakiye varsa true döner
+  /// Yıldız Tozu harca — yeterli bakiye varsa true döner
   Future<bool> spendCoins(int amount, String reason) async {
     if (_balance < amount) return false;
     _balance -= amount;
@@ -70,14 +70,14 @@ class CoinProvider with ChangeNotifier {
     return true;
   }
 
-  /// Altın ekle
+  /// Yıldız Tozu ekle
   Future<void> addCoins(int amount) async {
     _balance += amount;
     await _saveBalance();
     notifyListeners();
   }
 
-  /// Reklam izleyerek kazanılan altın
+  /// Reklam izleyerek kazanılan Yıldız Tozu
   Future<void> earnFromAd() async {
     final reward = adRewardAmount;
     _balance += reward;
@@ -85,7 +85,7 @@ class CoinProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Altın paketi satın al (IAP entegrasyonu olmadan mock)
+  /// Yıldız Tozu paketi satın al (IAP entegrasyonu olmadan mock)
   Future<void> purchaseCoins(CoinPackConfig pack) async {
     final totalCoins = pack.coinAmount + (pack.coinAmount * pack.bonusPercent ~/ 100);
     _balance += totalCoins;

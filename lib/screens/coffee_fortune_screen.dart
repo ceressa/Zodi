@@ -173,7 +173,7 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
 
     // Premium/Ad Gate
     if (tier != MembershipTier.elmas && tier != MembershipTier.platinyum) {
-      // Yıldız (altın): 5 coin VEYA reklam
+      // Altın tier: 5 Yıldız Tozu VEYA reklam
       if (tier == MembershipTier.altin) {
         final coinProvider = context.read<CoinProvider>();
         if (coinProvider.balance >= 5) {
@@ -225,7 +225,7 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
             style: TextStyle(
                 color: Color(0xFF92400E), fontWeight: FontWeight.bold)),
         content: Text(
-            '$coinCost altın harcayarak veya reklam izleyerek falına baktırabilirsin.'),
+            '$coinCost Yıldız Tozu harcayarak veya reklam izleyerek falına baktırabilirsin.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, null),
@@ -243,7 +243,7 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Text('🪙', style: TextStyle(fontSize: 16)),
-            label: Text('$coinCost Altın'),
+            label: Text('$coinCost Yıldız Tozu'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFFB800),
               foregroundColor: Colors.white,
@@ -415,6 +415,7 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F5FF),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

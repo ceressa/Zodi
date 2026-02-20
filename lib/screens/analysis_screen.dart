@@ -110,7 +110,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Detaylı analiz için $_analysisCost Altın gerekli',
+              'Detaylı analiz için $_analysisCost Yıldız Tozu gerekli',
               style: TextStyle(fontSize: 15, color: AppColors.textMuted),
             ),
             const SizedBox(height: 24),
@@ -128,7 +128,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     }
                   },
                   icon: const Icon(Icons.monetization_on, size: 20),
-                  label: Text('Keşfet! ($_analysisCost Altın)'),
+                  label: Text('Keşfet! ($_analysisCost Yıldız Tozu)'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentPurple,
                     foregroundColor: Colors.white,
@@ -186,7 +186,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     }
                   },
                   icon: const Icon(Icons.monetization_on, size: 20),
-                  label: Text('Keşfet! ($_analysisCost Altın)'),
+                  label: Text('Keşfet! ($_analysisCost Yıldız Tozu)'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accentPurple,
                     foregroundColor: Colors.white,
@@ -268,7 +268,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             const Icon(Icons.monetization_on, size: 18, color: Color(0xFFB45309)),
             const SizedBox(width: 6),
             Text(
-              '${coinProvider.balance} / $_analysisCost Altın',
+              '${coinProvider.balance} / $_analysisCost Yıldız Tozu',
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFFB45309)),
             ),
           ],
@@ -334,7 +334,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF1A1730) : const Color(0xFFF8F5FF),
+      backgroundColor: const Color(0xFFF8F5FF),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -397,8 +397,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                   Expanded(
                     child: Text(
                       _isYildizPlus(authProvider)
-                          ? 'Analiz başına $_analysisCost Altın'
-                          : 'Altın veya reklam izleyerek erişebilirsin',
+                          ? 'Analiz başına $_analysisCost Yıldız Tozu'
+                          : 'Yıldız Tozu veya reklam izleyerek erişebilirsin',
                       style: TextStyle(
                         color: AppColors.accentPurple,
                         fontWeight: FontWeight.w600,

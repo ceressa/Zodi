@@ -204,22 +204,22 @@ class ActivityLogService {
     );
   }
 
-  // ==================== COINS ====================
+  // ==================== YILDIZ TOZU ====================
 
-  /// Altin kazanildi
+  /// Yıldız Tozu kazanıldı
   Future<void> logCoinEarned(int amount, String source) async {
     await _log(
       type: typeCoinEarned,
-      action: 'Altin kazandi',
+      action: 'Yıldız Tozu kazandı',
       metadata: {'amount': amount, 'source': source},
     );
   }
 
-  /// Altin harcandi
+  /// Yıldız Tozu harcandı
   Future<void> logCoinSpent(int amount, String featureId) async {
     await _log(
       type: typeCoinSpent,
-      action: 'Altin harcadi',
+      action: 'Yıldız Tozu harcadı',
       metadata: {'amount': amount, 'featureId': featureId},
     );
   }

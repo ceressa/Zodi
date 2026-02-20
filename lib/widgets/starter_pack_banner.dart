@@ -166,7 +166,7 @@ class _StarterPackBannerState extends State<StarterPackBanner> {
 
                 // İçerik
                 Text(
-                  '${CampaignService.starterPackCoins} Altın + ${CampaignService.starterPackPremiumDays} Gün Premium',
+                  '${CampaignService.starterPackCoins} Yıldız Tozu + ${CampaignService.starterPackPremiumDays} Gün Premium',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.white.withOpacity(0.85),

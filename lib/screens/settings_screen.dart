@@ -282,7 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 : AppStrings.settingsPremium,
             subtitle: authProvider.isPremium
                 ? 'Üyelik planını yönet'
-                : 'Üyelik planlarını ve altın paketlerini gör',
+                : 'Üyelik planlarını ve Yıldız Tozu paketlerini gör',
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -329,7 +329,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _SettingItem(
             icon: Icons.card_giftcard,
             title: 'Arkadaş Davet Et',
-            subtitle: 'Davet et, ikiniz de 25 altın kazanın!',
+            subtitle: 'Davet et, ikiniz de 25 Yıldız Tozu kazanın!',
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(

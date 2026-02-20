@@ -114,7 +114,7 @@ class _ThemeCustomizationScreenState extends State<ThemeCustomizationScreen> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+      backgroundColor: const Color(0xFFF8F5FF),
       appBar: AppBar(
         title: const Text('Tema Özelleştirme'),
         backgroundColor: Colors.transparent,

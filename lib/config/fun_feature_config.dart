@@ -27,7 +27,7 @@ class FunFeatureConfig {
     return userTier.index >= requiredTier!.index;
   }
 
-  /// Bu özellik verilen tier'da altınsız dahil mi?
+  /// Bu özellik verilen tier'da Yıldız Tozu harcamadan dahil mi?
   bool isIncludedInTier(MembershipTier userTier) {
     if (requiredTier == null) return true;
     return userTier.index >= requiredTier!.index;
@@ -36,11 +36,11 @@ class FunFeatureConfig {
   /// Tüm eğlenceli özellikler listesi
   ///
   /// FİYAT DENGESİ:
-  /// - Herkese açık: 5-8 coin (1 reklam = 5 coin = 1 feature)
-  /// - Altın tier gerekli: 10-12 coin (premium içerik hissi)
-  /// - Standart kullanıcı günde 5 coin bonus + reklam → rahatça 2 feature
+  /// - Herkese açık: 5-8 Yıldız Tozu (1 reklam = 5 Yıldız Tozu = 1 feature)
+  /// - Altın tier gerekli: 10-12 Yıldız Tozu (premium içerik hissi)
+  /// - Standart kullanıcı günde 5 Yıldız Tozu bonus + reklam → rahatça 2 feature
   static const List<FunFeatureConfig> allFeatures = [
-    // ── Herkese Açık (5 coin) ──
+    // ── Herkese Açık (5 Yıldız Tozu) ──
     FunFeatureConfig(
       id: 'numerology',
       title: 'Numeroloji',
@@ -74,7 +74,7 @@ class FunFeatureConfig {
       coinCost: 5,
     ),
 
-    // ── Herkese Açık (8 coin) ──
+    // ── Herkese Açık (8 Yıldız Tozu) ──
     FunFeatureConfig(
       id: 'aura',
       title: 'Aura Analizi',
@@ -100,7 +100,7 @@ class FunFeatureConfig {
       coinCost: 8,
     ),
 
-    // ── Altın Tier Gerekli (10-12 coin) ──
+    // ── Altın Tier Gerekli (10-12 Yıldız Tozu) ──
     FunFeatureConfig(
       id: 'life_path',
       title: 'Yaşam Yolu',

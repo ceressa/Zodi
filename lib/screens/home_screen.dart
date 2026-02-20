@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: Scaffold(
         body: Container(
-          color: isDark ? const Color(0xFF0F0A2E) : const Color(0xFFF8F5FF),
+          color: const Color(0xFFF8F5FF),
           child: Stack(
             children: [
               // === Ana içerik: AppBar + PageView ===
@@ -276,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Altın kazan FAB — reklam izle, coin kazan
+  /// Yıldız Tozu kazan FAB — reklam izle, Yıldız Tozu kazan
   Widget? _buildEarnGoldFab(AuthProvider authProvider) {
     // Elmas ve üstü kullanıcılar için reklam kapalı, FAB gösterme
     final tier = authProvider.membershipTier;
@@ -374,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Text('🪙', style: TextStyle(fontSize: 20)),
                   const SizedBox(width: 8),
                   Text(
-                    '+${coinProvider.adRewardAmount} altın kazandın!',
+                    '+${coinProvider.adRewardAmount} Yıldız Tozu kazandın!',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ],

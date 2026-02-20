@@ -38,14 +38,14 @@ class MembershipTierConfig {
   ///
   /// EKONOMİ TASARIMI (₺ bazlı, Türkiye pazarı):
   /// ─────────────────────────────────────────────────────────
-  /// Standard: Günde 5 coin + reklam 5 coin
-  ///   → Günde ~15-20 coin potansiyel (3 reklam izlerse)
+  /// Standard: Günde 5 Yıldız Tozu + reklam 5 Yıldız Tozu
+  ///   → Günde ~15-20 Yıldız Tozu potansiyel (3 reklam izlerse)
   ///   → 1 analiz (10) = 2 reklam, 1 tarot (5) = 1 reklam
   ///
-  /// Altın ₺179.99/ay: Günde 15 coin + reklam 8
+  /// Altın ₺179.99/ay: Günde 15 Yıldız Tozu + reklam 8
   ///   → Günde 1-2 feature ücretsiz, reklam da verimli
   ///
-  /// Elmas ₺349.99/ay: Günde 30 coin, reklam yok
+  /// Elmas ₺349.99/ay: Günde 30 Yıldız Tozu, reklam yok
   ///   → Çoğu özellik her gün kullanılabilir
   ///
   /// Platinyum ₺599.99/ay: 50/gün, her şey sınırsız
@@ -66,7 +66,7 @@ class MembershipTierConfig {
     MembershipTierConfig(
       tier: MembershipTier.altin,
       displayName: 'Altın',
-      description: 'Daha fazla altın ve avantaj',
+      description: 'Daha fazla Yıldız Tozu ve avantaj',
       emoji: '🥇',
       gradient: [Color(0xFFEAB308), Color(0xFFCA8A04)],
       monthlyPrice: 179.99,
@@ -78,7 +78,7 @@ class MembershipTierConfig {
     MembershipTierConfig(
       tier: MembershipTier.elmas,
       displayName: 'Elmas',
-      description: 'Premium özellikler ve bol altın',
+      description: 'Premium özellikler ve bol Yıldız Tozu',
       emoji: '💎',
       gradient: [Color(0xFF06B6D4), Color(0xFF0891B2)],
       monthlyPrice: 349.99,
@@ -124,14 +124,14 @@ class MembershipTierConfig {
   }
 }
 
-/// Altın paketi konfigürasyonu
+/// Yıldız Tozu paketi konfigürasyonu
 ///
 /// FİYATLANDIRMA (₺ bazlı, Türkiye pazarı):
 /// ──────────────────────────────────────────────
-/// Küçük:  50 altın  = ₺49.99  → 1.00 ₺/coin
-/// Orta:   150 altın = ₺119.99 → 0.67 ₺/coin (180 toplam, +20%)
-/// Büyük:  400 altın = ₺249.99 → 0.42 ₺/coin (600 toplam, +50%) ✨
-/// Mega:   1000 altın= ₺449.99 → 0.22 ₺/coin (2000 toplam, +100%)
+/// Küçük:  50 Yıldız Tozu  = ₺49.99  → 1.00 ₺/adet
+/// Orta:   150 Yıldız Tozu = ₺119.99 → 0.67 ₺/adet (180 toplam, +20%)
+/// Büyük:  400 Yıldız Tozu = ₺249.99 → 0.42 ₺/adet (600 toplam, +50%)
+/// Mega:   1000 Yıldız Tozu= ₺449.99 → 0.22 ₺/adet (2000 toplam, +100%)
 /// ──────────────────────────────────────────────
 class CoinPackConfig {
   final String id;
@@ -148,32 +148,26 @@ class CoinPackConfig {
     this.isBestValue = false,
   });
 
-  /// Toplam kazanılacak altın (bonus dahil)
+  /// Toplam kazanılacak Yıldız Tozu (bonus dahil)
   int get totalCoins => coinAmount + (coinAmount * bonusPercent ~/ 100);
 
-  /// Tüm altın paketleri
+  /// Tüm Yıldız Tozu paketleri
   static const List<CoinPackConfig> allPacks = [
     CoinPackConfig(
-      id: 'coins_50',
+      id: 'coin_50',
       coinAmount: 50,
       bonusPercent: 0,
       price: 49.99,
     ),
     CoinPackConfig(
-      id: 'coins_150',
-      coinAmount: 150,
-      bonusPercent: 20,
-      price: 119.99,
-    ),
-    CoinPackConfig(
-      id: 'coins_400',
+      id: 'coin_400',
       coinAmount: 400,
       bonusPercent: 50,
       price: 249.99,
       isBestValue: true,
     ),
     CoinPackConfig(
-      id: 'coins_1000',
+      id: 'coin_1000',
       coinAmount: 1000,
       bonusPercent: 100,
       price: 449.99,
@@ -184,8 +178,8 @@ class CoinPackConfig {
 /// Başlangıç paketi konfigürasyonu
 ///
 /// İlk 48 saat içinde sunulan özel teklif:
-/// ₺29.99 ile 100 altın + 3 gün Elmas Premium deneme
-/// Normal değeri: 50 altın (₺49.99) + 3 gün Elmas = ~₺84 değerinde
+/// ₺29.99 ile 100 Yıldız Tozu + 3 gün Elmas Premium deneme
+/// Normal değeri: 50 Yıldız Tozu (₺49.99) + 3 gün Elmas = ~₺84 değerinde
 /// %65 indirimli ilk alım avantajı
 class StarterPackConfig {
   static const String id = 'starter_pack';
@@ -197,7 +191,7 @@ class StarterPackConfig {
 
   /// Paketin tahmini değeri (₺)
   static double get estimatedValue {
-    // 100 coin ≈ ₺99.98 (50 coin = ₺49.99 x 2) + 3 gün Elmas (~₺35)
+    // 100 Yıldız Tozu ≈ ₺99.98 (50 Yıldız Tozu = ₺49.99 x 2) + 3 gün Elmas (~₺35)
     return 134.97;
   }
 

@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Altın (coin) servisi — streak ödülleri ve genel altın işlemleri
+/// Yıldız Tozu servisi — streak ödülleri ve genel Yıldız Tozu işlemleri
 class CoinService {
   static final CoinService _instance = CoinService._internal();
   factory CoinService() => _instance;
@@ -14,14 +14,14 @@ class CoinService {
       final bonus = _calculateStreakBonus(streakDays);
       if (bonus > 0) {
         await _addCoins(bonus);
-        print('Streak milestone $streakDays: +$bonus altın ödülü verildi');
+        print('Streak milestone $streakDays: +$bonus Yıldız Tozu ödülü verildi');
       }
     } catch (e) {
       print('Streak milestone ödülü verilemedi: $e');
     }
   }
 
-  /// Belirli miktarda altın ekle
+  /// Belirli miktarda Yıldız Tozu ekle
   Future<void> addCoins(int amount) async {
     await _addCoins(amount);
   }

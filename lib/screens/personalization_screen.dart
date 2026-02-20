@@ -260,14 +260,13 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F5FF),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: isDark
-                ? [const Color(0xFF1E1E3F), const Color(0xFF0D0D1A)]
-                : [const Color(0xFFF8F5FF), const Color(0xFFEDE7F6)],
+            colors: [Color(0xFFF8F5FF), Color(0xFFEDE7F6)],
           ),
         ),
         child: SafeArea(

@@ -38,18 +38,18 @@ class SupportScreen extends StatelessWidget {
       ],
     ),
     _FaqCategory(
-      title: 'Üyelik & Altın',
+      title: 'Üyelik & Yıldız Tozu',
       icon: '👑',
       faqs: [
         _FaqData(
           q: 'Ücretsiz hesapla neler yapabilirim?',
           a: 'Ücretsiz hesapla günlük burç yorumu, temel tarot falı, burç uyumluluğu ve '
-              'bazı eğlenceli özelliklerden yararlanabilirsin. Reklam izleyerek altın kazanıp '
+              'bazı eğlenceli özelliklerden yararlanabilirsin. Reklam izleyerek Yıldız Tozu kazanıp '
               'premium özelliklerin kilidini açabilirsin.',
         ),
         _FaqData(
           q: 'Üyelik planları arasındaki fark nedir?',
-          a: 'Altın üyelik: Günlük bonus altın, daha fazla reklam ödülü.\n'
+          a: 'Altın üyelik: Günlük bonus Yıldız Tozu, daha fazla reklam ödülü.\n'
               'Elmas üyelik: Reklamsız deneyim, tüm özellikler açık, yüksek günlük bonus.\n'
               'Platinyum üyelik: Her şey dahil — reklamsız, sınırsız özellikler, en yüksek günlük bonus.',
         ),
@@ -60,13 +60,13 @@ class SupportScreen extends StatelessWidget {
               'mevcut dönem sonuna kadar premium özelliklerini kullanmaya devam edersin.',
         ),
         _FaqData(
-          q: 'Altınlarım neden kayboldu?',
-          a: 'Altınlar, özellikleri kullandığında otomatik olarak harcanır (tarot falı, detaylı analiz, '
-              'kahve falı vb.). Altın bakiyeni Profil sekmesinden ve Premium ekranından görebilirsin. '
-              'Reklam izleyerek veya altın paketi satın alarak bakiyeni artırabilirsin.',
+          q: 'Yıldız Tozlarım neden kayboldu?',
+          a: 'Yıldız Tozları, özellikleri kullandığında otomatik olarak harcanır (tarot falı, detaylı analiz, '
+              'kahve falı vb.). Yıldız Tozu bakiyeni Profil sekmesinden ve Premium ekranından görebilirsin. '
+              'Reklam izleyerek veya Yıldız Tozu paketi satın alarak bakiyeni artırabilirsin.',
         ),
         _FaqData(
-          q: 'Reklam izledim ama altın yüklenmedi. Ne yapmalıyım?',
+          q: 'Reklam izledim ama Yıldız Tozu yüklenmedi. Ne yapmalıyım?',
           a: 'Bazen reklam ağı gecikmeli yanıt verebilir. Uygulamayı kapatıp tekrar açmayı dene. '
               'Sorun devam ederse internet bağlantını kontrol et ve birkaç dakika sonra tekrar dene. '
               'Sürekli sorun yaşıyorsan bize astrodozi@dozi.app adresinden ulaş.',
@@ -157,7 +157,7 @@ class SupportScreen extends StatelessWidget {
         _FaqData(
           q: 'Farklı bir cihazda giriş yapabilir miyim?',
           a: 'Evet! Aynı Google hesabınla veya e-posta/şifrenle farklı bir cihazdan giriş '
-              'yapabilirsin. Tüm verilerin, altın bakiyen ve üyelik bilgilerin Firebase\'de '
+              'yapabilirsin. Tüm verilerin, Yıldız Tozu bakiyen ve üyelik bilgilerin Firebase\'de '
               'saklandığı için otomatik olarak senkronize edilir.',
         ),
       ],

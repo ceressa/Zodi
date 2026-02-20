@@ -219,7 +219,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
                 const Icon(Icons.monetization_on, size: 18, color: Colors.amber),
                 const SizedBox(width: 6),
                 Text(
-                  '${ReferralService.referralReward} Altın x 2',
+                  '${ReferralService.referralReward} Yıldız Tozu x 2',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -248,7 +248,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
         Expanded(
           child: _buildStatCard(
             '${_referralCount * ReferralService.referralReward}',
-            'Kazanılan Altın',
+            'Kazanılan Yıldız Tozu',
             Icons.monetization_on,
           ),
         ),
@@ -451,7 +451,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Arkadaşının davet kodunu girerek ${ReferralService.referralReward} altın kazan!',
+            'Arkadaşının davet kodunu girerek ${ReferralService.referralReward} Yıldız Tozu kazan!',
             style: TextStyle(
               fontSize: 13,
               color: AppColors.textDark.withOpacity(0.5),
@@ -562,7 +562,7 @@ class _ReferralScreenState extends State<ReferralScreen> {
           const SizedBox(height: 12),
           _buildStep(3, 'Kodunu uygulasın', Icons.input_rounded),
           const SizedBox(height: 12),
-          _buildStep(4, 'İkiniz de ${ReferralService.referralReward} altın kazanın!', Icons.stars_rounded),
+          _buildStep(4, 'İkiniz de ${ReferralService.referralReward} Yıldız Tozu kazanın!', Icons.stars_rounded),
         ],
       ),
     ).animate(delay: 400.ms).fadeIn(duration: 300.ms);

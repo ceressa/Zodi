@@ -286,7 +286,7 @@ class _TarotScreenState extends State<TarotScreen> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+      backgroundColor: const Color(0xFFF8F5FF),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -314,9 +314,7 @@ class _TarotScreenState extends State<TarotScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: isDark
-                ? [AppColors.bgDark, AppColors.cardDark.withValues(alpha: 0.5)]
-                : [AppColors.bgLight, AppColors.surfaceLight],
+            colors: [AppColors.bgLight, AppColors.surfaceLight],
           ),
         ),
         child: Column(
@@ -623,7 +621,7 @@ class _TarotScreenState extends State<TarotScreen> {
                                 const Icon(Icons.monetization_on_rounded, color: Colors.amber, size: 22),
                                 const SizedBox(width: 10),
                                 Text(
-                                  '$tarotCost Altın ile Çek',
+                                  '$tarotCost Yıldız Tozu ile Çek',
                                   style: TextStyle(
                                     color: canAfford ? Colors.white : Colors.white54,
                                     fontWeight: FontWeight.w800,

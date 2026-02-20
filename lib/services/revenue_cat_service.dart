@@ -3,10 +3,13 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import '../config/membership_config.dart';
 
+// NOT: purchases_ui_flutter sadece presentCustomerCenter() için kullanılıyor.
+// Paywall kendi UI'ımızda (premium_screen.dart), satın alma RevenueCat SDK ile yapılıyor.
+
 /// RevenueCat SDK entegrasyonu — abonelik ve satın alma yönetimi
 ///
 /// Entitlement: "Astro Dozi Premium"
-/// Ürünler: weekly, monthly, yearly, lifetime
+/// Ürünler: altin_monthly, elmas_monthly, platinyum_monthly, lifetime
 /// API Key: RevenueCat Dashboard'dan alınır
 class RevenueCatService {
   static final RevenueCatService _instance = RevenueCatService._internal();
@@ -16,10 +19,10 @@ class RevenueCatService {
   static const String _apiKey = 'goog_lqGgYaZSYFbfjsrSMIKjqqHMifC';
   static const String entitlementId = 'Astro Dozi Premium';
 
-  /// Ürün tanımlayıcıları — RevenueCat Dashboard'daki product identifiers
-  static const String productWeekly = 'weekly';
-  static const String productMonthly = 'monthly';
-  static const String productYearly = 'yearly';
+  /// Ürün tanımlayıcıları — Google Play Console'daki subscription/product IDs
+  static const String productAltinMonthly = 'altin_monthly';
+  static const String productElmasMonthly = 'elmas_monthly';
+  static const String productPlatinyumMonthly = 'platinyum_monthly';
   static const String productLifetime = 'lifetime';
 
   bool _isInitialized = false;
@@ -115,16 +118,16 @@ class RevenueCatService {
   MembershipTier productToTier(String productId) {
     final id = productId.toLowerCase();
 
-    // Platinyum ürünleri (lifetime veya yearly)
-    if (id.contains('lifetime') || id.contains('platinyum')) {
+    // Platinyum ürünleri
+    if (id.contains('platinyum') || id.contains('lifetime')) {
       return MembershipTier.platinyum;
     }
-    // Elmas ürünleri (yearly)
-    if (id.contains('yearly') || id.contains('elmas')) {
+    // Elmas ürünleri
+    if (id.contains('elmas')) {
       return MembershipTier.elmas;
     }
-    // Altın ürünleri (monthly, weekly)
-    if (id.contains('monthly') || id.contains('weekly') || id.contains('altin')) {
+    // Altın ürünleri
+    if (id.contains('altin')) {
       return MembershipTier.altin;
     }
 
@@ -193,32 +196,6 @@ class RevenueCatService {
     }
   }
 
-  // ─── PAYWALL ──────────────────────────────────────────────────
-
-  /// RevenueCat Paywall'ı göster — tam ekran
-  Future<PaywallResult> presentPaywall() async {
-    try {
-      final result = await RevenueCatUI.presentPaywall();
-      debugPrint('✅ Paywall result: $result');
-      return result;
-    } catch (e) {
-      debugPrint('❌ Paywall error: $e');
-      return PaywallResult.error;
-    }
-  }
-
-  /// Paywall'ı sadece premium değilse göster
-  Future<PaywallResult> presentPaywallIfNeeded() async {
-    try {
-      final result = await RevenueCatUI.presentPaywallIfNeeded(entitlementId);
-      debugPrint('✅ Paywall if needed result: $result');
-      return result;
-    } catch (e) {
-      debugPrint('❌ Paywall if needed error: $e');
-      return PaywallResult.error;
-    }
-  }
-
   // ─── CUSTOMER CENTER ──────────────────────────────────────────
 
   /// Customer Center'ı göster — abonelik yönetimi
@@ -265,10 +242,10 @@ class RevenueCatService {
       if (entitlement == null || !entitlement.isActive) return null;
 
       final productId = entitlement.productIdentifier.toLowerCase();
-      if (productId.contains('weekly')) return 'weekly';
-      if (productId.contains('monthly')) return 'monthly';
-      if (productId.contains('yearly')) return 'yearly';
+      if (productId.contains('platinyum')) return 'platinyum';
       if (productId.contains('lifetime')) return 'lifetime';
+      if (productId.contains('elmas')) return 'elmas';
+      if (productId.contains('altin')) return 'altin';
       return productId;
     } catch (e) {
       debugPrint('❌ Subscription type error: $e');

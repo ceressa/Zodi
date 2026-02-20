@@ -15,6 +15,7 @@ class SelectionScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F5FF),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

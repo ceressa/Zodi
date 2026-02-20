@@ -232,14 +232,13 @@ class _CosmicBoxScreenState extends State<CosmicBoxScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F5FF),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark
-                ? [const Color(0xFF0F0C29), const Color(0xFF302B63), const Color(0xFF24243E)]
-                : [const Color(0xFFE8D5F5), const Color(0xFFF0E6FF), const Color(0xFFE0D0F0)],
+            colors: [Color(0xFFE8D5F5), Color(0xFFF0E6FF), Color(0xFFE0D0F0)],
           ),
         ),
         child: SafeArea(

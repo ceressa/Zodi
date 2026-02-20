@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/coin_provider.dart';
 import '../config/membership_config.dart';
@@ -79,12 +78,12 @@ class _PremiumScreenState extends State<PremiumScreen>
                         const SizedBox(height: 28),
 
                         // ─── ALTIN PAKETLERİ ───
-                        _buildSectionTitle('💰', 'Altın Paketleri'),
+                        _buildSectionTitle('💰', 'Yıldız Tozu Paketleri'),
                         const SizedBox(height: 4),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
                           child: Text(
-                            'Özellikler için altın satın al',
+                            'Özellikler için Yıldız Tozu satın al',
                             style: TextStyle(
                               fontSize: 13,
                               color: AppColors.textMuted.withOpacity(0.7),
@@ -95,11 +94,6 @@ class _PremiumScreenState extends State<PremiumScreen>
                         _buildCoinPacks(),
 
                         const SizedBox(height: 20),
-
-                        // ─── REVENUECAT PAYWALL BUTONU ───
-                        _buildRevenueCatPaywallButton(),
-
-                        const SizedBox(height: 12),
 
                         // ─── SATIN ALIMLARI GERİ YÜKLE ───
                         _buildRestoreButton(),
@@ -172,7 +166,7 @@ class _PremiumScreenState extends State<PremiumScreen>
                       size: 16, color: Color(0xFFB45309)),
                   const SizedBox(width: 4),
                   Text(
-                    '${coinProvider.balance} Altın',
+                    '${coinProvider.balance} ✨',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -580,7 +574,7 @@ class _PremiumScreenState extends State<PremiumScreen>
                       ),
                     ),
                     const Text(
-                      'Altın',
+                      'Yıldız Tozu',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -707,70 +701,17 @@ class _PremiumScreenState extends State<PremiumScreen>
     ).animate().fadeIn(duration: 400.ms, delay: 600.ms);
   }
 
-  // ─── REVENUECAT PAYWALL BUTTON ──────────────────────────────
+  // ─── HELPER ─────────────────────────────────────────────────
 
-  Widget _buildRevenueCatPaywallButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF9400D3), Color(0xFFFF1493), Color(0xFFFF8C00)],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF9400D3).withOpacity(0.3),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _isLoading ? null : _openRevenueCatPaywall,
-              borderRadius: BorderRadius.circular(16),
-              child: Center(
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.5,
-                        ),
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.diamond, color: Colors.white, size: 22),
-                          SizedBox(width: 8),
-                          Text(
-                            'Tüm Planları Görüntüle',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-        )
-            .animate(onPlay: (c) => c.repeat())
-            .shimmer(
-              duration: 2500.ms,
-              color: Colors.white.withOpacity(0.15),
-            ),
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-    ).animate().fadeIn(duration: 400.ms, delay: 500.ms);
+    );
   }
 
   // ─── RESTORE PURCHASES BUTTON ─────────────────────────────
@@ -799,65 +740,54 @@ class _PremiumScreenState extends State<PremiumScreen>
     );
   }
 
-  // ─── REVENUECAT PAYWALL ───────────────────────────────────
+  // ─── TIER PURCHASE (RevenueCat direkt satın alma) ────────
 
-  Future<void> _openRevenueCatPaywall() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final result = await _revenueCatService.presentPaywall();
-
-      if (!mounted) return;
-
-      if (result == PaywallResult.purchased || result == PaywallResult.restored) {
-        // Satın alma başarılı — AuthProvider'ı güncelle
-        await context.read<AuthProvider>().refreshPremiumStatus();
-
-        if (mounted) {
-          final authProvider = context.read<AuthProvider>();
-          context.read<CoinProvider>().setTier(authProvider.membershipTier);
-
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('✨ Premium üyelik aktif edildi! 🎉'),
-              backgroundColor: AppColors.positive,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Bir hata oluştu: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  // ─── TIER PURCHASE (RevenueCat üzerinden) ─────────────────
-
+  /// Tier'a göre doğru RevenueCat paketini bulup satın alma başlat
   Future<void> _purchaseTier(MembershipTierConfig tier) async {
     setState(() => _isLoading = true);
 
     try {
-      // RevenueCat Paywall'ı aç — kullanıcı orada seçim yapsın
-      final result = await _revenueCatService.presentPaywall();
+      // Tier → product identifier eşleme
+      String? targetProductId;
+      switch (tier.tier) {
+        case MembershipTier.altin:
+          targetProductId = RevenueCatService.productAltinMonthly;
+          break;
+        case MembershipTier.elmas:
+          targetProductId = RevenueCatService.productElmasMonthly;
+          break;
+        case MembershipTier.platinyum:
+          targetProductId = RevenueCatService.productPlatinyumMonthly;
+          break;
+        default:
+          return;
+      }
 
-      if (!mounted) return;
+      // Offerings'den paketi bul
+      final offerings = await _revenueCatService.getOfferings();
+      if (offerings?.current == null) {
+        if (mounted) {
+          _showErrorSnackBar('Ürünler yüklenemedi. Lütfen tekrar deneyin.');
+        }
+        return;
+      }
 
-      if (result == PaywallResult.purchased || result == PaywallResult.restored) {
+      final packages = offerings!.current!.availablePackages;
+      final matchingPackage = packages.where(
+        (p) => p.storeProduct.identifier.contains(targetProductId!),
+      ).firstOrNull;
+
+      if (matchingPackage == null) {
+        if (mounted) {
+          _showErrorSnackBar('Bu plan şu anda kullanılamıyor.');
+        }
+        return;
+      }
+
+      // Direkt satın alma başlat
+      final result = await _revenueCatService.purchasePackage(matchingPackage);
+
+      if (result != null && mounted) {
         await context.read<AuthProvider>().refreshPremiumStatus();
         await _activityLog.logPremiumPurchase(tier.monthlyPrice);
 
@@ -881,14 +811,7 @@ class _PremiumScreenState extends State<PremiumScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Satın alma hatası: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+        _showErrorSnackBar('Satın alma hatası: $e');
       }
     } finally {
       if (mounted) {
@@ -897,7 +820,7 @@ class _PremiumScreenState extends State<PremiumScreen>
     }
   }
 
-  // ─── COIN PACK PURCHASE (RevenueCat üzerinden) ────────────
+  // ─── COIN PACK PURCHASE (RevenueCat direkt satın alma) ───
 
   Future<void> _purchaseCoinPack(CoinPackConfig pack) async {
     setState(() => _isLoading = true);
@@ -907,14 +830,7 @@ class _PremiumScreenState extends State<PremiumScreen>
       final offerings = await _revenueCatService.getOfferings();
       if (offerings?.current == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Ürünler yüklenemedi. Lütfen tekrar deneyin.'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          );
+          _showErrorSnackBar('Ürünler yüklenemedi. Lütfen tekrar deneyin.');
         }
         return;
       }
@@ -925,39 +841,35 @@ class _PremiumScreenState extends State<PremiumScreen>
         (p) => p.storeProduct.identifier.contains('coin_${pack.coinAmount}'),
       ).firstOrNull;
 
-      if (matchingPackage != null) {
-        final result = await _revenueCatService.purchasePackage(matchingPackage);
-
-        if (result != null && mounted) {
-          // Coin'leri ekle
-          await context.read<CoinProvider>().purchaseCoins(pack);
-
-          if (mounted) {
-            final totalCoins = pack.coinAmount + (pack.coinAmount * pack.bonusPercent ~/ 100);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('💰 $totalCoins Altın hesabına eklendi!'),
-                backgroundColor: const Color(0xFFB45309),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            );
-          }
+      if (matchingPackage == null) {
+        if (mounted) {
+          _showErrorSnackBar('Bu paket şu anda kullanılamıyor.');
         }
-      } else {
-        // Eşleşen paket bulunamadı — Paywall'a yönlendir
-        await _openRevenueCatPaywall();
+        return;
+      }
+
+      // Direkt satın alma başlat
+      final result = await _revenueCatService.purchasePackage(matchingPackage);
+
+      if (result != null && mounted) {
+        // Coin'leri ekle
+        await context.read<CoinProvider>().purchaseCoins(pack);
+
+        if (mounted) {
+          final totalCoins = pack.coinAmount + (pack.coinAmount * pack.bonusPercent ~/ 100);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('💰 $totalCoins Yıldız Tozu hesabına eklendi!'),
+              backgroundColor: const Color(0xFFB45309),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Satın alma hatası: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+        _showErrorSnackBar('Satın alma hatası: $e');
       }
     } finally {
       if (mounted) {

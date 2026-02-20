@@ -316,6 +316,7 @@ class _RisingSignScreenState extends State<RisingSignScreen> with TickerProvider
     final horoscopeProvider = context.watch<HoroscopeProvider>();
     
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F5FF),
       body: Stack(
         children: [
           Container(
@@ -323,9 +324,7 @@ class _RisingSignScreenState extends State<RisingSignScreen> with TickerProvider
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark
-                ? [AppColors.bgDark, AppColors.cardDark]
-                : [AppColors.bgLight, AppColors.surfaceLight],
+            colors: [AppColors.bgLight, AppColors.surfaceLight],
           ),
         ),
         child: SafeArea(

@@ -92,7 +92,7 @@ class ReferralService {
 
     return ReferralResult(
       success: true,
-      message: 'Davet kodu başarıyla uygulandı! $referralReward altın kazandın.',
+      message: 'Davet kodu başarıyla uygulandı! $referralReward Yıldız Tozu kazandın.',
       ownerUserId: ownerUserId,
       reward: referralReward,
     );
@@ -129,7 +129,7 @@ class ReferralService {
   /// Paylaşım metni oluştur
   String getShareText(String code) {
     return 'Astro Dozi\'yi dene! Davet kodum: $code\n'
-        'Kodumu kullanarak 25 altın kazan!\n'
+        'Kodumu kullanarak 25 Yıldız Tozu kazan!\n'
         'https://play.google.com/store/apps/details?id=com.bardino.zodi';
   }
 

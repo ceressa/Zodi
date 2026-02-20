@@ -176,7 +176,7 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Yetersiz altın! Bu özellik için ${widget.config.coinCost} altın gerekli.',
+                'Yetersiz Yıldız Tozu! Bu özellik için ${widget.config.coinCost} Yıldız Tozu gerekli.',
               ),
               backgroundColor: AppColors.warning,
               behavior: SnackBarBehavior.floating,
@@ -424,7 +424,7 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
                   const Icon(Icons.monetization_on, size: 16, color: Colors.amber),
                   const SizedBox(width: 6),
                   Text(
-                    '${widget.config.coinCost} Altın',
+                    '${widget.config.coinCost} Yıldız Tozu',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -796,7 +796,7 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
           Text(
             isIncluded
                 ? 'Analizi başlatmak için tıkla'
-                : '${widget.config.coinCost} altın karşılığında analizi al',
+                : '${widget.config.coinCost} Yıldız Tozu karşılığında analizi al',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,

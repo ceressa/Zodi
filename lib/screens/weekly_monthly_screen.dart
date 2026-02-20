@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/auth_provider.dart';
 import '../providers/horoscope_provider.dart';
+import '../providers/coin_provider.dart';
 import '../constants/colors.dart';
 import '../widgets/animated_card.dart';
 import '../widgets/metric_card.dart';
@@ -10,7 +11,6 @@ import '../services/ad_service.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
 import '../services/activity_log_service.dart';
-import '../services/usage_limit_service.dart';
 import '../services/share_service.dart';
 import '../widgets/share_cards/weekly_share_card.dart';
 
@@ -26,7 +26,6 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
   late TabController _tabController;
   final AdService _adService = AdService();
   final ActivityLogService _activityLog = ActivityLogService();
-  final UsageLimitService _usageLimitService = UsageLimitService();
 
   @override
   void initState() {
@@ -43,17 +42,22 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
     super.dispose();
   }
 
+  /// Haftalık veya aylık veri yükle — premium değilse gate dialog göster
   Future<void> _loadData() async {
     final authProvider = context.read<AuthProvider>();
     final horoscopeProvider = context.read<HoroscopeProvider>();
 
     if (authProvider.selectedZodiac == null) return;
 
-    if (_tabController.index == 0) {
-      // Haftalık — premium değilse interstitial göster
-      if (!authProvider.isPremium) {
-        await _adService.showInterstitialAd();
-      }
+    final isWeekly = _tabController.index == 0;
+
+    if (!authProvider.isPremium) {
+      // Free kullanıcı — gentle gate: seçenek sun
+      final unlocked = await _showContentGateDialog(isWeekly: isWeekly);
+      if (!unlocked) return; // Kullanıcı vazgeçti
+    }
+
+    if (isWeekly) {
       try {
         await horoscopeProvider.fetchWeeklyHoroscope(authProvider.selectedZodiac!);
         await _activityLog.logWeeklyHoroscope(authProvider.selectedZodiac!.name);
@@ -61,18 +65,6 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
         debugPrint('❌ Weekly load error: $e');
       }
     } else {
-      // Aylık — limit kontrolü
-      if (!authProvider.isPremium) {
-        final canView = await _usageLimitService.canViewMonthlyHoroscope();
-        if (!canView) {
-          // Limit dolmuş — reklam izle dialog'u göster
-          if (mounted) {
-            _showMonthlyLimitDialog();
-          }
-          return;
-        }
-        await _usageLimitService.incrementMonthlyView();
-      }
       try {
         await horoscopeProvider.fetchMonthlyHoroscope(authProvider.selectedZodiac!);
         await _activityLog.logMonthlyHoroscope(authProvider.selectedZodiac!.name);
@@ -82,98 +74,184 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
     }
   }
 
-  void _showPremiumDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Premium Özellik'),
-        content: const Text('Haftalık ve aylık yorumlar premium kullanıcılar için özel bir özelliktir. Reklam izleyerek veya premium üyelikle erişebilirsin.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tamam'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                CosmicBottomSheetRoute(page: const PremiumScreen()),
-              );
-            },
-            child: const Text('Premium\'a Geç'),
-          ),
-        ],
-      ),
-    );
-  }
+  /// Gentle gate dialog — reklam izle veya Yıldız Tozu harca
+  /// Returns true if content unlocked, false if user cancelled
+  Future<bool> _showContentGateDialog({required bool isWeekly}) async {
+    const int coinCost = 5;
+    final coinProvider = context.read<CoinProvider>();
+    final canAfford = coinProvider.canAfford(coinCost);
+    final label = isWeekly ? 'Haftalık' : 'Aylık';
 
-  void _showMonthlyLimitDialog() {
-    showDialog(
+    final result = await showDialog<String>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.lock_clock, color: AppColors.accentPurple, size: 28),
-            SizedBox(width: 10),
-            Text('Günlük Limit'),
+            const Icon(Icons.auto_awesome, color: AppColors.accentPurple, size: 28),
+            const SizedBox(width: 10),
+            Text('$label Yorum'),
           ],
         ),
-        content: const Text(
-          'Bugünkü ücretsiz aylık yorum hakkın doldu.\n\nReklam izleyerek tekrar erişebilir veya Premium üyelikle sınırsız erişim kazanabilirsin.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$label burç yorumuna erişmek için aşağıdaki seçeneklerden birini kullanabilirsin:',
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            // Seçenek 1: Reklam izle
+            _buildGateOption(
+              icon: Icons.play_circle_filled,
+              iconColor: Colors.green,
+              label: 'Reklam İzle',
+              subtitle: 'Kısa bir reklam izleyerek ücretsiz oku',
+              onTap: () => Navigator.pop(ctx, 'ad'),
+            ),
+            const SizedBox(height: 12),
+            // Seçenek 2: Yıldız Tozu harca
+            _buildGateOption(
+              icon: Icons.auto_awesome,
+              iconColor: const Color(0xFFD97706),
+              label: '$coinCost Yıldız Tozu',
+              subtitle: canAfford
+                  ? 'Bakiye: ${coinProvider.balance} ✨'
+                  : 'Yetersiz bakiye (${coinProvider.balance} ✨)',
+              onTap: canAfford ? () => Navigator.pop(ctx, 'coin') : null,
+              isDisabled: !canAfford,
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Kapat'),
+            onPressed: () => Navigator.pop(ctx, 'cancel'),
+            child: const Text('Geri Dön'),
           ),
-          OutlinedButton.icon(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final watched = await _adService.showRewardedAd(placement: 'monthly_unlock');
-              if (watched && mounted) {
-                // Reklam izlendi — limiti sıfırla ve veri yükle
-                setState(() {});
-                _loadMonthlyAfterAd();
-              }
-            },
-            icon: const Icon(Icons.play_circle_filled, size: 20),
-            label: const Text('Reklam İzle'),
-          ),
-          ElevatedButton(
+          TextButton(
             onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.push(
-                context,
-                CosmicBottomSheetRoute(page: const PremiumScreen()),
-              );
+              Navigator.pop(ctx, 'premium');
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accentPurple,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: const Text(
+              'Premium\'a Geç',
+              style: TextStyle(
+                color: AppColors.accentPurple,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            child: const Text('Premium\'a Geç'),
           ),
         ],
       ),
     );
+
+    if (result == null || result == 'cancel') return false;
+
+    if (result == 'premium') {
+      if (mounted) {
+        Navigator.push(
+          context,
+          CosmicBottomSheetRoute(page: const PremiumScreen()),
+        );
+      }
+      return false;
+    }
+
+    if (result == 'ad') {
+      final placement = isWeekly ? 'weekly_unlock' : 'monthly_unlock';
+      final watched = await _adService.showRewardedAd(placement: placement);
+      if (!watched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Reklam yüklenemedi, biraz sonra tekrar dene!'),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return false;
+      }
+      return true;
+    }
+
+    if (result == 'coin') {
+      final spent = await coinProvider.spendCoins(
+        coinCost,
+        isWeekly ? 'weekly_horoscope' : 'monthly_horoscope',
+      );
+      if (spent) {
+        _activityLog.logCoinSpent(coinCost, isWeekly ? 'weekly_horoscope' : 'monthly_horoscope');
+        return true;
+      }
+      return false;
+    }
+
+    return false;
   }
 
-  Future<void> _loadMonthlyAfterAd() async {
-    final authProvider = context.read<AuthProvider>();
-    final horoscopeProvider = context.read<HoroscopeProvider>();
-    if (authProvider.selectedZodiac != null) {
-      try {
-        await horoscopeProvider.fetchMonthlyHoroscope(authProvider.selectedZodiac!);
-        await _activityLog.logMonthlyHoroscope(authProvider.selectedZodiac!.name);
-      } catch (e) {
-        debugPrint('❌ Monthly load error: $e');
-      }
-    }
+  Widget _buildGateOption({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String subtitle,
+    required VoidCallback? onTap,
+    bool isDisabled = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDisabled
+                  ? Colors.grey.shade300
+                  : AppColors.accentPurple.withOpacity(0.3),
+            ),
+            color: isDisabled
+                ? Colors.grey.shade50
+                : AppColors.accentPurple.withOpacity(0.05),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: isDisabled ? Colors.grey : iconColor, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isDisabled ? Colors.grey : const Color(0xFF1E1B4B),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDisabled ? Colors.grey : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isDisabled)
+                Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
+      ),
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -182,6 +260,7 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
     final horoscopeProvider = context.watch<HoroscopeProvider>();
     
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F5FF),
       body: Column(
         children: [
           // Header with tabs
@@ -193,7 +272,7 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
               bottom: 0,
             ),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : AppColors.cardLight,
+              color: AppColors.cardLight,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

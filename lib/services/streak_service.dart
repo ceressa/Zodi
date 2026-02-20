@@ -25,7 +25,15 @@ class StreakService {
       StreakData updatedStreak;
 
       if (daysDiff == 0) {
-        // Same day, no change
+        // Same day — but if streak is 0, initialize to 1 (first ever visit)
+        if (streakData.currentStreak == 0) {
+          updatedStreak = streakData.copyWith(
+            currentStreak: 1,
+            longestStreak: 1,
+            lastVisit: today,
+          );
+          await _saveStreakData(userId, updatedStreak);
+        }
         return;
       } else if (daysDiff == 1) {
         // Consecutive day, increment streak

@@ -318,6 +318,7 @@ Yanıtını düz metin olarak ver, JSON formatında değil.
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F5FF),
       body: SafeArea(child: body),
     );
   }

@@ -188,7 +188,7 @@ class _MatchScreenState extends State<MatchScreen> {
     final horoscopeProvider = context.watch<HoroscopeProvider>();
     final coinProvider = context.watch<CoinProvider>();
 
-    final bgColor = isDark ? const Color(0xFF1A1730) : const Color(0xFFF8F5FF);
+    final bgColor = const Color(0xFFF8F5FF);
 
     final body = SingleChildScrollView(
       controller: _scrollController,
@@ -466,7 +466,7 @@ class _MatchScreenState extends State<MatchScreen> {
                         child: ElevatedButton.icon(
                           onPressed: _unlockWithCoins,
                           icon: const Icon(Icons.monetization_on, size: 20),
-                          label: Text('Keşfet! ($_basicCost Altın)'),
+                          label: Text('Keşfet! ($_basicCost Yıldız Tozu)'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -489,7 +489,7 @@ class _MatchScreenState extends State<MatchScreen> {
                             const Icon(Icons.monetization_on, size: 18, color: Color(0xFFF59E0B)),
                             const SizedBox(width: 6),
                             Text(
-                              '${coinProvider.balance} / $_basicCost Altın',
+                              '${coinProvider.balance} / $_basicCost Yıldız Tozu',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,

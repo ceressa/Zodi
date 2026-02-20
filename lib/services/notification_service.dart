@@ -494,13 +494,13 @@ class NotificationService {
   Future<void> showLowCoinReminder({required String zodiacName}) async {
     await _notifications.show(
       50,
-      '💰 Altınların azalıyor!',
-      '$zodiacName, bugün reklam izleyerek veya arkadaşını davet ederek altın kazanabilirsin!',
+      '💰 Yıldız Tozların azalıyor!',
+      '$zodiacName, bugün reklam izleyerek veya arkadaşını davet ederek Yıldız Tozu kazanabilirsin!',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'monetization',
           'Hatırlatmalar',
-          channelDescription: 'Altın ve premium hatırlatmaları',
+          channelDescription: 'Yıldız Tozu ve premium hatırlatmaları',
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,
           icon: '@mipmap/ic_launcher',

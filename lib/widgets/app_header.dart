@@ -7,6 +7,7 @@ class AppHeader extends StatelessWidget {
   final int coinCount;
   final String? zodiacSymbol;
   final String? userName;
+  final VoidCallback? onCoinTap;
 
   const AppHeader({
     super.key,
@@ -14,6 +15,7 @@ class AppHeader extends StatelessWidget {
     this.coinCount = 0,
     this.zodiacSymbol,
     this.userName,
+    this.onCoinTap,
   });
 
   String _getGreeting() {
@@ -124,35 +126,38 @@ class AppHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                // Coin pill
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: const LinearGradient(
-                      colors: [AppColors.yellow300, AppColors.amber400],
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.monetization_on,
-                        size: 15,
-                        color: Color(0xFFB45309),
+                // Coin pill — tappable
+                GestureDetector(
+                  onTap: onCoinTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: const LinearGradient(
+                        colors: [AppColors.yellow300, AppColors.amber400],
                       ),
-                      const SizedBox(width: 3),
-                      Text(
-                        coinCount >= 1000
-                            ? '${(coinCount / 1000).toStringAsFixed(1)}K'
-                            : '$coinCount',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.auto_awesome,
+                          size: 15,
                           color: Color(0xFFB45309),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 3),
+                        Text(
+                          coinCount >= 1000
+                              ? '${(coinCount / 1000).toStringAsFixed(1)}K'
+                              : '$coinCount',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFB45309),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

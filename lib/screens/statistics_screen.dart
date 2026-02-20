@@ -102,7 +102,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     if (!widget.showAppBar) return body;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
+      backgroundColor: const Color(0xFFF8F5FF),
       appBar: AppBar(
         title: const Text('İstatistikler'),
         backgroundColor: Colors.transparent,

@@ -284,7 +284,7 @@ class _DailyScreenState extends State<DailyScreen>
     final authProvider = context.watch<AuthProvider>();
     final horoscopeProvider = context.watch<HoroscopeProvider>();
 
-    final bgColor = isDark ? const Color(0xFF1F2338) : const Color(0xFFF4F1F8);
+    final bgColor = const Color(0xFFF4F1F8);
 
     return Scaffold(
       backgroundColor: bgColor,

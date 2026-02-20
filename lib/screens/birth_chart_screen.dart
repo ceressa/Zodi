@@ -463,14 +463,13 @@ class _BirthChartScreenState extends State<BirthChartScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F5FF),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark
-                ? [AppColors.bgDark, AppColors.cardDark]
-                : [const Color(0xFFDDD6FE), const Color(0xFFFAE8FF), const Color(0xFFFECDD3)],
+            colors: [Color(0xFFDDD6FE), Color(0xFFFAE8FF), Color(0xFFFECDD3)],
           ),
         ),
         child: SafeArea(

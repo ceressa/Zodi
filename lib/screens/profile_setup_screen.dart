@@ -142,14 +142,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F5FF),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark
-                ? [AppColors.bgDark, AppColors.cardDark]
-                : [AppColors.bgLight, AppColors.surfaceLight],
+            colors: [AppColors.bgLight, AppColors.surfaceLight],
           ),
         ),
         child: SafeArea(
