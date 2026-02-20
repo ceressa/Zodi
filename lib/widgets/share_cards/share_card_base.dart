@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-/// Tüm paylaşım kartlarının premium base widget'ı
+/// Tum paylasim kartlarinin premium base widget'i
 /// Instagram Story boyutu: 1080x1920 piksel
 class ShareCardBase extends StatelessWidget {
   final Widget child;
@@ -50,7 +50,7 @@ class ShareCardBase extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // === NEBULA / GLOW efektleri ===
+          // === NEBULA / GLOW efektleri — kozmik mor palette ===
           Positioned(
             top: -150,
             right: -120,
@@ -61,8 +61,8 @@ class ShareCardBase extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFF1493).withOpacity(0.08),
-                    const Color(0xFFFF1493).withOpacity(0.02),
+                    const Color(0xFF7C3AED).withOpacity(0.10),
+                    const Color(0xFF7C3AED).withOpacity(0.03),
                     Colors.transparent,
                   ],
                 ),
@@ -79,8 +79,8 @@ class ShareCardBase extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF9400D3).withOpacity(0.06),
-                    const Color(0xFF9400D3).withOpacity(0.01),
+                    const Color(0xFFA78BFA).withOpacity(0.07),
+                    const Color(0xFFA78BFA).withOpacity(0.02),
                     Colors.transparent,
                   ],
                 ),
@@ -97,7 +97,7 @@ class ShareCardBase extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF7C3AED).withOpacity(0.05),
+                    const Color(0xFFC084FC).withOpacity(0.06),
                     Colors.transparent,
                   ],
                 ),
@@ -105,7 +105,7 @@ class ShareCardBase extends StatelessWidget {
             ),
           ),
 
-          // === Yıldız partikülleri ===
+          // === Yildiz partikulleri ===
           ...List.generate(60, (i) {
             final rng = Random(i * 37 + 13);
             final size = rng.nextDouble() * 3 + 0.5;
@@ -133,7 +133,7 @@ class ShareCardBase extends StatelessWidget {
             );
           }),
 
-          // === Üst accent çizgi ===
+          // === Ust accent cizgi ===
           Positioned(
             top: 0,
             left: 0,
@@ -144,8 +144,8 @@ class ShareCardBase extends StatelessWidget {
                 gradient: LinearGradient(
                   colors: [
                     Colors.transparent,
-                    Color(0xFFE879F9),
-                    Color(0xFFC084FC),
+                    Color(0xFFA78BFA),
+                    Color(0xFF7C3AED),
                     Color(0xFFA78BFA),
                     Colors.transparent,
                   ],
@@ -154,17 +154,33 @@ class ShareCardBase extends StatelessWidget {
             ),
           ),
 
-          // === Ana içerik ===
+          // === Maskot — sag alt kose dekoratif ===
+          Positioned(
+            bottom: 40,
+            right: -10,
+            child: Opacity(
+              opacity: 0.12,
+              child: Image.asset(
+                'assets/astro_dozi_main.webp',
+                width: 240,
+                height: 240,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+
+          // === Ana icerik ===
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 56),
             child: Column(
               children: [
                 const SizedBox(height: 70),
 
-                // === HEADER ===
+                // === HEADER — gercek logo asset ===
                 _buildHeader(dateStr),
 
-                // === Burç badge ===
+                // === Burc badge — glassmorphism ===
                 if (showZodiacBadge &&
                     zodiacSymbol != null &&
                     zodiacName != null) ...[
@@ -174,10 +190,10 @@ class ShareCardBase extends StatelessWidget {
 
                 const SizedBox(height: 32),
 
-                // === İçerik ===
+                // === Icerik ===
                 Expanded(child: child),
 
-                // === Footer ===
+                // === Footer — logo + bardino + hashtag ===
                 const SizedBox(height: 24),
                 _buildFooter(),
                 const SizedBox(height: 50),
@@ -193,45 +209,51 @@ class ShareCardBase extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Zodi Logo — rounded square
+        // Astro Dozi Logo — gercek asset
         Container(
           width: 64,
           height: 64,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFA78BFA),
-                Color(0xFFC084FC),
-                Color(0xFFE879F9),
-              ],
-            ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFC084FC).withOpacity(0.4),
+                color: const Color(0xFF7C3AED).withOpacity(0.35),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: const Center(
-            child: Icon(
-              Icons.auto_awesome,
-              color: Colors.white,
-              size: 32,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Image.asset(
+              'assets/astro_dozi_logo.webp',
+              width: 64,
+              height: 64,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFA78BFA), Color(0xFF7C3AED)],
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(Icons.auto_awesome, color: Colors.white, size: 32),
+                ),
+              ),
             ),
           ),
         ),
         const SizedBox(width: 16),
-        // Zodi text
+        // Astro Dozi text — shimmer
         ShaderMask(
           shaderCallback: (bounds) => const LinearGradient(
-            colors: [Color(0xFFA78BFA), Color(0xFFE879F9)],
+            colors: [Color(0xFFA78BFA), Color(0xFFC084FC)],
           ).createShader(bounds),
           child: const Text(
-            'Zodi',
+            'Astro Dozi',
             style: TextStyle(
               fontSize: 44,
               fontWeight: FontWeight.w800,
@@ -243,7 +265,7 @@ class ShareCardBase extends StatelessWidget {
 
         const Spacer(),
 
-        // Feature tag + tarih
+        // Feature tag (goldenStar) + tarih
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -253,12 +275,12 @@ class ShareCardBase extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFE879F9), Color(0xFFC084FC)],
+                    colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
                   ),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFE879F9).withOpacity(0.25),
+                      color: const Color(0xFFF59E0B).withOpacity(0.30),
                       blurRadius: 12,
                       offset: const Offset(0, 3),
                     ),
@@ -293,15 +315,10 @@ class ShareCardBase extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFFE879F9).withOpacity(0.12),
-            const Color(0xFFA78BFA).withOpacity(0.12),
-          ],
-        ),
+        color: Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(50),
         border: Border.all(
-          color: const Color(0xFFE879F9).withOpacity(0.2),
+          color: Colors.white.withOpacity(0.12),
           width: 1.5,
         ),
       ),
@@ -327,73 +344,120 @@ class ShareCardBase extends StatelessWidget {
   Widget _buildFooter() {
     return Column(
       children: [
-        // Ayırıcı
+        // Ayirici
         Container(
-          width: 200,
+          width: 300,
           height: 1,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
                 Colors.transparent,
-                Colors.white.withOpacity(0.12),
+                Colors.white.withOpacity(0.15),
+                Colors.white.withOpacity(0.15),
                 Colors.transparent,
               ],
+              stops: const [0.0, 0.3, 0.7, 1.0],
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
 
-        // CTA
+        // CTA — güçlendirilmiş viral mesaj
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                const Color(0xFFA78BFA).withOpacity(0.1),
-                const Color(0xFFE879F9).withOpacity(0.1),
+                const Color(0xFF7C3AED).withOpacity(0.18),
+                const Color(0xFFA78BFA).withOpacity(0.10),
               ],
             ),
             borderRadius: BorderRadius.circular(40),
             border: Border.all(
-              color: const Color(0xFFA78BFA).withOpacity(0.12),
+              color: const Color(0xFF7C3AED).withOpacity(0.20),
+              width: 1.5,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFA78BFA), Color(0xFFE879F9)],
+              // Mini logo asset
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/astro_dozi_logo.webp',
+                  width: 34,
+                  height: 34,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFA78BFA), Color(0xFF7C3AED)],
+                      ),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.auto_awesome, color: Colors.white, size: 16),
+                    ),
                   ),
                 ),
-                child: const Center(
-                  child:
-                      Icon(Icons.auto_awesome, color: Colors.white, size: 14),
-                ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                'Zodi ile falına bak',
-                style: TextStyle(
-                  fontSize: 19,
-                  color: Colors.white.withOpacity(0.5),
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.3,
-                ),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Astro Dozi',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    'Sen de kesfet!',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.45),
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
+
         const SizedBox(height: 14),
+
+        // Bardino logo
+        Opacity(
+          opacity: 0.25,
+          child: Image.asset(
+            'assets/bardino_logo.webp',
+            height: 24,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Text(
+              'Bardino Technology',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.2),
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
         Text(
-          '#Zodi  #Astroloji  #Burçlar',
+          '#AstroDozi  #Astroloji  #BurcYorumu',
           style: TextStyle(
             fontSize: 16,
-            color: Colors.white.withOpacity(0.18),
+            color: Colors.white.withOpacity(0.20),
             letterSpacing: 2,
             fontWeight: FontWeight.w400,
           ),

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:confetti/confetti.dart';
 import '../constants/colors.dart';
-import 'home_screen.dart';
+import '../theme/cosmic_page_route.dart';
+import '../app.dart';
 
 class WelcomeScreen extends StatefulWidget {
   final String userName;
@@ -33,7 +34,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          CosmicFadeRoute(page: const MainShell()),
         );
       }
     });
@@ -130,7 +131,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       ),
                       child: ClipOval(
                         child: Image.asset(
-                          'assets/dozi_char.webp',
+                          'assets/astro_dozi_main.webp',
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
                             decoration: const BoxDecoration(

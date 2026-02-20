@@ -1,8 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../constants/colors.dart';
 import '../services/ad_service.dart';
+import '../services/activity_log_service.dart';
+import '../providers/coin_provider.dart';
 
-/// Rewarded ad izleme butonu — herhangi bir yerde kullanılabilir
+/// Rewarded ad izleme butonu — şık, kozmik temaya uyumlu
 /// Reklam izlendiğinde onRewarded callback'i tetiklenir
 class RewardedAdButton extends StatefulWidget {
   final String label;
@@ -46,14 +50,21 @@ class _RewardedAdButtonState extends State<RewardedAdButton> {
     setState(() => _isLoading = false);
 
     if (rewarded) {
+      if (mounted) {
+        final coinProvider = context.read<CoinProvider>();
+        await coinProvider.earnFromAd();
+        ActivityLogService().logCoinEarned(5, 'reklam_${widget.placement}');
+      }
       widget.onRewarded?.call();
     } else {
       widget.onFailed?.call();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Reklam yüklenemedi, biraz sonra tekrar dene!'),
+          SnackBar(
+            content: const Text('Reklam yüklenemedi, biraz sonra tekrar dene!'),
             backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -62,40 +73,56 @@ class _RewardedAdButtonState extends State<RewardedAdButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: widget.gradient ?? AppColors.purpleGradient,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFFA78BFA).withValues(alpha: 0.25)
+              : const Color(0xFF7C3AED).withValues(alpha: 0.15),
+          width: 1.5,
+        ),
+        color: isDark
+            ? const Color(0xFF1E1B4B).withValues(alpha: 0.5)
+            : const Color(0xFFF8F5FF),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: _isLoading ? null : _showAd,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_isLoading)
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
+                  SizedBox(
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
                       strokeWidth: 2,
                     ),
                   )
                 else
-                  Icon(widget.icon, color: Colors.white),
+                  Icon(
+                    widget.icon,
+                    color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+                    size: 20,
+                  ),
                 const SizedBox(width: 8),
                 Text(
                   _isLoading ? 'Yükleniyor...' : widget.label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  style: TextStyle(
+                    color: isDark
+                        ? const Color(0xFFA78BFA)
+                        : const Color(0xFF7C3AED),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -137,33 +164,39 @@ class RewardedUnlockWidget extends StatelessWidget {
           children: [
             Opacity(opacity: 0.3, child: child),
             Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: (isDark ? Colors.black : Colors.white).withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.lock, size: 40, color: AppColors.gold),
-                    const SizedBox(height: 8),
-                    Text(
-                      featureName,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.textDark,
-                      ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: (isDark ? const Color(0xFF0F0A2E) : Colors.white).withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Reklam izle ve aç!',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.white70 : AppColors.textMuted,
-                      ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.lock_rounded, size: 36, color: Color(0xFFA78BFA)),
+                        const SizedBox(height: 8),
+                        Text(
+                          featureName,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Reklam izle ve aç',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.white54 : AppColors.textMuted,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -173,7 +206,7 @@ class RewardedUnlockWidget extends StatelessWidget {
         RewardedAdButton(
           label: 'Reklam İzle & $featureName Aç',
           placement: placement,
-          icon: Icons.lock_open,
+          icon: Icons.lock_open_rounded,
           onRewarded: onUnlocked,
         ),
       ],

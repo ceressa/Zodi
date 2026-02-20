@@ -35,7 +35,7 @@ class NotificationService {
     // Merak uyandıran hook'lar
     {'title': '👀 Bunu bilmen lazım!', 'body': '{sign} burcu için bugün çok önemli bir detay var...'},
     {'title': '🎯 Tam zamanı!', 'body': '{sign}, bugün bir karar vermen gerekebilir...'},
-    {'title': '🌈 İyi haber!', 'body': 'Zodi {sign} burcu için güzel şeyler görüyor...'},
+    {'title': '🌈 İyi haber!', 'body': 'Astro Dozi {sign} burcu için güzel şeyler görüyor...'},
     {'title': '⭐ Günün sürprizi!', 'body': '{sign} burcu bugün neyle karşılaşacak? Hemen bak!'},
     {'title': '🎪 Kozmik sahne senin!', 'body': '{sign}, bugün spot ışığı sende olabilir...'},
   ];
@@ -44,7 +44,7 @@ class NotificationService {
   static const List<Map<String, String>> _middayHooks = [
     {'title': '☀️ Öğle enerjisi!', 'body': '{sign}, günün ikinci yarısı için falına baktın mı?'},
     {'title': '🔄 Güncellemen var!', 'body': '{sign} burcu için öğleden sonra enerjiler değişiyor...'},
-    {'title': '💡 Hızlı bir bakış!', 'body': 'Bugünkü şanslı sayın ve rengin ne? Zodi\'de bak!'},
+    {'title': '💡 Hızlı bir bakış!', 'body': 'Bugünkü şanslı sayın ve rengin ne? Astro Dozi\'de bak!'},
     {'title': '🎴 Tarot hatırlatma!', 'body': '{sign}, günlük tarot kartını çekmeyi unuttun mu?'},
   ];
 
@@ -167,7 +167,7 @@ class NotificationService {
     await _notifications.zonedSchedule(
       0, // notification id
       '🌟 Günlük Falın Hazır!',
-      '$zodiacName burcu için bugünün falı seni bekliyor. Zodi ne diyor bakalım?',
+      '$zodiacName burcu için bugünün falı seni bekliyor. Astro Dozi ne diyor bakalım?',
       _nextInstanceOfTime(hour, minute),
       const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -486,6 +486,144 @@ class NotificationService {
       matchDateTimeComponents: DateTimeComponents.time,
       payload: 'cosmic_box',
     );
+  }
+
+  // ===== MONETİZASYON BİLDİRİMLERİ =====
+
+  /// Coin azaldığında hatırlatma (bakiye < 10)
+  Future<void> showLowCoinReminder({required String zodiacName}) async {
+    await _notifications.show(
+      50,
+      '💰 Altınların azalıyor!',
+      '$zodiacName, bugün reklam izleyerek veya arkadaşını davet ederek altın kazanabilirsin!',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'monetization',
+          'Hatırlatmalar',
+          channelDescription: 'Altın ve premium hatırlatmaları',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: 'low_coin',
+    );
+  }
+
+  /// Streak kırılma riski hatırlatması (akşam 20:00)
+  Future<void> scheduleStreakReminder({required String zodiacName}) async {
+    await _notifications.zonedSchedule(
+      55, // streak hatırlatma ID=55
+      '🔥 Serini kaybetme!',
+      '$zodiacName, bugün falına bakmayı unuttun! Giriş serini koru ve bonus kazan.',
+      _nextInstanceOfTime(20, 0),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'streak_reminder',
+          'Seri Hatırlatma',
+          channelDescription: 'Giriş serisi hatırlatması',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: 'streak_reminder',
+    );
+  }
+
+  /// Premium upsell bildirimi (haftalık, Pazar 11:00)
+  Future<void> schedulePremiumUpsell({required String zodiacName}) async {
+    // Pazar günü 11:00'da göster
+    final now = tz.TZDateTime.now(tz.local);
+    var nextSunday = tz.TZDateTime(tz.local, now.year, now.month, now.day, 11, 0);
+    while (nextSunday.weekday != DateTime.sunday || nextSunday.isBefore(now)) {
+      nextSunday = nextSunday.add(const Duration(days: 1));
+    }
+
+    await _notifications.zonedSchedule(
+      60, // premium upsell ID=60
+      '👑 Bu haftanın fırsatı!',
+      '$zodiacName, Premium ile sınırsız yorum, reklamsız deneyim ve çok daha fazlası!',
+      nextSunday,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'premium_upsell',
+          'Premium Teklifler',
+          channelDescription: 'Premium üyelik teklifleri',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      payload: 'premium_upsell',
+    );
+  }
+
+  /// Geri dönüş (re-engagement) bildirimi — 3 gün giriş yapmayanlar için
+  Future<void> scheduleReEngagement({required String zodiacName}) async {
+    final triggerDate = tz.TZDateTime.now(tz.local).add(const Duration(days: 3));
+    final scheduledDate = tz.TZDateTime(
+      tz.local,
+      triggerDate.year,
+      triggerDate.month,
+      triggerDate.day,
+      10,
+      0,
+    );
+
+    await _notifications.zonedSchedule(
+      70, // re-engagement ID=70
+      '🌟 Seni özledik!',
+      '$zodiacName, yıldızlar seni bekliyor! 3 gündür bakmadığın falında önemli mesajlar var...',
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          're_engagement',
+          'Geri Dönüş',
+          channelDescription: 'Geri dönüş hatırlatmaları',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: 're_engagement',
+    );
+  }
+
+  /// Re-engagement bildirimini iptal et (kullanıcı uygulamaya girdiğinde)
+  Future<void> cancelReEngagement() async {
+    await _notifications.cancel(70);
   }
 
   /// Retro gezegen uyarısı (tek seferlik bildirim)

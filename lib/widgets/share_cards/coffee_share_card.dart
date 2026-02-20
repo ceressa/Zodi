@@ -46,12 +46,12 @@ class CoffeeShareCard extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: const Color(0xFFD4A574).withOpacity(0.25),
-                  width: 2,
+                  color: const Color(0xFFF59E0B).withOpacity(0.30),
+                  width: 2.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFD97706).withOpacity(0.15),
+                    color: const Color(0xFFF59E0B).withOpacity(0.15),
                     blurRadius: 40,
                     spreadRadius: 10,
                   ),
@@ -162,9 +162,19 @@ class CoffeeShareCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          color: accentColor.withOpacity(0.04),
+          color: accentColor.withOpacity(0.05),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: accentColor.withOpacity(0.08)),
+          border: Border.all(
+            color: accentColor.withOpacity(0.12),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: accentColor.withOpacity(0.05),
+              blurRadius: 10,
+              spreadRadius: 1,
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

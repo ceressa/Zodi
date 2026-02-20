@@ -831,10 +831,10 @@ ${next.planet} Retrosu'na $_daysUntilNextRetro gün kaldı!
 📅 ${next.startDate.day}.${next.startDate.month}.${next.startDate.year}
 
 📱 Retro takvimine Zodi'den bak!
-🔮 #Zodi #RetroSayacı
+🔮 #AstroDozi #RetroSayacı
 ''';
     } else {
-      text = 'Şu an yaklaşan retro yok! 🎉 Zodi ile takip et!';
+      text = 'Şu an yaklaşan retro yok! 🎉 Astro Dozi ile takip et!';
     }
 
     Share.share(text);

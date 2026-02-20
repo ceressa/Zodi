@@ -2,9 +2,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import '../providers/auth_provider.dart';
+import '../providers/coin_provider.dart';
+import '../config/membership_config.dart';
 import '../constants/colors.dart';
 import '../services/activity_log_service.dart';
+import '../services/revenue_cat_service.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -15,58 +20,13 @@ class PremiumScreen extends StatefulWidget {
 
 class _PremiumScreenState extends State<PremiumScreen>
     with TickerProviderStateMixin {
-  String _selectedPlan = 'yearly';
+  MembershipTier? _selectedTier;
   final ActivityLogService _activityLog = ActivityLogService();
+  final RevenueCatService _revenueCatService = RevenueCatService();
   late final AnimationController _shimmerController;
   late final AnimationController _pulseController;
-
-  // Plan bilgileri: eski fiyat (üstü çizili) + yeni fiyat (indirimli)
-  static const List<Map<String, dynamic>> _plans = [
-    {
-      'key': 'weekly',
-      'label': 'Haftalık',
-      'oldPrice': '₺49,99',
-      'price': '₺29,99',
-      'period': '/hafta',
-      'discount': '%40',
-      'dailyPrice': '₺4,28/gün',
-      'color': Color(0xFFFF69B4),
-    },
-    {
-      'key': 'yearly',
-      'label': 'Yıllık',
-      'oldPrice': '₺1.199,99',
-      'price': '₺449,99',
-      'period': '/yıl',
-      'discount': '%63',
-      'dailyPrice': '₺1,23/gün',
-      'badge': 'EN UYGUN',
-      'savings': '₺750 tasarruf',
-      'color': Color(0xFFFFD700),
-      'recommended': true,
-    },
-    {
-      'key': 'monthly',
-      'label': 'Aylık',
-      'oldPrice': '₺149,99',
-      'price': '₺99,99',
-      'period': '/ay',
-      'discount': '%33',
-      'dailyPrice': '₺3,33/gün',
-      'color': Color(0xFF9400D3),
-    },
-  ];
-
-  static const List<Map<String, dynamic>> _features = [
-    {'icon': Icons.style, 'emoji': '🔮', 'title': 'Sınırsız Tarot Okuma', 'sub': '3 kart yayılımı dahil'},
-    {'icon': Icons.coffee, 'emoji': '☕', 'title': 'Sınırsız Kahve Falı', 'sub': 'Detaylı AI yorumları'},
-    {'icon': Icons.chat_bubble_outline, 'emoji': '💬', 'title': 'Sınırsız AI Sohbet', 'sub': 'Kişisel astroloji danışmanın'},
-    {'icon': Icons.nightlight_round, 'emoji': '🌙', 'title': 'Sınırsız Rüya Yorumu', 'sub': 'Rüyalarının derinliklerine in'},
-    {'icon': Icons.calendar_month, 'emoji': '📅', 'title': 'Haftalık & Aylık Yorumlar', 'sub': 'Uzun vadeli kozmik rehberlik'},
-    {'icon': Icons.analytics_outlined, 'emoji': '📊', 'title': 'Detaylı Analiz & Raporlar', 'sub': 'Derinlemesine burç analizi'},
-    {'icon': Icons.block, 'emoji': '🚫', 'title': 'Reklamsız Deneyim', 'sub': 'Kesintisiz, akıcı kullanım'},
-    {'icon': Icons.auto_awesome, 'emoji': '✨', 'title': 'Tüm Premium İçerikler', 'sub': 'Kozmik takvim, profil kartı ve dahası'},
-  ];
+  bool _isLoading = false;
+  bool _isRestoring = false;
 
   @override
   void initState() {
@@ -88,13 +48,13 @@ class _PremiumScreenState extends State<PremiumScreen>
     super.dispose();
   }
 
-  Map<String, dynamic> get _selectedPlanData =>
-      _plans.firstWhere((p) => p['key'] == _selectedPlan);
-
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final currentTier = authProvider.membershipTier;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F5),
+      backgroundColor: const Color(0xFFF8F5FF),
       body: Stack(
         children: [
           _buildBackground(),
@@ -109,15 +69,44 @@ class _PremiumScreenState extends State<PremiumScreen>
                       children: [
                         const SizedBox(height: 8),
                         _buildHeroSection(),
-                        const SizedBox(height: 28),
-                        _buildLimitedOfferBanner(),
                         const SizedBox(height: 24),
-                        _buildPlanCards(),
+
+                        // ─── ÜYELIK PLANLARI ───
+                        _buildSectionTitle('👑', 'Üyelik Planları'),
+                        const SizedBox(height: 12),
+                        _buildTierCards(currentTier),
+
                         const SizedBox(height: 28),
-                        _buildFeaturesSection(),
+
+                        // ─── ALTIN PAKETLERİ ───
+                        _buildSectionTitle('💰', 'Altın Paketleri'),
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            'Özellikler için altın satın al',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textMuted.withOpacity(0.7),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildCoinPacks(),
+
                         const SizedBox(height: 20),
+
+                        // ─── REVENUECAT PAYWALL BUTONU ───
+                        _buildRevenueCatPaywallButton(),
+
+                        const SizedBox(height: 12),
+
+                        // ─── SATIN ALIMLARI GERİ YÜKLE ───
+                        _buildRestoreButton(),
+
+                        const SizedBox(height: 24),
                         _buildGuaranteeSection(),
-                        const SizedBox(height: 120),
+                        const SizedBox(height: 32),
                       ],
                     ),
                   ),
@@ -125,7 +114,6 @@ class _PremiumScreenState extends State<PremiumScreen>
               ],
             ),
           ),
-          _buildBottomPurchaseBar(),
         ],
       ),
     );
@@ -139,9 +127,9 @@ class _PremiumScreenState extends State<PremiumScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFFFF0F5),
-              Color(0xFFFFE4EC),
-              Color(0xFFFFF5F8),
+              Color(0xFFF8F5FF),
+              Color(0xFFEDE9FE),
+              Color(0xFFF5F3FF),
             ],
           ),
         ),
@@ -169,26 +157,30 @@ class _PremiumScreenState extends State<PremiumScreen>
             ),
           ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.positive.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.verified, color: AppColors.positive, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  '7 gün para iade garantisi',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.positive,
+          // Coin balance
+          Consumer<CoinProvider>(
+            builder: (_, coinProvider, __) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.monetization_on,
+                      size: 16, color: Color(0xFFB45309)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${coinProvider.balance} Altın',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFB45309),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -204,15 +196,12 @@ class _PremiumScreenState extends State<PremiumScreen>
           AnimatedBuilder(
             animation: _pulseController,
             builder: (context, child) {
-              final scale = 1.0 + (_pulseController.value * 0.08);
-              return Transform.scale(
-                scale: scale,
-                child: child,
-              );
+              final scale = 1.0 + (_pulseController.value * 0.06);
+              return Transform.scale(scale: scale, child: child);
             },
             child: Container(
-              width: 100,
-              height: 100,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFFFFD700), Color(0xFFFFA500), Color(0xFFFF8C00)],
@@ -223,213 +212,127 @@ class _PremiumScreenState extends State<PremiumScreen>
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFFFFD700).withOpacity(0.4),
-                    blurRadius: 30,
-                    spreadRadius: 8,
+                    blurRadius: 24,
+                    spreadRadius: 6,
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.diamond,
-                size: 48,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.diamond, size: 40, color: Colors.white),
             )
                 .animate(onPlay: (c) => c.repeat())
                 .shimmer(duration: 2500.ms, color: Colors.white.withOpacity(0.4)),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           ShaderMask(
             shaderCallback: (bounds) => const LinearGradient(
               colors: [Color(0xFF9400D3), Color(0xFFFF1493), Color(0xFFFF8C00)],
             ).createShader(bounds),
             child: const Text(
-              'Zodi Premium',
+              'Astro Dozi Premium',
               style: TextStyle(
-                fontSize: 36,
+                fontSize: 32,
                 fontWeight: FontWeight.w900,
                 color: Colors.white,
                 letterSpacing: -0.5,
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           const Text(
             'Yıldızların tüm sırlarını aç',
             style: TextStyle(
-              fontSize: 17,
+              fontSize: 16,
               color: AppColors.textMuted,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 60,
-                height: 24,
-                child: Stack(
-                  children: List.generate(3, (i) => Positioned(
-                    left: i * 16.0,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            [const Color(0xFFFF69B4), const Color(0xFFFF1493)],
-                            [const Color(0xFF9400D3), const Color(0xFFBA55D3)],
-                            [const Color(0xFFFFD700), const Color(0xFFFFA500)],
-                          ][i],
-                        ),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: Center(
-                        child: Text(
-                          ['⭐', '🔮', '✨'][i],
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      ),
-                    ),
-                  )),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '10.000+ mutlu kullanıcı',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted.withOpacity(0.8),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.08);
+  }
+
+  Widget _buildSectionTitle(String emoji, String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textDark,
+            ),
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1);
+    );
   }
 
-  Widget _buildLimitedOfferBanner() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFF1493), Color(0xFFFF4500)],
-          ),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFF1493).withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.local_fire_department, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Lansmana Özel İndirim!',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    'Tüm planlarda %63\'e varan indirim',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'SINIRLI',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFFFF1493),
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-      )
-          .animate(onPlay: (c) => c.repeat())
-          .shimmer(duration: 3000.ms, color: Colors.white.withOpacity(0.15)),
-    ).animate().fadeIn(duration: 500.ms, delay: 200.ms).slideX(begin: -0.05);
-  }
+  Widget _buildTierCards(MembershipTier currentTier) {
+    // Ücretsiz olmayan tier'ları göster
+    final tiers = MembershipTierConfig.allTiers.where((t) => t.tier != MembershipTier.standard).toList();
 
-  Widget _buildPlanCards() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
-        children: _plans.asMap().entries.map((entry) {
+        children: tiers.asMap().entries.map((entry) {
           final i = entry.key;
-          final plan = entry.value;
-          final isSelected = _selectedPlan == plan['key'];
-          final isRecommended = plan['recommended'] == true;
+          final tier = entry.value;
+          final isCurrentTier = tier.tier == currentTier;
+          final isSelected = _selectedTier == tier.tier;
+          final isUpgrade = tier.tier.index > currentTier.index;
 
           return Padding(
-            padding: EdgeInsets.only(bottom: i < _plans.length - 1 ? 12 : 0),
-            child: _buildPlanCard(plan, isSelected, isRecommended),
+            padding: EdgeInsets.only(bottom: i < tiers.length - 1 ? 12 : 0),
+            child: _buildTierCard(tier, isCurrentTier, isSelected, isUpgrade),
           )
               .animate()
-              .fadeIn(duration: 400.ms, delay: (300 + i * 100).ms)
-              .slideX(begin: 0.05);
+              .fadeIn(duration: 400.ms, delay: (200 + i * 100).ms)
+              .slideX(begin: 0.04);
         }).toList(),
       ),
     );
   }
 
-  Widget _buildPlanCard(Map<String, dynamic> plan, bool isSelected, bool isRecommended) {
-    final Color planColor = plan['color'] as Color;
+  Widget _buildTierCard(
+    MembershipTierConfig tier,
+    bool isCurrentTier,
+    bool isSelected,
+    bool isUpgrade,
+  ) {
+    final gradStart = tier.gradient.first;
 
     return GestureDetector(
-      onTap: () => setState(() => _selectedPlan = plan['key']),
+      onTap: isCurrentTier
+          ? null
+          : () {
+              setState(() {
+                _selectedTier = _selectedTier == tier.tier ? null : tier.tier;
+              });
+            },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-        padding: EdgeInsets.all(isSelected ? 18 : 16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? planColor : Colors.grey.shade200,
-            width: isSelected ? 2.5 : 1.5,
+            color: isCurrentTier
+                ? AppColors.positive
+                : isSelected
+                    ? gradStart
+                    : Colors.grey.shade200,
+            width: isSelected || isCurrentTier ? 2.5 : 1.5,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: planColor.withOpacity(0.2),
-                    blurRadius: 20,
+                    color: gradStart.withOpacity(0.2),
+                    blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
                 ]
@@ -441,28 +344,24 @@ class _PremiumScreenState extends State<PremiumScreen>
                   ),
                 ],
         ),
-        child: Stack(
-          clipBehavior: Clip.none,
+        child: Column(
           children: [
             Row(
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 24,
-                  height: 24,
+                // Tier icon
+                Container(
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? planColor : Colors.grey.shade300,
-                      width: 2,
-                    ),
-                    color: isSelected ? planColor : Colors.transparent,
+                    gradient: LinearGradient(colors: tier.gradient),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: isSelected
-                      ? const Icon(Icons.check, size: 16, color: Colors.white)
-                      : null,
+                  child: Center(
+                    child: Text(tier.emoji, style: const TextStyle(fontSize: 22)),
+                  ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
+                // Name + description
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,25 +369,26 @@ class _PremiumScreenState extends State<PremiumScreen>
                       Row(
                         children: [
                           Text(
-                            plan['label'],
+                            tier.displayName,
                             style: const TextStyle(
                               fontSize: 17,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                               color: AppColors.textDark,
                             ),
                           ),
-                          if (plan['savings'] != null) ...[
+                          if (isCurrentTier) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: AppColors.positive.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: Text(
-                                plan['savings'],
+                              child: const Text(
+                                'Mevcut',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.positive,
                                 ),
@@ -497,204 +397,261 @@ class _PremiumScreenState extends State<PremiumScreen>
                           ],
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
-                        plan['dailyPrice'],
+                        tier.description,
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           color: AppColors.textMuted,
                         ),
                       ),
                     ],
                   ),
                 ),
+                // Price
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      plan['oldPrice'],
+                      '₺${tier.monthlyPrice.toStringAsFixed(2).replaceAll('.', ',')}',
                       style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade400,
-                        decoration: TextDecoration.lineThrough,
-                        decorationColor: Colors.red.shade300,
-                        decorationThickness: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      plan['price'],
-                      style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.w900,
-                        color: isSelected ? planColor : AppColors.textDark,
+                        color: isSelected ? gradStart : AppColors.textDark,
                       ),
                     ),
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF1493).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${plan['discount']} indirim',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFFFF1493),
-                        ),
+                    const Text(
+                      '/ay',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
                       ),
                     ),
                   ],
                 ),
               ],
             ),
-            if (isRecommended)
-              Positioned(
-                top: -28,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+            // Benefits row
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _buildBenefitChip('💰 +${tier.dailyBonus}/gün'),
+                _buildBenefitChip('📺 +${tier.adReward}/reklam'),
+                if (!tier.adsEnabled) _buildBenefitChip('🚫 Reklamsız'),
+                if (tier.allFeaturesUnlocked)
+                  _buildBenefitChip('✨ Tüm özellikler'),
+              ],
+            ),
+            // Purchase button (shown when selected)
+            if (isSelected && isUpgrade) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: tier.gradient),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: gradStart.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFD700).withOpacity(0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star, color: Colors.white, size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          'EN UYGUN FİYAT',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _purchaseTier(tier),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Center(
+                        child: Text(
+                          '${tier.emoji} ${tier.displayName} Üyeliğe Geç',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white,
-                            letterSpacing: 0.8,
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  )
-                      .animate(onPlay: (c) => c.repeat())
-                      .shimmer(duration: 2000.ms, color: Colors.white.withOpacity(0.5)),
-                ),
+                  ),
+                )
+                    .animate(onPlay: (c) => c.repeat())
+                    .shimmer(
+                      duration: 2500.ms,
+                      color: Colors.white.withOpacity(0.15),
+                    ),
               ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFeaturesSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 20,
-                decoration: BoxDecoration(
-                  gradient: AppColors.cosmicGradient,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Premium ile Neler Kazanırsın?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textDark,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.2,
-            children: _features.asMap().entries.map((entry) {
-              final i = entry.key;
-              final f = entry.value;
-              return _buildFeatureChip(f)
-                  .animate()
-                  .fadeIn(duration: 300.ms, delay: (500 + i * 80).ms)
-                  .scale(begin: const Offset(0.9, 0.9), delay: (500 + i * 80).ms);
-            }).toList(),
-          ),
-        ],
+  Widget _buildBenefitChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E8FF),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF7C3AED),
+        ),
       ),
     );
   }
 
-  Widget _buildFeatureChip(Map<String, dynamic> f) {
+  Widget _buildCoinPacks() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.95,
+        children: CoinPackConfig.allPacks.asMap().entries.map((entry) {
+          final i = entry.key;
+          final pack = entry.value;
+          return _buildCoinPackCard(pack)
+              .animate()
+              .fadeIn(duration: 300.ms, delay: (400 + i * 80).ms)
+              .scale(begin: const Offset(0.92, 0.92), delay: (400 + i * 80).ms);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildCoinPackCard(CoinPackConfig pack) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: pack.isBestValue
+              ? const Color(0xFFB45309)
+              : Colors.grey.shade200,
+          width: pack.isBestValue ? 2 : 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: pack.isBestValue
+                ? const Color(0xFFB45309).withOpacity(0.15)
+                : Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Text(f['emoji'], style: const TextStyle(fontSize: 22)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  f['title'],
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _purchaseCoinPack(pack),
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Coin icon
+                    const Icon(Icons.monetization_on,
+                        size: 36, color: Color(0xFFB45309)),
+                    const SizedBox(height: 8),
+                    // Amount
+                    Text(
+                      '${pack.coinAmount}',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFB45309),
+                      ),
+                    ),
+                    const Text(
+                      'Altın',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFB45309),
+                      ),
+                    ),
+                    if (pack.bonusPercent > 0) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '+%${pack.bonusPercent} bonus',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF16A34A),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    // Price
+                    Text(
+                      '₺${pack.price.toStringAsFixed(2).replaceAll('.', ',')}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  f['sub'],
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
+              ),
+              // Best value badge
+              if (pack.isBestValue)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFB45309), Color(0xFFF59E0B)],
+                        ),
+                        borderRadius: BorderRadius.vertical(
+                          bottom: Radius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'EN AVANTAJLI',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -717,13 +674,14 @@ class _PremiumScreenState extends State<PremiumScreen>
                 color: AppColors.positive.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.shield_outlined, color: AppColors.positive, size: 22),
+              child: const Icon(Icons.shield_outlined,
+                  color: AppColors.positive, size: 22),
             ),
             const SizedBox(width: 12),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
                     'Güvenli & Kolay',
                     style: TextStyle(
@@ -746,157 +704,325 @@ class _PremiumScreenState extends State<PremiumScreen>
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms, delay: 800.ms);
+    ).animate().fadeIn(duration: 400.ms, delay: 600.ms);
   }
 
-  Widget _buildBottomPurchaseBar() {
-    final plan = _selectedPlanData;
+  // ─── REVENUECAT PAYWALL BUTTON ──────────────────────────────
 
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
+  Widget _buildRevenueCatPaywallButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF9400D3), Color(0xFFFF1493), Color(0xFFFF8C00)],
             ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    plan['oldPrice'],
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade400,
-                      decoration: TextDecoration.lineThrough,
-                      decorationColor: Colors.red.shade300,
-                      decorationThickness: 2,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${plan['price']}${plan['period']}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF1493).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      plan['discount'],
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFFFF1493),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF9400D3), Color(0xFFFF1493), Color(0xFFFF4500)],
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFF1493).withOpacity(0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () async {
-                        await context.read<AuthProvider>().upgradeToPremium(
-                          subscriptionType: _selectedPlan,
-                        );
-                        final priceStr = plan['price'] as String;
-                        final priceValue = double.tryParse(
-                          priceStr.replaceAll('₺', '').replaceAll('.', '').replaceAll(',', '.'),
-                        ) ?? 0.0;
-                        await _activityLog.logPremiumPurchase(priceValue);
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Premium (${plan['label']}) aktif edildi! 🎉',
-                              ),
-                              backgroundColor: AppColors.positive,
-                            ),
-                          );
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(18),
-                      child: const Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.diamond, color: Colors.white, size: 22),
-                            SizedBox(width: 10),
-                            Text(
-                              'Premium\'a Geç',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                    .animate(onPlay: (c) => c.repeat())
-                    .shimmer(
-                      duration: 2500.ms,
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'İstediğin zaman iptal edebilirsin',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted.withOpacity(0.7),
-                ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF9400D3).withOpacity(0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
-        ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _isLoading ? null : _openRevenueCatPaywall,
+              borderRadius: BorderRadius.circular(16),
+              child: Center(
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.diamond, color: Colors.white, size: 22),
+                          SizedBox(width: 8),
+                          Text(
+                            'Tüm Planları Görüntüle',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        )
+            .animate(onPlay: (c) => c.repeat())
+            .shimmer(
+              duration: 2500.ms,
+              color: Colors.white.withOpacity(0.15),
+            ),
+      ),
+    ).animate().fadeIn(duration: 400.ms, delay: 500.ms);
+  }
+
+  // ─── RESTORE PURCHASES BUTTON ─────────────────────────────
+
+  Widget _buildRestoreButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: TextButton(
+        onPressed: _isRestoring ? null : _restorePurchases,
+        child: _isRestoring
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(
+                'Satın Alımları Geri Yükle',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
       ),
     );
+  }
+
+  // ─── REVENUECAT PAYWALL ───────────────────────────────────
+
+  Future<void> _openRevenueCatPaywall() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _revenueCatService.presentPaywall();
+
+      if (!mounted) return;
+
+      if (result == PaywallResult.purchased || result == PaywallResult.restored) {
+        // Satın alma başarılı — AuthProvider'ı güncelle
+        await context.read<AuthProvider>().refreshPremiumStatus();
+
+        if (mounted) {
+          final authProvider = context.read<AuthProvider>();
+          context.read<CoinProvider>().setTier(authProvider.membershipTier);
+
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('✨ Premium üyelik aktif edildi! 🎉'),
+              backgroundColor: AppColors.positive,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Bir hata oluştu: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // ─── TIER PURCHASE (RevenueCat üzerinden) ─────────────────
+
+  Future<void> _purchaseTier(MembershipTierConfig tier) async {
+    setState(() => _isLoading = true);
+
+    try {
+      // RevenueCat Paywall'ı aç — kullanıcı orada seçim yapsın
+      final result = await _revenueCatService.presentPaywall();
+
+      if (!mounted) return;
+
+      if (result == PaywallResult.purchased || result == PaywallResult.restored) {
+        await context.read<AuthProvider>().refreshPremiumStatus();
+        await _activityLog.logPremiumPurchase(tier.monthlyPrice);
+
+        if (mounted) {
+          context.read<CoinProvider>().setTier(
+            context.read<AuthProvider>().membershipTier,
+          );
+
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${tier.emoji} ${tier.displayName} üyelik aktif edildi! 🎉',
+              ),
+              backgroundColor: AppColors.positive,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Satın alma hatası: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // ─── COIN PACK PURCHASE (RevenueCat üzerinden) ────────────
+
+  Future<void> _purchaseCoinPack(CoinPackConfig pack) async {
+    setState(() => _isLoading = true);
+
+    try {
+      // RevenueCat offerings'den coin pack'i bul
+      final offerings = await _revenueCatService.getOfferings();
+      if (offerings?.current == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Ürünler yüklenemedi. Lütfen tekrar deneyin.'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Pack identifier'a göre doğru paketi bul
+      final packages = offerings!.current!.availablePackages;
+      final matchingPackage = packages.where(
+        (p) => p.storeProduct.identifier.contains('coin_${pack.coinAmount}'),
+      ).firstOrNull;
+
+      if (matchingPackage != null) {
+        final result = await _revenueCatService.purchasePackage(matchingPackage);
+
+        if (result != null && mounted) {
+          // Coin'leri ekle
+          await context.read<CoinProvider>().purchaseCoins(pack);
+
+          if (mounted) {
+            final totalCoins = pack.coinAmount + (pack.coinAmount * pack.bonusPercent ~/ 100);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('💰 $totalCoins Altın hesabına eklendi!'),
+                backgroundColor: const Color(0xFFB45309),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        }
+      } else {
+        // Eşleşen paket bulunamadı — Paywall'a yönlendir
+        await _openRevenueCatPaywall();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Satın alma hatası: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // ─── RESTORE PURCHASES ────────────────────────────────────
+
+  Future<void> _restorePurchases() async {
+    setState(() => _isRestoring = true);
+
+    try {
+      final customerInfo = await _revenueCatService.restorePurchases();
+
+      if (!mounted) return;
+
+      if (customerInfo != null) {
+        final isPremium = customerInfo.entitlements.all[RevenueCatService.entitlementId]?.isActive ?? false;
+
+        if (isPremium) {
+          await context.read<AuthProvider>().refreshPremiumStatus();
+
+          if (mounted) {
+            context.read<CoinProvider>().setTier(
+              context.read<AuthProvider>().membershipTier,
+            );
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('✅ Aboneliğin geri yüklendi!'),
+                backgroundColor: AppColors.positive,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('ℹ️ Aktif abonelik bulunamadı.'),
+              backgroundColor: AppColors.textMuted,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Geri yükleme hatası: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRestoring = false);
+      }
+    }
   }
 }
 
@@ -916,7 +1042,7 @@ class _StarsPainter extends CustomPainter {
     }
 
     final glowPaint = Paint()
-      ..color = const Color(0xFFFF69B4).withOpacity(0.08)
+      ..color = const Color(0xFFA78BFA).withOpacity(0.08)
       ..style = PaintingStyle.fill;
 
     for (int i = 0; i < 5; i++) {

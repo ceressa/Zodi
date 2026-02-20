@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../constants/colors.dart';
+import '../providers/auth_provider.dart';
 import '../services/firebase_service.dart';
 
 class PersonalizationScreen extends StatefulWidget {
@@ -22,6 +24,7 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
   final _cityController = TextEditingController();
   
   // Form values
+  String _gender = 'belirtilmemiş';
   String? _relationshipStatus;
   String? _employmentStatus;
   String? _workField;
@@ -32,6 +35,12 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
   List<String> _lifeGoals = [];
 
   // Options
+  static const Map<String, String> _genderLabels = {
+    'kadın': 'Kadın 👩',
+    'erkek': 'Erkek 👨',
+    'belirtilmemiş': 'Belirtmek İstemiyorum 🤷',
+  };
+
   static const Map<String, String> _relationshipLabels = {
     'single': 'Bekar 💔',
     'dating': 'Flört Ediyor 💕',
@@ -137,8 +146,15 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
   Future<void> _loadProfile() async {
     try {
       final profile = await _firebaseService.getUserProfile();
+      debugPrint('📋 PersonalizationScreen _loadProfile: profile=${profile != null}');
       if (profile != null && mounted) {
+        debugPrint('📋 Loaded: gender=${profile.gender}, relationship=${profile.relationshipStatus}, '
+            'employment=${profile.employmentStatus}, city=${profile.currentCity}, '
+            'interests=${profile.interests.length}, challenges=${profile.currentChallenges.length}, '
+            'goals=${profile.lifeGoals.length}, lifePhase=${profile.lifePhase}, '
+            'spiritualInterest=${profile.spiritualInterest}');
         setState(() {
+          _gender = profile.gender;
           _relationshipStatus = profile.relationshipStatus;
           _partnerNameController.text = profile.partnerName ?? '';
           _employmentStatus = profile.employmentStatus;
@@ -153,11 +169,15 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
           _lifeGoals = List<String>.from(profile.lifeGoals);
           _isLoading = false;
         });
+        debugPrint('📋 Completion after load: ${_completionPercentage.toInt()}%');
       } else {
-        setState(() => _isLoading = false);
+        debugPrint('📋 No profile found or not mounted');
+        if (mounted) setState(() => _isLoading = false);
       }
-    } catch (e) {
-      setState(() => _isLoading = false);
+    } catch (e, stack) {
+      debugPrint('❌ PersonalizationScreen _loadProfile error: $e');
+      debugPrint('❌ Stack: $stack');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -166,6 +186,7 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
       setState(() => _isLoading = true);
       
       await _firebaseService.updatePersonalizationInfo(
+        gender: _gender,
         relationshipStatus: _relationshipStatus,
         partnerName: _partnerNameController.text.isEmpty ? null : _partnerNameController.text,
         employmentStatus: _employmentStatus,
@@ -180,6 +201,11 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
         lifeGoals: _lifeGoals,
       );
 
+      // AuthProvider profilini yenile — uygulama genelinde güncel kalsın
+      if (mounted) {
+        await context.read<AuthProvider>().reloadProfile();
+      }
+
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -188,7 +214,7 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                const Text('Zodi seni daha iyi tanıyor artık! ✨'),
+                const Text('Astro Dozi seni daha iyi tanıyor artık! ✨'),
               ],
             ),
             backgroundColor: AppColors.positive,
@@ -213,17 +239,19 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
 
   double get _completionPercentage {
     int completed = 0;
-    int total = 8;
-    
+    int total = 10;
+
+    if (_gender != 'belirtilmemiş') completed++;
     if (_relationshipStatus != null) completed++;
     if (_employmentStatus != null) completed++;
     if (_occupationController.text.isNotEmpty) completed++;
+    if (_workField != null) completed++;
     if (_cityController.text.isNotEmpty) completed++;
     if (_interests.isNotEmpty) completed++;
     if (_currentChallenges.isNotEmpty) completed++;
     if (_lifeGoals.isNotEmpty) completed++;
     if (_lifePhase != null) completed++;
-    
+
     return (completed / total) * 100;
   }
 
@@ -258,11 +286,20 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
                             const SizedBox(height: 24),
                             _buildCategoryCard(
                               isDark: isDark,
+                              icon: '🧑',
+                              title: 'Cinsiyet',
+                              subtitle: 'Burç yorumları cinsiyete göre değişir',
+                              child: _buildGenderSection(isDark),
+                              delay: 0,
+                            ),
+                            const SizedBox(height: 16),
+                            _buildCategoryCard(
+                              isDark: isDark,
                               icon: '💕',
                               title: 'İlişki Durumu',
                               subtitle: 'Aşk hayatın hakkında bilgi ver',
                               child: _buildRelationshipSection(isDark),
-                              delay: 0,
+                              delay: 50,
                             ),
                             const SizedBox(height: 16),
                             _buildCategoryCard(
@@ -271,7 +308,7 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
                               title: 'Kariyer & İş',
                               subtitle: 'Profesyonel hayatını anlat',
                               child: _buildCareerSection(isDark),
-                              delay: 100,
+                              delay: 150,
                             ),
                             const SizedBox(height: 16),
                             _buildCategoryCard(
@@ -280,7 +317,7 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
                               title: 'Yaşam',
                               subtitle: 'Hayat tarzını paylaş',
                               child: _buildLifeSection(isDark),
-                              delay: 200,
+                              delay: 250,
                             ),
                             const SizedBox(height: 16),
                             _buildCategoryCard(
@@ -336,7 +373,7 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
-        'Zodi Seni Tanısın',
+        'Astro Dozi Seni Tanısın',
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -476,6 +513,31 @@ class _PersonalizationScreenState extends State<PersonalizationScreen> {
       ),
     ).animate().fadeIn(delay: Duration(milliseconds: delay), duration: 400.ms)
         .slideX(begin: 0.05, end: 0);
+  }
+
+  Widget _buildGenderSection(bool isDark) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: _genderLabels.entries.map((entry) {
+        final isSelected = _gender == entry.key;
+        return ChoiceChip(
+          label: Text(
+            entry.value,
+            style: TextStyle(
+              color: isSelected ? Colors.white : (isDark ? AppColors.textSecondary : Colors.black87),
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          selected: isSelected,
+          selectedColor: AppColors.accentPurple,
+          backgroundColor: isDark ? AppColors.cardDark : Colors.grey.shade200,
+          onSelected: (selected) {
+            if (selected) setState(() => _gender = entry.key);
+          },
+        );
+      }).toList(),
+    );
   }
 
   Widget _buildRelationshipSection(bool isDark) {

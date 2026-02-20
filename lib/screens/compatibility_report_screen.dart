@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../constants/colors.dart';
 import '../models/zodiac_sign.dart';
 import '../providers/auth_provider.dart';
+import '../config/membership_config.dart';
 import '../services/gemini_service.dart';
 import '../services/ad_service.dart';
 import '../services/share_service.dart';
@@ -39,7 +40,6 @@ class _CompatibilityReportScreenState extends State<CompatibilityReportScreen> {
   @override
   void initState() {
     super.initState();
-    _adService.loadRewardedAd();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAccessAndLoad();
     });
@@ -47,7 +47,8 @@ class _CompatibilityReportScreenState extends State<CompatibilityReportScreen> {
 
   void _checkAccessAndLoad() {
     final authProvider = context.read<AuthProvider>();
-    if (authProvider.isPremium) {
+    // Sadece Elmas ve üstü üyelikler erişebilir
+    if (authProvider.membershipTier.index >= MembershipTier.elmas.index) {
       setState(() => _hasAccess = true);
       _loadReport();
     } else {
@@ -55,17 +56,6 @@ class _CompatibilityReportScreenState extends State<CompatibilityReportScreen> {
         _hasAccess = false;
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _unlockWithAd() async {
-    final success = await _adService.showRewardedAd(placement: 'compatibility_report');
-    if (success && mounted) {
-      setState(() {
-        _hasAccess = true;
-        _isLoading = true;
-      });
-      _loadReport();
     }
   }
 
@@ -150,7 +140,7 @@ Yanıtı aşağıdaki JSON formatında ver:
     ShareService().shareCardWidget(
       context,
       card,
-      text: '${widget.userSign.symbol} & ${widget.partnerSign.symbol} Uyum Raporu — Zodi\n#Zodi #BurcUyumu',
+      text: '${widget.userSign.symbol} & ${widget.partnerSign.symbol} Uyum Raporu — Astro Dozi\n#AstroDozi #BurcUyumu',
     );
   }
 
@@ -232,7 +222,14 @@ Yanıtı aşağıdaki JSON formatında ver:
               children: [
                 Text(widget.userSign.symbol, style: const TextStyle(fontSize: 48)),
                 const SizedBox(width: 16),
-                const Icon(Icons.lock, color: AppColors.gold, size: 36),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.cosmicGradient,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.diamond, color: Colors.white, size: 32),
+                ),
                 const SizedBox(width: 16),
                 Text(widget.partnerSign.symbol, style: const TextStyle(fontSize: 48)),
               ],
@@ -247,8 +244,25 @@ Yanıtı aşağıdaki JSON formatında ver:
               ),
             ),
             const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.gold,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'ELMAS+ ÖZELLİĞİ',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
-              'Bu rapor premium bir içeriktir.\nReklam izleyerek veya premium üyelikle erişebilirsin.',
+              'Bu detaylı rapor Elmas ve üstü üyeliklere özeldir.\nAşk, iletişim, güven ve daha fazlasını keşfet!',
               style: TextStyle(
                 fontSize: 15,
                 color: isDark ? Colors.white70 : AppColors.textMuted,
@@ -257,29 +271,20 @@ Yanıtı aşağıdaki JSON formatında ver:
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            // Reklam İzle butonu
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _unlockWithAd,
-                icon: const Icon(Icons.play_circle_outline),
-                label: const Text('Reklam İzle & Kilidi Aç', style: TextStyle(fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.accentPurple,
-                  side: const BorderSide(color: AppColors.accentPurple, width: 2),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Premium butonu
+            // Üyeliğini Yükselt butonu
             SizedBox(
               width: double.infinity,
               child: Container(
                 decoration: BoxDecoration(
                   gradient: AppColors.cosmicGradient,
                   borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accentPurple.withOpacity(0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: Material(
                   color: Colors.transparent,
@@ -297,7 +302,7 @@ Yanıtı aşağıdaki JSON formatında ver:
                           Icon(Icons.diamond, color: Colors.white, size: 20),
                           SizedBox(width: 8),
                           Text(
-                            'Premium\'a Geç',
+                            'Üyeliğini Yükselt',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -308,6 +313,17 @@ Yanıtı aşağıdaki JSON formatında ver:
                       ),
                     ),
                   ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Geri Dön',
+                style: TextStyle(
+                  color: isDark ? Colors.white54 : AppColors.textMuted,
+                  fontSize: 15,
                 ),
               ),
             ),
@@ -763,7 +779,7 @@ Yanıtı aşağıdaki JSON formatında ver:
               Text('💡', style: TextStyle(fontSize: 20)),
               SizedBox(width: 8),
               Text(
-                'Zodi\'den Tavsiye',
+                'Astro Dozi\'den Tavsiye',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

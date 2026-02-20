@@ -106,26 +106,26 @@ class ThemeService {
     return zodiacColors[key] ?? zodiacColors['aries']!;
   }
 
-  /// Get ThemeData for a zodiac sign
-  ThemeData getZodiacTheme(String zodiacSign, bool isDark) {
+  /// Get ThemeData for a zodiac sign (always light mode)
+  ThemeData getZodiacTheme(String zodiacSign, [bool isDark = false]) {
     final colors = getZodiacColors(zodiacSign);
-    
+
     return ThemeData(
       useMaterial3: true,
-      brightness: isDark ? Brightness.dark : Brightness.light,
+      brightness: Brightness.light,
       colorScheme: ColorScheme.fromSeed(
         seedColor: colors.primary,
-        brightness: isDark ? Brightness.dark : Brightness.light,
+        brightness: Brightness.light,
         primary: colors.primary,
         secondary: colors.secondary,
       ),
-      scaffoldBackgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
-      cardColor: isDark ? AppColors.cardDark : AppColors.cardLight,
+      scaffoldBackgroundColor: AppColors.bgLight,
+      cardColor: AppColors.cardLight,
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(
-          color: isDark ? Colors.white : AppColors.textDark,
+        iconTheme: const IconThemeData(
+          color: AppColors.textDark,
         ),
       ),
     );
@@ -187,15 +187,13 @@ class ThemeService {
       final zodiacSign = preferences['theme'] as String? ?? 'aries';
       final animationType = preferences['animatedBackground'] as String?;
       final fontFamily = preferences['customFont'] as String?;
-      final darkMode = preferences['darkMode'] as bool? ?? false;
-
       final colors = getZodiacColors(zodiacSign);
 
       return ThemeConfig(
         zodiacSign: zodiacSign,
         colorScheme: ColorScheme.fromSeed(
           seedColor: colors.primary,
-          brightness: darkMode ? Brightness.dark : Brightness.light,
+          brightness: Brightness.light,
         ),
         backgroundAnimation: animationType != null
             ? AnimationType.values.firstWhere(
@@ -204,7 +202,7 @@ class ThemeService {
               )
             : AnimationType.none,
         fontFamily: fontFamily,
-        darkMode: darkMode,
+        darkMode: false,
       );
     } catch (e) {
       print('Error getting user theme: $e');

@@ -12,16 +12,19 @@
     
     <!-- Vibration permission for notification alerts -->
     <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <!-- Billing permission for in-app purchases (RevenueCat) -->
+    <uses-permission android:name="com.android.vending.BILLING"/>
     
     <application
-        android:label="Zodi"
+        android:label="Astro Dozi"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         
         <!-- Google Mobile Ads App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            android:value="ca-app-pub-1767292468741192~1497695012"/>
         
         <activity
             android:name=".MainActivity"

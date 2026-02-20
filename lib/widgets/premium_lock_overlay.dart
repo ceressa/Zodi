@@ -50,9 +50,9 @@ class PremiumLockOverlay extends StatelessWidget {
                   color: Colors.white,
                 ),
               )
-                  .animate(onPlay: (controller) => controller.repeat())
-                  .shimmer(duration: 2000.ms, color: Colors.white.withOpacity(0.3))
-                  .shake(duration: 1000.ms, delay: 500.ms),
+                  .animate()
+                  .fadeIn(duration: 400.ms)
+                  .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: 500.ms, curve: Curves.elasticOut),
               const SizedBox(height: 24),
               Text(
                 title,
@@ -73,7 +73,7 @@ class PremiumLockOverlay extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-              
+
               // Premium Button
               Container(
                 width: double.infinity,
@@ -113,10 +113,8 @@ class PremiumLockOverlay extends StatelessWidget {
                     ),
                   ),
                 ),
-              )
-                  .animate(onPlay: (controller) => controller.repeat())
-                  .shimmer(duration: 2000.ms, color: Colors.white.withOpacity(0.5)),
-              
+              ).animate().fadeIn(delay: 200.ms, duration: 400.ms).slideY(begin: 0.1, end: 0),
+
               if (showAdOption && onWatchAd != null) ...[
                 const SizedBox(height: 16),
                 const Row(
@@ -133,7 +131,7 @@ class PremiumLockOverlay extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Watch Ad Button
                 Container(
                   width: double.infinity,
@@ -166,7 +164,7 @@ class PremiumLockOverlay extends StatelessWidget {
                       ),
                     ),
                   ),
-                ),
+                ).animate().fadeIn(delay: 350.ms, duration: 400.ms).slideY(begin: 0.1, end: 0),
               ],
             ],
           ),

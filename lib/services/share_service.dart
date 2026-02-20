@@ -157,7 +157,7 @@ ${moonSign != null ? '🌙 Ay: $moonSign' : ''}
 
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: text ?? '📱 Zodi uygulamasıyla sen de falına baktır! 🔮',
+        text: text ?? '📱 Astro Dozi uygulamasıyla sen de falına baktır! 🔮',
       );
 
       _cleanupTempFiles(tempDir);
@@ -230,7 +230,7 @@ ${moonSign != null ? '🌙 Ay: $moonSign' : ''}
 
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: text ?? '📱 Zodi uygulamasıyla sen de falına baktır! 🔮\n#Zodi #Astroloji',
+        text: text ?? '📱 Astro Dozi uygulamasıyla sen de falına baktır! 🔮\n#AstroDozi #Astroloji',
       );
 
       _cleanupTempFiles(tempDir);

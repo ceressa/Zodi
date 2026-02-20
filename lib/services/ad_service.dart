@@ -139,27 +139,18 @@ class AdService {
     throw UnsupportedError('Unsupported platform');
   }
 
-  // Test Ad Unit IDs - Production'da gerçek ID'lerle değiştir
-  static String get bannerAdUnitId => _resolveAdUnit(
-        androidTest: 'ca-app-pub-3940256099942544/6300978111',
-        iosTest: 'ca-app-pub-3940256099942544/2934735716',
-        androidEnv: 'ADMOB_BANNER_ANDROID',
-        iosEnv: 'ADMOB_BANNER_IOS',
-      );
+  // Production Ad Unit IDs
+  static String get bannerAdUnitId => Platform.isAndroid
+      ? 'ca-app-pub-1767292468741192/9184613341'
+      : 'ca-app-pub-3940256099942544/2934735716'; // iOS: test ID (henüz yok)
 
-  static String get rewardedAdUnitId => _resolveAdUnit(
-        androidTest: 'ca-app-pub-3940256099942544/5224354917',
-        iosTest: 'ca-app-pub-3940256099942544/1712485313',
-        androidEnv: 'ADMOB_REWARDED_ANDROID',
-        iosEnv: 'ADMOB_REWARDED_IOS',
-      );
+  static String get rewardedAdUnitId => Platform.isAndroid
+      ? 'ca-app-pub-1767292468741192/3598503926'
+      : 'ca-app-pub-3940256099942544/1712485313'; // iOS: test ID (henüz yok)
 
-  static String get interstitialAdUnitId => _resolveAdUnit(
-        androidTest: 'ca-app-pub-3940256099942544/1033173712',
-        iosTest: 'ca-app-pub-3940256099942544/4411468910',
-        androidEnv: 'ADMOB_INTERSTITIAL_ANDROID',
-        iosEnv: 'ADMOB_INTERSTITIAL_IOS',
-      );
+  static String get interstitialAdUnitId => Platform.isAndroid
+      ? 'ca-app-pub-1767292468741192/4548188740'
+      : 'ca-app-pub-3940256099942544/4411468910'; // iOS: test ID (henüz yok)
 
   BannerAd? _bannerAd;
   RewardedAd? _rewardedAd;

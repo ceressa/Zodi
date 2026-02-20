@@ -1,7 +1,7 @@
 class AppStrings {
   // App
-  static const String appName = 'ZODI';
-  static const String appSubtitle = 'Premium';
+  static const String appName = 'ASTRO DOZI';
+  static const String appSubtitle = 'Kozmik Rehberin';
   
   // Navigation
   static const String navHome = 'Ana Sayfa';

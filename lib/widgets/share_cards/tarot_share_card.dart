@@ -56,17 +56,25 @@ class TarotShareCard extends StatelessWidget {
 
           const SizedBox(height: 36),
 
-          // === Yorum kutusu ===
+          // === Yorum kutusu — glassmorphism ===
           Expanded(
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: const Color(0xFFC084FC).withOpacity(0.1),
+                  color: Colors.white.withOpacity(0.10),
+                  width: 1.5,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withOpacity(0.06),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,12 +168,12 @@ class TarotShareCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFC084FC).withOpacity(0.25),
+          color: const Color(0xFFF59E0B).withOpacity(0.30),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFC084FC).withOpacity(0.15),
+            color: const Color(0xFFF59E0B).withOpacity(0.12),
             blurRadius: 30,
             spreadRadius: 5,
           ),
@@ -204,7 +212,7 @@ class TarotShareCard extends StatelessWidget {
                 Container(
                   width: 80,
                   height: 1,
-                  color: const Color(0xFFC084FC).withOpacity(0.3),
+                  color: const Color(0xFFF59E0B).withOpacity(0.4),
                 ),
                 const SizedBox(height: 20),
                 Padding(
@@ -304,7 +312,7 @@ class _CornerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFC084FC).withOpacity(0.35)
+      ..color = const Color(0xFFF59E0B).withOpacity(0.45)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 

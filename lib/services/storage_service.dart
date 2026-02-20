@@ -176,6 +176,19 @@ class StorageService {
     return prefs.getString(_keyNotificationTime);
   }
 
+  /// Burç değiştiğinde tüm horoscope cache'lerini temizle
+  Future<void> clearAllHoroscopeCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyCachedDailyHoroscope);
+    await prefs.remove(_keyLastDailyFetch);
+    await prefs.remove(_keyLastDailyZodiac);
+    await prefs.remove(_keyTomorrowHoroscope);
+    await prefs.remove(_keyTomorrowHoroscopeDate);
+    await prefs.remove(_keyTomorrowHoroscopeZodiac);
+    await prefs.remove(_keyTomorrowUnlocked);
+    await prefs.remove('${_keyTomorrowHoroscope}_preview');
+  }
+
   // Generic string storage
   Future<void> saveString(String key, String value) async {
     final prefs = await SharedPreferences.getInstance();

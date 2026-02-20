@@ -67,7 +67,18 @@ class AppColors {
   static const gray400 = Color(0xFF9CA3AF);
   static const gray600 = Color(0xFF4B5563);
   static const gray700 = Color(0xFF374151);
-  
+
+  // === COSMIC THEME COLORS (maskottan türetilmiş) ===
+  static const cosmicPurple = Color(0xFF7C3AED);     // Ana renk (karakter gövdesi)
+  static const deepViolet = Color(0xFF4C1D95);        // Koyu vurgu
+  static const softLilac = Color(0xFFEDE9FE);         // Açık arka plan (=violet100)
+  static const lavenderMist = Color(0xFFF5F3FF);      // En açık
+  static const cosmicBg = Color(0xFFF8F5FF);          // Sayfa arka planı
+  static const goldenStar = Color(0xFFF59E0B);        // Altın vurgu (şapka, ay, yıldız)
+  static const pinkSparkle = Color(0xFFF9A8D4);       // Pembe sparkle (=pink300)
+  static const rosePink = Color(0xFFEC4899);           // Canlı pembe
+  static const cosmicDark = Color(0xFF1E1B4B);        // Kozmik koyu (metin)
+
   // Gradients
   static const backgroundGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -93,5 +104,24 @@ class AppColors {
   
   static const goldGradient = LinearGradient(
     colors: [yellow400, amber400, orange400],
+  );
+
+  // Cosmic Gradients
+  static const cosmicGradient = LinearGradient(
+    colors: [deepViolet, cosmicPurple, violet400],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const goldenGradient = LinearGradient(
+    colors: [goldenStar, amber400],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const cosmicBgGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [cosmicBg, softLilac, lavenderMist],
   );
 }

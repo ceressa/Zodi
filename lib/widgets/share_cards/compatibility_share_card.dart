@@ -86,14 +86,19 @@ class CompatibilityShareCard extends StatelessWidget {
               shape: BoxShape.circle,
               color: Colors.transparent,
               border: Border.all(
-                color: _getScoreColor(overallScore).withOpacity(0.2),
+                color: _getScoreColor(overallScore).withOpacity(0.30),
                 width: 3,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _getScoreColor(overallScore).withOpacity(0.12),
-                  blurRadius: 40,
-                  spreadRadius: 8,
+                  color: _getScoreColor(overallScore).withOpacity(0.18),
+                  blurRadius: 50,
+                  spreadRadius: 10,
+                ),
+                BoxShadow(
+                  color: _getScoreColor(overallScore).withOpacity(0.08),
+                  blurRadius: 80,
+                  spreadRadius: 20,
                 ),
               ],
             ),
@@ -161,11 +166,19 @@ class CompatibilityShareCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.06),
+                  color: Colors.white.withOpacity(0.10),
+                  width: 1.5,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withOpacity(0.06),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
               child: Text(
                 summary.length > 220
@@ -203,13 +216,13 @@ class CompatibilityShareCard extends StatelessWidget {
               ],
             ),
             border: Border.all(
-              color: const Color(0xFFE879F9).withOpacity(0.2),
-              width: 2,
+              color: const Color(0xFFA78BFA).withOpacity(0.30),
+              width: 2.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFC084FC).withOpacity(0.15),
-                blurRadius: 20,
+                color: const Color(0xFF7C3AED).withOpacity(0.20),
+                blurRadius: 24,
                 spreadRadius: 5,
               ),
             ],

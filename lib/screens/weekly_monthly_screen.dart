@@ -5,12 +5,14 @@ import '../providers/auth_provider.dart';
 import '../providers/horoscope_provider.dart';
 import '../constants/colors.dart';
 import '../widgets/animated_card.dart';
-import '../widgets/shimmer_loading.dart';
 import '../widgets/metric_card.dart';
 import '../services/ad_service.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
 import '../services/activity_log_service.dart';
+import '../services/usage_limit_service.dart';
+import '../services/share_service.dart';
+import '../widgets/share_cards/weekly_share_card.dart';
 
 class WeeklyMonthlyScreen extends StatefulWidget {
   const WeeklyMonthlyScreen({super.key});
@@ -24,6 +26,7 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
   late TabController _tabController;
   final AdService _adService = AdService();
   final ActivityLogService _activityLog = ActivityLogService();
+  final UsageLimitService _usageLimitService = UsageLimitService();
 
   @override
   void initState() {
@@ -42,27 +45,39 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
 
   Future<void> _loadData() async {
     final authProvider = context.read<AuthProvider>();
-    
-    // Premium kontrolü
-    if (!authProvider.isPremium) {
-      final unlocked = await _adService.showRewardedAd(placement: 'weekly_monthly');
-      if (!unlocked) {
-        if (mounted) {
-          _showPremiumDialog();
-        }
-        return;
-      }
-    }
-    
     final horoscopeProvider = context.read<HoroscopeProvider>();
-    
-    if (authProvider.selectedZodiac != null) {
-      if (_tabController.index == 0) {
+
+    if (authProvider.selectedZodiac == null) return;
+
+    if (_tabController.index == 0) {
+      // Haftalık — premium değilse interstitial göster
+      if (!authProvider.isPremium) {
+        await _adService.showInterstitialAd();
+      }
+      try {
         await horoscopeProvider.fetchWeeklyHoroscope(authProvider.selectedZodiac!);
         await _activityLog.logWeeklyHoroscope(authProvider.selectedZodiac!.name);
-      } else {
+      } catch (e) {
+        debugPrint('❌ Weekly load error: $e');
+      }
+    } else {
+      // Aylık — limit kontrolü
+      if (!authProvider.isPremium) {
+        final canView = await _usageLimitService.canViewMonthlyHoroscope();
+        if (!canView) {
+          // Limit dolmuş — reklam izle dialog'u göster
+          if (mounted) {
+            _showMonthlyLimitDialog();
+          }
+          return;
+        }
+        await _usageLimitService.incrementMonthlyView();
+      }
+      try {
         await horoscopeProvider.fetchMonthlyHoroscope(authProvider.selectedZodiac!);
         await _activityLog.logMonthlyHoroscope(authProvider.selectedZodiac!.name);
+      } catch (e) {
+        debugPrint('❌ Monthly load error: $e');
       }
     }
   }
@@ -91,6 +106,73 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
         ],
       ),
     );
+  }
+
+  void _showMonthlyLimitDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_clock, color: AppColors.accentPurple, size: 28),
+            SizedBox(width: 10),
+            Text('Günlük Limit'),
+          ],
+        ),
+        content: const Text(
+          'Bugünkü ücretsiz aylık yorum hakkın doldu.\n\nReklam izleyerek tekrar erişebilir veya Premium üyelikle sınırsız erişim kazanabilirsin.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Kapat'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final watched = await _adService.showRewardedAd(placement: 'monthly_unlock');
+              if (watched && mounted) {
+                // Reklam izlendi — limiti sıfırla ve veri yükle
+                setState(() {});
+                _loadMonthlyAfterAd();
+              }
+            },
+            icon: const Icon(Icons.play_circle_filled, size: 20),
+            label: const Text('Reklam İzle'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                CosmicBottomSheetRoute(page: const PremiumScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentPurple,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Premium\'a Geç'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadMonthlyAfterAd() async {
+    final authProvider = context.read<AuthProvider>();
+    final horoscopeProvider = context.read<HoroscopeProvider>();
+    if (authProvider.selectedZodiac != null) {
+      try {
+        await horoscopeProvider.fetchMonthlyHoroscope(authProvider.selectedZodiac!);
+        await _activityLog.logMonthlyHoroscope(authProvider.selectedZodiac!.name);
+      } catch (e) {
+        debugPrint('❌ Monthly load error: $e');
+      }
+    }
   }
 
   @override
@@ -356,9 +438,76 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
                   ],
                 ),
               ),
+
+          // ─── Paylaş Butonu ───
+          const SizedBox(height: 20),
+          _buildWeeklyShareButton(weekly),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildWeeklyShareButton(dynamic weekly) {
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        gradient: AppColors.purpleGradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accentPurple.withOpacity(0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _shareWeekly(weekly),
+          borderRadius: BorderRadius.circular(16),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.share_rounded, size: 18, color: Colors.white),
+              SizedBox(width: 8),
+              Text(
+                'Haftalık Yorumu Paylaş',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms);
+  }
+
+  Future<void> _shareWeekly(dynamic weekly) async {
+    final authProvider = context.read<AuthProvider>();
+    final zodiac = authProvider.selectedZodiac;
+
+    final card = WeeklyShareCard(
+      weekRange: weekly.weekRange,
+      summary: weekly.summary,
+      love: weekly.love,
+      career: weekly.career,
+      health: weekly.health,
+      money: weekly.money,
+      highlights: List<String>.from(weekly.highlights ?? []),
+      zodiacSymbol: zodiac?.symbol,
+      zodiacName: zodiac?.displayName,
+    );
+
+    await ShareService().shareCardWidget(
+      context,
+      card,
+      text: '${zodiac?.symbol ?? ''} Haftalık Burç Yorumum — Astro Dozi\n#AstroDozi #HaftalıkBurç',
     );
   }
 
@@ -604,9 +753,77 @@ class _WeeklyMonthlyScreenState extends State<WeeklyMonthlyScreen>
                   ],
                 ),
               ),
+
+          // ─── Paylaş Butonu ───
+          const SizedBox(height: 20),
+          _buildMonthlyShareButton(monthly),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMonthlyShareButton(dynamic monthly) {
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        gradient: AppColors.purpleGradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accentPurple.withOpacity(0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _shareMonthly(monthly),
+          borderRadius: BorderRadius.circular(16),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.share_rounded, size: 18, color: Colors.white),
+              SizedBox(width: 8),
+              Text(
+                'Aylık Yorumu Paylaş',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms);
+  }
+
+  Future<void> _shareMonthly(dynamic monthly) async {
+    final authProvider = context.read<AuthProvider>();
+    final zodiac = authProvider.selectedZodiac;
+
+    // Monthly için weekly share card'ı kullanabiliriz — alanları uyumlu
+    final card = WeeklyShareCard(
+      weekRange: monthly.month,
+      summary: monthly.overview,
+      love: monthly.love,
+      career: monthly.career,
+      health: monthly.health,
+      money: monthly.money,
+      highlights: List<String>.from(monthly.keyDates ?? []),
+      zodiacSymbol: zodiac?.symbol,
+      zodiacName: zodiac?.displayName,
+    );
+
+    await ShareService().shareCardWidget(
+      context,
+      card,
+      text: '${zodiac?.symbol ?? ''} Aylık Burç Yorumum — Astro Dozi\n#AstroDozi #AylıkBurç',
     );
   }
 

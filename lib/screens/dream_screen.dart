@@ -7,8 +7,10 @@ import '../theme/app_colors.dart';
 import '../services/firebase_service.dart';
 import '../services/ad_service.dart';
 import '../services/activity_log_service.dart';
+import '../services/share_service.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
+import '../widgets/share_cards/dream_share_card.dart';
 
 class DreamScreen extends StatefulWidget {
   const DreamScreen({super.key});
@@ -288,6 +290,9 @@ class _DreamScreenState extends State<DreamScreen> {
                   ),
                   const SizedBox(height: 14),
                   _buildAdviceCard(dream.advice),
+                  const SizedBox(height: 20),
+                  // ─── Paylaş Butonu ───
+                  _buildShareButton(dream),
                   const SizedBox(height: 100),
                 ],
               ]),
@@ -625,7 +630,7 @@ class _DreamScreenState extends State<DreamScreen> {
               Text('💡', style: TextStyle(fontSize: 20)),
               SizedBox(width: 8),
               Text(
-                'Zodi\'den Tavsiye',
+                'Astro Dozi\'den Tavsiye',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -649,5 +654,69 @@ class _DreamScreenState extends State<DreamScreen> {
         .animate()
         .fadeIn(delay: 300.ms)
         .slideY(begin: 0.05);
+  }
+
+  Widget _buildShareButton(dynamic dream) {
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _shareDream(dream),
+          borderRadius: BorderRadius.circular(16),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.share_rounded, size: 18, color: Colors.white),
+              SizedBox(width: 8),
+              Text(
+                'Rüya Yorumunu Paylaş',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(delay: 400.ms);
+  }
+
+  Future<void> _shareDream(dynamic dream) async {
+    final authProvider = context.read<AuthProvider>();
+    final zodiac = authProvider.selectedZodiac;
+
+    final card = DreamShareCard(
+      dreamText: _dreamController.text,
+      mood: dream.mood,
+      keywords: List<String>.from(dream.keywords ?? []),
+      interpretation: dream.interpretation,
+      symbolism: dream.symbolism,
+      advice: dream.advice,
+      zodiacSymbol: zodiac?.symbol,
+      zodiacName: zodiac?.displayName,
+    );
+
+    await ShareService().shareCardWidget(
+      context,
+      card,
+      text: '🌙 Rüya Yorumum — Astro Dozi\n#AstroDozi #RüyaYorumu',
+    );
   }
 }

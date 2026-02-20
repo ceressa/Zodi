@@ -132,6 +132,79 @@ class _BirthChartScreenState extends State<BirthChartScreen>
     }
 
     _hasPrefilledProfileData = true;
+
+    // Profilde tam doğum bilgisi varsa ve cache yoksa otomatik hesapla
+    final hasBirthData = profile.birthDate.year > 1900 &&
+        profile.birthTime.trim().isNotEmpty &&
+        profile.birthPlace.trim().isNotEmpty;
+    if (hasBirthData && !_showChart && !_isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_showChart && !_isLoading) _autoCalculateChart();
+      });
+    }
+  }
+
+  /// Profil verileriyle otomatik hesaplama başlat (form skip)
+  Future<void> _autoCalculateChart() async {
+    if (_selectedDate == null || _selectedTime == null || _cityController.text.isEmpty) return;
+    if (_showChart || _isLoading) return; // zaten yüklendi veya yükleniyor
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _loadingMessageIndex = 0;
+    });
+
+    _cycleLoadingMessages();
+
+    try {
+      final birthTimeStr =
+          '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}';
+
+      await AstronomyService.initialize();
+      final chartData = await AstronomyService.calculateBirthChart(
+        birthDate: _selectedDate!,
+        birthTime: birthTimeStr,
+        birthPlace: _cityController.text,
+      );
+
+      final planets = List<Map<String, dynamic>>.from(
+        (chartData['planets'] as List).map((p) => Map<String, dynamic>.from(p as Map)),
+      );
+      final ascendant = Map<String, dynamic>.from(chartData['ascendant'] as Map);
+
+      final birthDateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(_selectedDate!);
+      final interpretation = await _geminiService.generateBirthChartInterpretation(
+        planets: planets,
+        ascendant: ascendant,
+        birthDateStr: birthDateStr,
+        birthTimeStr: birthTimeStr,
+        birthPlace: _cityController.text,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _planets = planets;
+        _ascendant = ascendant;
+        _interpretation = interpretation;
+        _showChart = true;
+        _isLoading = false;
+      });
+
+      await _activityLog.logBirthChart(isOwnChart: true);
+
+      await _storageService.saveString(_cacheKeyMyChart, jsonEncode(chartData));
+      await _storageService.saveString(_cacheKeyMyChartInterpretation, interpretation);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Doğum haritası hesaplanırken bir hata oluştu. Lütfen tekrar deneyin.';
+          _isLoading = false;
+        });
+      }
+      debugPrint('❌ Auto birth chart calculation error: $e');
+    }
   }
 
   @override
@@ -1124,7 +1197,7 @@ class _BirthChartScreenState extends State<BirthChartScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Zodi\'nin Yorumu',
+                  'Astro Dozi\'nin Yorumu',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,

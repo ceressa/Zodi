@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_colors.dart';
 import 'providers/auth_provider.dart';
+import 'providers/coin_provider.dart';
 import 'pages/daily_comment_page.dart';
-import 'pages/analysis_page.dart';
-import 'pages/compatibility_page.dart';
-import 'pages/discover_page.dart';
+import 'pages/fallar_page.dart';
+import 'pages/chatbot_page.dart';
 import 'pages/settings_page.dart';
 import 'widgets/app_header.dart';
 import 'widgets/bottom_nav.dart';
@@ -19,7 +19,7 @@ class ZodiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Zodi',
+      title: 'Astro Dozi',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const MainShell(),
@@ -40,10 +40,9 @@ class _MainShellState extends State<MainShell> {
   final StreakService _streakService = StreakService();
 
   final _pages = const [
-    DiscoverPage(),
     DailyCommentPage(),
-    CompatibilityPage(),
-    AnalysisPage(),
+    FallarPage(),
+    ChatbotPage(),
     SettingsPage(),
   ];
 
@@ -51,6 +50,66 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     _loadStreakData();
+    _loadCoinData();
+  }
+
+  Future<void> _loadCoinData() async {
+    final authProvider = context.read<AuthProvider>();
+    final coinProvider = context.read<CoinProvider>();
+
+    // Set tier on coin provider for tier-aware bonuses
+    coinProvider.setTier(authProvider.membershipTier);
+
+    await coinProvider.loadBalance();
+
+    if (!mounted) return;
+
+    // Show initial balance snackbar for new users
+    if (coinProvider.initialBonusAwarded > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.card_giftcard_rounded, color: Colors.amber, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Hoş geldin! 🎉 +${coinProvider.initialBonusAwarded} Altın hediye!',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF7C3AED),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+
+    // Show daily bonus snackbar
+    if (mounted && coinProvider.lastDailyBonus > 0) {
+      // Small delay to not overlap with initial bonus
+      await Future.delayed(Duration(milliseconds: coinProvider.initialBonusAwarded > 0 ? 2000 : 0));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.monetization_on, color: Colors.amber, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Günlük bonus: +${coinProvider.lastDailyBonus} Altın!',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF7C3AED),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   Future<void> _loadStreakData() async {
@@ -77,9 +136,13 @@ class _MainShellState extends State<MainShell> {
         backgroundColor: Colors.transparent,
         body: Column(
           children: [
-            AppHeader(
-              streakCount: _streakData?.currentStreak ?? 0,
-              coinCount: 0,
+            Consumer2<CoinProvider, AuthProvider>(
+              builder: (context, coinProvider, authProvider, _) => AppHeader(
+                streakCount: _streakData?.currentStreak ?? 0,
+                coinCount: coinProvider.balance,
+                zodiacSymbol: authProvider.selectedZodiac?.symbol,
+                userName: authProvider.userName,
+              ),
             ),
             Expanded(
               child: AnimatedSwitcher(

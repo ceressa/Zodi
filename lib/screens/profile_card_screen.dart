@@ -64,7 +64,7 @@ class _ProfileCardScreenState extends State<ProfileCardScreen> {
     if (authProvider.isPremium) {
       ShareService().shareWidgetAsImage(
         _cardKey,
-        text: '✨ Astrolojik Profilim — Zodi\n📱 Sen de profilini oluştur!\n#Zodi #AstrolojikProfil',
+        text: '✨ Astrolojik Profilim — Astro Dozi\n📱 Sen de profilini oluştur!\n#AstroDozi #AstrolojikProfil',
       );
       return;
     }
@@ -76,7 +76,7 @@ class _ProfileCardScreenState extends State<ProfileCardScreen> {
         LimitReachedDialog.showProfileShareLimit(context, onAdWatched: () {
           ShareService().shareWidgetAsImage(
             _cardKey,
-            text: '✨ Astrolojik Profilim — Zodi\n📱 Sen de profilini oluştur!\n#Zodi #AstrolojikProfil',
+            text: '✨ Astrolojik Profilim — Astro Dozi\n📱 Sen de profilini oluştur!\n#AstroDozi #AstrolojikProfil',
           );
         });
       }
@@ -91,7 +91,7 @@ class _ProfileCardScreenState extends State<ProfileCardScreen> {
       await _usageLimitService.incrementProfileShare();
       ShareService().shareWidgetAsImage(
         _cardKey,
-        text: '✨ Astrolojik Profilim — Zodi\n📱 Sen de profilini oluştur!\n#Zodi #AstrolojikProfil',
+        text: '✨ Astrolojik Profilim — Astro Dozi\n📱 Sen de profilini oluştur!\n#AstroDozi #AstrolojikProfil',
       );
     }
   }
@@ -287,12 +287,12 @@ class _ProfileCardScreenState extends State<ProfileCardScreen> {
                   colors: [Color(0xFFFFD700), Color(0xFFF5E6B0)],
                 ).createShader(bounds),
                 child: const Text(
-                  'ZODI',
+                  'ASTRO DOZI',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
-                    letterSpacing: 4,
+                    letterSpacing: 3,
                   ),
                 ),
               ),

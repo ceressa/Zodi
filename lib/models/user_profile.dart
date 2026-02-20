@@ -25,6 +25,9 @@ class UserProfile {
   final String? saturnSign;
   final Map<String, dynamic>? birthChart; // Tam doğum haritası
   
+  // Cinsiyet
+  final String gender; // 'kadın', 'erkek', 'belirtilmemiş'
+
   // Kişiselleştirme
   final List<String> interests; // İlgi alanları (kariyer, aşk, sağlık, para)
   final List<String> favoriteTopics; // En çok okuduğu konular
@@ -35,6 +38,7 @@ class UserProfile {
   
   // Premium & Abonelik
   final bool isPremium;
+  final String membershipTier; // 'standard', 'altin', 'elmas', 'platinyum'
   final DateTime? premiumStartDate;
   final DateTime? premiumEndDate;
   final String? subscriptionType; // 'monthly', 'yearly', 'lifetime'
@@ -128,6 +132,7 @@ class UserProfile {
     this.jupiterSign,
     this.saturnSign,
     this.birthChart,
+    this.gender = 'belirtilmemiş',
     this.interests = const [],
     this.favoriteTopics = const [],
     this.preferredLanguage = 'tr',
@@ -135,6 +140,7 @@ class UserProfile {
     this.notificationsEnabled = true,
     this.notificationTime = '09:00',
     this.isPremium = false,
+    this.membershipTier = 'standard',
     this.premiumStartDate,
     this.premiumEndDate,
     this.subscriptionType,
@@ -215,6 +221,9 @@ class UserProfile {
         'saturnSign': saturnSign,
         'birthChart': birthChart,
         
+        // Cinsiyet
+        'gender': gender,
+
         // Kişiselleştirme
         'interests': interests,
         'favoriteTopics': favoriteTopics,
@@ -225,6 +234,7 @@ class UserProfile {
         
         // Premium & Abonelik
         'isPremium': isPremium,
+        'membershipTier': membershipTier,
         'premiumStartDate': premiumStartDate?.toIso8601String(),
         'premiumEndDate': premiumEndDate?.toIso8601String(),
         'subscriptionType': subscriptionType,
@@ -298,18 +308,33 @@ class UserProfile {
         'progress': progress,
       };
 
+  /// Güvenli DateTime parse — hem ISO string hem Timestamp destekler
+  static DateTime _parseDateTime(dynamic value, {DateTime? fallback}) {
+    if (value == null) return fallback ?? DateTime.now();
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {
+        return fallback ?? DateTime.now();
+      }
+    }
+    // Firebase Timestamp nesnesi
+    try {
+      return (value as dynamic).toDate();
+    } catch (_) {
+      return fallback ?? DateTime.now();
+    }
+  }
+
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
         userId: json['userId'] ?? '',
         name: json['name'] ?? '',
         email: json['email'] ?? '',
         photoUrl: json['photoUrl'],
-        createdAt: json['createdAt'] != null 
-            ? DateTime.parse(json['createdAt']) 
-            : DateTime.now(),
-        lastActiveAt: json['lastActiveAt'] != null 
-            ? DateTime.parse(json['lastActiveAt']) 
-            : DateTime.now(),
-        birthDate: DateTime.parse(json['birthDate']),
+        createdAt: _parseDateTime(json['createdAt']),
+        lastActiveAt: _parseDateTime(json['lastActiveAt']),
+        birthDate: _parseDateTime(json['birthDate'], fallback: DateTime(2000, 1, 1)),
         birthTime: json['birthTime'] ?? '',
         birthPlace: json['birthPlace'] ?? '',
         birthLatitude: json['birthLatitude']?.toDouble(),
@@ -325,6 +350,7 @@ class UserProfile {
         birthChart: json['birthChart'] != null 
             ? Map<String, dynamic>.from(json['birthChart']) 
             : null,
+        gender: json['gender'] ?? 'belirtilmemiş',
         interests: List<String>.from(json['interests'] ?? []),
         favoriteTopics: List<String>.from(json['favoriteTopics'] ?? []),
         preferredLanguage: json['preferredLanguage'] ?? 'tr',
@@ -332,11 +358,12 @@ class UserProfile {
         notificationsEnabled: json['notificationsEnabled'] ?? true,
         notificationTime: json['notificationTime'] ?? '09:00',
         isPremium: json['isPremium'] ?? false,
-        premiumStartDate: json['premiumStartDate'] != null 
-            ? DateTime.parse(json['premiumStartDate']) 
+        membershipTier: json['membershipTier'] ?? 'standard',
+        premiumStartDate: json['premiumStartDate'] != null
+            ? _parseDateTime(json['premiumStartDate'])
             : null,
-        premiumEndDate: json['premiumEndDate'] != null 
-            ? DateTime.parse(json['premiumEndDate']) 
+        premiumEndDate: json['premiumEndDate'] != null
+            ? _parseDateTime(json['premiumEndDate'])
             : null,
         subscriptionType: json['subscriptionType'],
         purchasedFeatures: List<String>.from(json['purchasedFeatures'] ?? []),
@@ -345,10 +372,12 @@ class UserProfile {
         totalDreamInterpretations: json['totalDreamInterpretations'] ?? 0,
         totalDetailedAnalyses: json['totalDetailedAnalyses'] ?? 0,
         consecutiveDays: json['consecutiveDays'] ?? 0,
-        lastHoroscopeReadDate: json['lastHoroscopeReadDate'] != null 
-            ? DateTime.parse(json['lastHoroscopeReadDate']) 
+        lastHoroscopeReadDate: json['lastHoroscopeReadDate'] != null
+            ? _parseDateTime(json['lastHoroscopeReadDate'])
             : null,
-        featureUsageCount: Map<String, int>.from(json['featureUsageCount'] ?? {}),
+        featureUsageCount: (json['featureUsageCount'] as Map?)?.map(
+          (key, value) => MapEntry(key.toString(), (value as num?)?.toInt() ?? 0),
+        ) ?? {},
         favoriteCompatibilities: List<String>.from(json['favoriteCompatibilities'] ?? []),
         savedHoroscopes: List<String>.from(json['savedHoroscopes'] ?? []),
         savedDreams: List<String>.from(json['savedDreams'] ?? []),
@@ -358,7 +387,7 @@ class UserProfile {
         partnerName: json['partnerName'],
         partnerZodiacSign: json['partnerZodiacSign'],
         partnerBirthDate: json['partnerBirthDate'] != null
-            ? DateTime.parse(json['partnerBirthDate'])
+            ? _parseDateTime(json['partnerBirthDate'])
             : null,
         friendZodiacSigns: List<String>.from(json['friendZodiacSigns'] ?? []),
         currentCity: json['currentCity'],
@@ -494,6 +523,7 @@ class UserProfile {
     bool? notificationsEnabled,
     String? notificationTime,
     bool? isPremium,
+    String? membershipTier,
     DateTime? premiumStartDate,
     DateTime? premiumEndDate,
     String? subscriptionType,
@@ -574,6 +604,7 @@ class UserProfile {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       notificationTime: notificationTime ?? this.notificationTime,
       isPremium: isPremium ?? this.isPremium,
+      membershipTier: membershipTier ?? this.membershipTier,
       premiumStartDate: premiumStartDate ?? this.premiumStartDate,
       premiumEndDate: premiumEndDate ?? this.premiumEndDate,
       subscriptionType: subscriptionType ?? this.subscriptionType,

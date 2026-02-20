@@ -7,23 +7,32 @@ import '../constants/colors.dart';
 import '../providers/auth_provider.dart';
 import '../services/gemini_service.dart';
 import '../services/ad_service.dart';
+import '../services/activity_log_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
-  const ChatbotScreen({super.key});
+  final bool embeddedMode;
+
+  const ChatbotScreen({super.key, this.embeddedMode = false});
 
   @override
   State<ChatbotScreen> createState() => _ChatbotScreenState();
 }
 
-class _ChatbotScreenState extends State<ChatbotScreen> {
+class _ChatbotScreenState extends State<ChatbotScreen>
+    with AutomaticKeepAliveClientMixin {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final _geminiService = GeminiService();
   final _adService = AdService();
+  final _activityLog = ActivityLogService();
+  bool _hasLoggedSession = false;
   final List<_ChatMessage> _messages = [];
   bool _isTyping = false;
   int _freeQuestionsToday = 0;
   static const int _maxFreeQuestions = 2;
+
+  @override
+  bool get wantKeepAlive => widget.embeddedMode; // Tab modunda state koru
 
   // Önerilen sorular
   static const List<String> _suggestedQuestions = [
@@ -61,7 +70,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     } else {
       _freeQuestionsToday = prefs.getInt('chatbot_free_count') ?? 0;
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _incrementCount() async {
@@ -74,7 +83,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     final authProvider = context.read<AuthProvider>();
     final zodiacName = authProvider.selectedZodiac?.displayName ?? 'Gezgin';
     _messages.add(_ChatMessage(
-      text: 'Merhaba $zodiacName! 🌟\n\nBen Zodi, kozmik danışmanın. Aşk, kariyer, sağlık, ilişkiler... Hayatınla ilgili her şeyi sorabilirsin.\n\nBugün sana nasıl yardımcı olabilirim?',
+      text: 'Merhaba $zodiacName! 🌟\n\nBen Astro Dozi, kozmik danışmanın. Aşk, kariyer, sağlık, ilişkiler... Hayatınla ilgili her şeyi sorabilirsin.\n\nBugün sana nasıl yardımcı olabilirim?',
       isUser: false,
       timestamp: DateTime.now(),
     ));
@@ -105,7 +114,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     _scrollToBottom();
 
     try {
-      final authProvider = context.read<AuthProvider>();
       final zodiacName = authProvider.selectedZodiac?.displayName ?? 'Bilinmeyen';
 
       final prompt = '''
@@ -132,24 +140,33 @@ Yanıtını düz metin olarak ver, JSON formatında değil.
 
       await _incrementCount();
 
-      setState(() {
-        _isTyping = false;
-        _messages.add(_ChatMessage(
-          text: botResponse,
-          isUser: false,
-          timestamp: DateTime.now(),
-        ));
-      });
-      _scrollToBottom();
+      if (!_hasLoggedSession) {
+        _hasLoggedSession = true;
+        _activityLog.logChatbot();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _messages.add(_ChatMessage(
+            text: botResponse,
+            isUser: false,
+            timestamp: DateTime.now(),
+          ));
+        });
+        _scrollToBottom();
+      }
     } catch (e) {
-      setState(() {
-        _isTyping = false;
-        _messages.add(_ChatMessage(
-          text: 'Ups! Kozmik bağlantıda bir sorun oluştu. Biraz sonra tekrar dene! 🌙',
-          isUser: false,
-          timestamp: DateTime.now(),
-        ));
-      });
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _messages.add(_ChatMessage(
+            text: 'Ups! Kozmik bağlantıda bir sorun oluştu. Biraz sonra tekrar dene! 🌙',
+            isUser: false,
+            timestamp: DateTime.now(),
+          ));
+        });
+      }
     }
   }
 
@@ -266,33 +283,98 @@ Yanıtını düz metin olarak ver, JSON formatında değil.
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin için gerekli
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final body = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [const Color(0xFF0F0C29), const Color(0xFF302B63), const Color(0xFF24243E)]
+              : [const Color(0xFFE8D5F5), const Color(0xFFF0E6FF), const Color(0xFFE0D0F0)],
+        ),
+      ),
+      child: Column(
+        children: [
+          // AppBar — embedded modda back button yok
+          widget.embeddedMode
+              ? _buildEmbeddedHeader(isDark)
+              : _buildAppBar(isDark),
+          // Mesajlar
+          Expanded(child: _buildMessageList(isDark)),
+          // Önerilen sorular
+          if (_messages.length <= 2) _buildSuggestions(isDark),
+          // Input
+          _buildInputBar(isDark),
+        ],
+      ),
+    );
+
+    // Embedded modda Scaffold yok — MainShell zaten sağlıyor
+    if (widget.embeddedMode) {
+      return body;
+    }
+
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [const Color(0xFF0F0C29), const Color(0xFF302B63), const Color(0xFF24243E)]
-                : [const Color(0xFFE8D5F5), const Color(0xFFF0E6FF), const Color(0xFFE0D0F0)],
+      body: SafeArea(child: body),
+    );
+  }
+
+  /// Embedded mod header — back button yok, daha kompakt
+  Widget _buildEmbeddedHeader(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              gradient: AppColors.cosmicGradient,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: const Center(
+              child: Text('🔮', style: TextStyle(fontSize: 20)),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // AppBar
-              _buildAppBar(isDark),
-              // Mesajlar
-              Expanded(child: _buildMessageList(isDark)),
-              // Önerilen sorular
-              if (_messages.length <= 2) _buildSuggestions(isDark),
-              // Input
-              _buildInputBar(isDark),
-            ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AI Astrolog',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF1E1B4B),
+                  ),
+                ),
+                Builder(
+                  builder: (context) {
+                    final isPremium = context.read<AuthProvider>().isPremium;
+                    final subtitle = _isTyping
+                        ? 'Yazıyor...'
+                        : isPremium
+                            ? 'Sınırsız soru hakkın var ✨'
+                            : '$_freeQuestionsToday/$_maxFreeQuestions soru kullandın';
+                    return Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _isTyping
+                            ? AppColors.positive
+                            : (isDark ? Colors.white54 : Colors.grey.shade500),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -327,7 +409,7 @@ Yanıtını düz metin olarak ver, JSON formatında değil.
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Zodi AI',
+                  'Astro Dozi AI',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,

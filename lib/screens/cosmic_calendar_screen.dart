@@ -533,7 +533,7 @@ class _CosmicCalendarScreenState extends State<CosmicCalendarScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        _selectedTab == 0 ? 'Zodi Diyor Ki...' : 'Güzellik Tavsiyesi',
+                        _selectedTab == 0 ? 'Astro Dozi Diyor Ki...' : 'Güzellik Tavsiyesi',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,

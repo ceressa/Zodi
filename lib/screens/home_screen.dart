@@ -1,12 +1,18 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/auth_provider.dart';
+import '../providers/coin_provider.dart';
 import '../constants/colors.dart';
 import '../constants/strings.dart';
+import '../config/membership_config.dart';
+import '../theme/curved_clipper.dart';
 import '../services/ad_service.dart';
 import '../services/streak_service.dart';
 import '../services/firebase_service.dart';
+import '../services/activity_log_service.dart';
 import '../models/streak_data.dart';
 import '../widgets/compact_streak_badge.dart';
 import 'daily_screen.dart';
@@ -29,11 +35,14 @@ class _HomeScreenState extends State<HomeScreen> {
   final StreakService _streakService = StreakService();
   final FirebaseService _firebaseService = FirebaseService();
   StreakData? _streakData;
+  DateTime? _lastBackPress;
+  bool _isFabLoading = false;
 
   @override
   void initState() {
     super.initState();
     _adService.loadInterstitialAd();
+    _adService.loadRewardedAd();
     _loadStreakData();
   }
 
@@ -81,55 +90,108 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = context.watch<AuthProvider>();
 
-    return Scaffold(
-      extendBody: true,
-      body: Container(
-        color: isDark ? const Color(0xFF1E233F) : const Color(0xFFF7F5FB),
-        child: Column(
-          children: [
-            _buildCustomAppBar(isDark, authProvider),
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: _onPageChanged,
-                children: const [
-                  ExploreScreen(),
-                  DailyScreen(),
-                  MatchScreen(),
-                  StatisticsScreen(showAppBar: false),
-                  SettingsScreen(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        // Diğer tab'lardaysa Explore'a dön
+        if (_currentIndex != 0) {
+          _pageController.animateToPage(0,
+              duration: 300.ms, curve: Curves.easeOutCubic);
+          return;
+        }
+
+        // Explore tab'ındaysa çift basış ile çık
+        final now = DateTime.now();
+        if (_lastBackPress != null &&
+            now.difference(_lastBackPress!) < const Duration(seconds: 2)) {
+          SystemNavigator.pop();
+          return;
+        }
+
+        _lastBackPress = now;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Çıkmak için tekrar geri bas'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+          ),
+        );
+      },
+      child: Scaffold(
+        body: Container(
+          color: isDark ? const Color(0xFF0F0A2E) : const Color(0xFFF8F5FF),
+          child: Stack(
+            children: [
+              // === Ana içerik: AppBar + PageView ===
+              Column(
+                children: [
+                  _buildCustomAppBar(isDark, authProvider),
+                  Expanded(
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: _onPageChanged,
+                      physics: const BouncingScrollPhysics(),
+                      children: const [
+                        ExploreScreen(),
+                        DailyScreen(),
+                        MatchScreen(),
+                        StatisticsScreen(showAppBar: false),
+                        SettingsScreen(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
+
+              // === Bottom Navigation — overlay ===
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _buildBottomNav(isDark),
+              ),
+
+              // === FAB — overlay ===
+              if (_buildEarnGoldFab(authProvider) != null)
+                Positioned(
+                  right: 16,
+                  bottom: 90,
+                  child: _buildEarnGoldFab(authProvider)!,
+                ),
+            ],
+          ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(isDark),
     );
   }
 
   Widget _buildCustomAppBar(bool isDark, AuthProvider authProvider) {
-    return Container(
+    return ClipPath(
+      clipper: CurvedBottomClipper(),
+      child: Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 10,
         left: 20,
         right: 20,
-        bottom: 15,
+        bottom: 30,
       ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
-              ? [const Color(0xFF2C2854), const Color(0xFF1E2448)]
-              : [const Color(0xFFF3EDFF), const Color(0xFFE8E0FF)],
+              ? [const Color(0xFF1E1B4B), const Color(0xFF0F0A2E)]
+              : [const Color(0xFFF8F5FF), const Color(0xFFEDE9FE)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
         boxShadow: [
           BoxShadow(
             color: isDark
                 ? Colors.black.withOpacity(0.2)
-                : AppColors.accentPurple.withOpacity(0.12),
+                : const Color(0xFF7C3AED).withOpacity(0.10),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),
@@ -138,41 +200,30 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo + "Zodi" text
-          Row(
-            children: [
-              Hero(
-                tag: 'logo',
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/zodi_logo.webp',
-                    width: 46,
-                    height: 46,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 46,
-                      height: 46,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.accentPurple,
-                      ),
-                      child: const Icon(Icons.auto_awesome,
-                          color: Colors.white, size: 22),
+          // Logo only — markalaştırılmış
+          Hero(
+            tag: 'logo',
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.asset(
+                'assets/astro_dozi_logo.webp',
+                width: 46,
+                height: 46,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7C3AED), Color(0xFFDB2777)],
                     ),
                   ),
+                  child: const Icon(Icons.auto_awesome,
+                      color: Colors.white, size: 22),
                 ),
               ),
-              const SizedBox(width: 10),
-              Text(
-                'Zodi',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : AppColors.textDark,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
+            ),
           ),
 
           // Streak Badge (center)
@@ -191,57 +242,202 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildZodiacBadge(authProvider.selectedZodiac!.symbol, isDark),
         ],
       ),
+    ),
     );
   }
 
   Widget _buildZodiacBadge(String symbol, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF7C6BC4), const Color(0xFF6B5DAF)]
-              : [const Color(0xFFBAAEF0), const Color(0xFFA899E0)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accentPurple.withOpacity(isDark ? 0.3 : 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [const Color(0xFF7C3AED).withOpacity(0.4), const Color(0xFF4C1D95).withOpacity(0.4)]
+                  : [const Color(0xFFA78BFA).withOpacity(0.25), const Color(0xFF8B5CF6).withOpacity(0.25)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: Colors.white.withOpacity(isDark ? 0.15 : 0.3),
+              width: 1.5,
+            ),
           ),
-        ],
-      ),
-      child: Text(
-        symbol,
-        style: const TextStyle(fontSize: 22, color: Colors.white),
+          child: Text(
+            symbol,
+            style: const TextStyle(fontSize: 22, color: Colors.white),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildBottomNav(bool isDark) {
+  /// Altın kazan FAB — reklam izle, coin kazan
+  Widget? _buildEarnGoldFab(AuthProvider authProvider) {
+    // Elmas ve üstü kullanıcılar için reklam kapalı, FAB gösterme
+    final tier = authProvider.membershipTier;
+    if (tier == MembershipTier.elmas || tier == MembershipTier.platinyum) {
+      return null;
+    }
+
+    final coinProvider = context.watch<CoinProvider>();
+    final rewardAmount = coinProvider.adRewardAmount;
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xD9262B4E) : const Color(0xEFFFFBFF),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: isDark ? const Color(0x336D77A8) : const Color(0x33C4B5FD),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.18)
-                : const Color(0x1FA78BFA),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-        ],
-      ),
-      child: Row(
+          boxShadow: [
+            // Claymorphism — light shadow (üst-sol)
+            BoxShadow(
+              color: Colors.white.withOpacity(0.25),
+              blurRadius: 6,
+              offset: const Offset(-2, -2),
+            ),
+            // Claymorphism — dark shadow (alt-sağ)
+            BoxShadow(
+              color: const Color(0xFFD97706).withOpacity(0.45),
+              blurRadius: 14,
+              offset: const Offset(4, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: _isFabLoading ? null : _onFabTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_isFabLoading)
+                    const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  else
+                    const Icon(Icons.monetization_on_rounded,
+                        color: Colors.white, size: 22),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isFabLoading ? 'İzleniyor...' : '+$rewardAmount 🪙',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ).animate().scale(
+        delay: 500.ms,
+        duration: 400.ms,
+        curve: Curves.elasticOut,
+      );
+  }
+
+  Future<void> _onFabTap() async {
+    if (_isFabLoading) return;
+
+    setState(() => _isFabLoading = true);
+
+    try {
+      final rewarded = await _adService.showRewardedAd(placement: 'fab_earn_gold');
+
+      if (rewarded && mounted) {
+        final coinProvider = context.read<CoinProvider>();
+        await coinProvider.earnFromAd();
+        ActivityLogService().logCoinEarned(coinProvider.adRewardAmount, 'fab_earn_gold');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Text('🪙', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '+${coinProvider.adRewardAmount} altın kazandın!',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFFD97706),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+            ),
+          );
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Reklam yüklenemedi, biraz sonra tekrar dene!'),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ FAB ad error: $e');
+    } finally {
+      if (mounted) setState(() => _isFabLoading = false);
+      // Yeni reklam yükle
+      _adService.loadRewardedAd();
+    }
+  }
+
+  Widget _buildBottomNav(bool isDark) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Container(
+      margin: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding > 0 ? bottomPadding : 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF1E1B4B).withOpacity(0.80)
+                  : Colors.white.withOpacity(0.70),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.10)
+                    : Colors.white.withOpacity(0.50),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withOpacity(0.20)
+                      : const Color(0xFF7C3AED).withOpacity(0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildNavItem(0, Icons.grid_view_outlined, Icons.grid_view_rounded,
@@ -255,6 +451,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildNavItem(4, Icons.person_outline_rounded, Icons.person_rounded,
               AppStrings.navProfile),
         ],
+      ),
+          ),
+        ),
       ),
     );
   }

@@ -28,7 +28,7 @@ class ZodiLoading extends StatelessWidget {
               ],
             ),
             child: Image.asset(
-              'assets/dozi_char.webp',
+              'assets/astro_dozi_main.webp',
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) => Container(
                 decoration: const BoxDecoration(

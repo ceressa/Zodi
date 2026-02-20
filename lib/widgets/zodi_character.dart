@@ -68,8 +68,8 @@ class _ZodiCharacterState extends State<ZodiCharacter>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF06B6D4).withOpacity(0.3),
-                    const Color(0xFF14B8A6).withOpacity(0.1),
+                    const Color(0xFF7C3AED).withOpacity(0.3),
+                    const Color(0xFFA78BFA).withOpacity(0.1),
                     Colors.transparent,
                   ],
                 ),
@@ -77,13 +77,13 @@ class _ZodiCharacterState extends State<ZodiCharacter>
             ),
             // Karakter görseli
             Image.asset(
-              'assets/dozi_char.webp',
+              'assets/astro_dozi_main.webp',
               width: _dimension * 0.8,
               height: _dimension * 0.8,
               errorBuilder: (context, error, stackTrace) {
                 // Fallback: Emoji
                 return Text(
-                  '👻',
+                  '🔮',
                   style: TextStyle(fontSize: _dimension * 0.5),
                 );
               },

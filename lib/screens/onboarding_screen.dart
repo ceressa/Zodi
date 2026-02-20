@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:confetti/confetti.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/auth_provider.dart';
 import '../services/firebase_service.dart';
 import '../services/activity_log_service.dart';
 import '../models/zodiac_sign.dart';
 import '../constants/colors.dart';
+import '../theme/cosmic_page_route.dart';
+import '../app.dart';
 import 'welcome_screen.dart';
-import 'home_screen.dart';
+import 'greeting_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -25,9 +28,19 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   DateTime? _birthDate;
   ZodiacSign? _calculatedZodiac;
   int _currentStep = 0;
+  static const int _totalSteps = 5;
   late ConfettiController _confettiController;
   bool _isLoading = false;
   bool _nameValid = false;
+
+  // Personalizasyon (Step 4)
+  String? _selectedGender;
+  String? _selectedRelationship;
+  String? _selectedLifePhase;
+
+  // Doğum detayları
+  TimeOfDay? _birthTime;
+  final _birthPlaceController = TextEditingController();
 
   @override
   void initState() {
@@ -48,19 +61,74 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _nameController.dispose();
     _nameFocus.dispose();
     _confettiController.dispose();
+    _birthPlaceController.dispose();
     super.dispose();
   }
 
   void _nextStep() {
     FocusScope.of(context).unfocus();
-    if (_currentStep < 3) {
-      setState(() => _currentStep++);
+    if (_currentStep < _totalSteps - 1) {
+      int nextStep = _currentStep + 1;
+
+      // Doğum tarihi adımından (step 2) sonra:
+      // Auth zaten yapıldıysa Step 3 (Auth) atla → direkt personalizasyona
+      if (nextStep == 3 && FirebaseService().isAuthenticated) {
+        // Burç bilgisini ve ismi Firebase'e kaydet
+        _saveUserDataToFirebase();
+        nextStep = 4; // Personalizasyon adımına atla
+      }
+
+      setState(() => _currentStep = nextStep);
       _pageController.animateToPage(
         _currentStep,
         duration: const Duration(milliseconds: 500),
         curve: Curves.easeOutCubic,
       );
     }
+  }
+
+  Future<void> _saveUserDataToFirebase() async {
+    if (!FirebaseService().isAuthenticated) return;
+    try {
+      final uid = FirebaseService().currentUser!.uid;
+
+      // Önce mevcut veriyi kontrol et — varsa üstüne yazma
+      final existingDoc = await FirebaseService()
+          .firestore
+          .collection('users')
+          .doc(uid)
+          .get();
+      final existingData = existingDoc.data() ?? {};
+
+      final updates = <String, dynamic>{};
+
+      // İsim: sadece boşsa veya yoksa yaz
+      if (_nameController.text.trim().isNotEmpty &&
+          (existingData['name'] == null ||
+              (existingData['name'] as String).isEmpty)) {
+        updates['name'] = _nameController.text.trim();
+      }
+
+      // Doğum tarihi: sadece yoksa yaz
+      if (_birthDate != null && existingData['birthDate'] == null) {
+        updates['birthDate'] = _birthDate!.toIso8601String();
+      }
+
+      // Burç: sadece yoksa yaz
+      if (_calculatedZodiac != null &&
+          (existingData['zodiacSign'] == null ||
+              (existingData['zodiacSign'] as String).isEmpty)) {
+        await context.read<AuthProvider>().selectZodiac(_calculatedZodiac!);
+      }
+
+      if (updates.isNotEmpty) {
+        await FirebaseService()
+            .firestore
+            .collection('users')
+            .doc(uid)
+            .set(updates, SetOptions(merge: true));
+      }
+    } catch (_) {}
   }
 
   ZodiacSign _calculateZodiacSign(DateTime birthDate) {
@@ -196,14 +264,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: Row(
-                      children: List.generate(4, (index) {
+                      children: List.generate(_totalSteps, (index) {
                         final isActive = index <= _currentStep;
                         return Expanded(
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 400),
                             height: 4,
                             margin:
-                                EdgeInsets.only(right: index < 3 ? 8 : 0),
+                                EdgeInsets.only(right: index < _totalSteps - 1 ? 8 : 0),
                             decoration: BoxDecoration(
                               gradient: isActive
                                   ? AppColors.pinkGradient
@@ -227,6 +295,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         _buildNameStep(),
                         _buildBirthDateStep(),
                         _buildAuthStep(),
+                        _buildPersonalizationStep(),
                       ],
                     ),
                   ),
@@ -308,7 +377,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
             child: ClipOval(
               child: Image.asset(
-                'assets/zodi_logo.webp',
+                'assets/astro_dozi_logo.webp',
                 width: logoSize,
                 height: logoSize,
                 fit: BoxFit.cover,
@@ -380,7 +449,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       const SizedBox(height: 40),
                       ClipOval(
                         child: Image.asset(
-                          'assets/dozi_char.webp',
+                          'assets/astro_dozi_main.webp',
                           width: 90,
                           height: 90,
                           fit: BoxFit.cover,
@@ -620,8 +689,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   Padding(
                     padding: const EdgeInsets.only(top: 24, bottom: 24),
                     child: _birthDate == null
-                        ? _buildPrimaryButton(
-                            'Doğum Gününü Seç 📅', _showMonthDayPicker)
+                        ? Column(
+                            children: [
+                              _buildPrimaryButton(
+                                  'Doğum Gününü Seç 📅', _showMonthDayPicker),
+                              const SizedBox(height: 12),
+                              _buildSecondaryButton(
+                                'Şimdilik Atla',
+                                () {
+                                  // Burç seçtirip devam et
+                                  _showZodiacPicker(skipMode: true);
+                                },
+                              ),
+                            ],
+                          )
                         : isOnBoundary
                             ? Column(
                                 children: [
@@ -886,7 +967,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  void _showZodiacPicker() {
+  void _showZodiacPicker({bool skipMode = false}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -936,7 +1017,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     onTap: () {
                       setState(() => _calculatedZodiac = sign);
                       Navigator.pop(context);
-                      _confettiController.play();
+                      if (skipMode) {
+                        _nextStep();
+                      } else {
+                        _confettiController.play();
+                      }
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
@@ -979,6 +1064,481 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ===================== STEP 5: PERSONALIZATION =====================
+  Widget _buildPersonalizationStep() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    children: [
+                      const SizedBox(height: 32),
+                      ClipOval(
+                        child: Image.asset(
+                          'assets/astro_dozi_main.webp',
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Text('💫', style: TextStyle(fontSize: 50)),
+                        ),
+                      ).animate().scale(duration: 500.ms),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Seni biraz tanıyayım!',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textDark,
+                        ),
+                      ).animate().fadeIn(delay: 200.ms),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Daha isabetli yorumlar için bilgilerini tamamla',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textDark.withOpacity(0.5),
+                        ),
+                        textAlign: TextAlign.center,
+                      ).animate().fadeIn(delay: 300.ms),
+                      const SizedBox(height: 24),
+
+                      // — Doğum Saati & Yeri Kartı —
+                      _buildInfoCard(
+                        icon: '🕐',
+                        title: 'Doğum Detayları',
+                        subtitle: 'Doğum haritası ve yükselen burç için gerekli',
+                        delay: 350,
+                        child: Column(
+                          children: [
+                            // Doğum Saati
+                            GestureDetector(
+                              onTap: _showBirthTimePicker,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: _birthTime != null
+                                      ? AppColors.primaryPink.withOpacity(0.06)
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: _birthTime != null
+                                        ? AppColors.primaryPink.withOpacity(0.3)
+                                        : AppColors.primaryPink.withOpacity(0.12),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.access_time_rounded,
+                                      color: _birthTime != null
+                                          ? AppColors.primaryPink
+                                          : AppColors.textDark.withOpacity(0.3),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      _birthTime != null
+                                          ? '${_birthTime!.hour.toString().padLeft(2, '0')}:${_birthTime!.minute.toString().padLeft(2, '0')}'
+                                          : 'Doğum saatini seç',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: _birthTime != null
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                        color: _birthTime != null
+                                            ? AppColors.textDark
+                                            : AppColors.textDark.withOpacity(0.35),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (_birthTime != null)
+                                      Icon(Icons.check_circle,
+                                          color: AppColors.primaryPink, size: 18)
+                                    else
+                                      Icon(Icons.chevron_right,
+                                          color: AppColors.textDark.withOpacity(0.2),
+                                          size: 20),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            // Doğum Yeri
+                            Container(
+                              decoration: BoxDecoration(
+                                color: _birthPlaceController.text.isNotEmpty
+                                    ? AppColors.primaryPink.withOpacity(0.06)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: _birthPlaceController.text.isNotEmpty
+                                      ? AppColors.primaryPink.withOpacity(0.3)
+                                      : AppColors.primaryPink.withOpacity(0.12),
+                                ),
+                              ),
+                              child: TextField(
+                                controller: _birthPlaceController,
+                                textCapitalization: TextCapitalization.words,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textDark,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Doğum yerini yaz (örn: İstanbul)',
+                                  hintStyle: TextStyle(
+                                    color: AppColors.textDark.withOpacity(0.3),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.location_on_rounded,
+                                    color: _birthPlaceController.text.isNotEmpty
+                                        ? AppColors.primaryPink
+                                        : AppColors.textDark.withOpacity(0.3),
+                                    size: 20,
+                                  ),
+                                  suffixIcon: _birthPlaceController.text.isNotEmpty
+                                      ? const Icon(Icons.check_circle,
+                                          color: AppColors.primaryPink, size: 18)
+                                      : null,
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 14, horizontal: 0),
+                                ),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // — Cinsiyet Kartı —
+                      _buildSelectionCard(
+                        icon: '👤',
+                        title: 'Cinsiyet',
+                        delay: 450,
+                        options: const [
+                          ('kadın', 'Kadın', '👩'),
+                          ('erkek', 'Erkek', '👨'),
+                          ('belirtilmemiş', 'Belirtmek İstemiyorum', '🤷'),
+                        ],
+                        selectedValue: _selectedGender,
+                        onSelected: (val) =>
+                            setState(() => _selectedGender = val),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // — İlişki Durumu Kartı —
+                      _buildSelectionCard(
+                        icon: '💕',
+                        title: 'İlişki Durumu',
+                        delay: 550,
+                        options: const [
+                          ('single', 'Bekar', '💔'),
+                          ('dating', 'Flört', '💕'),
+                          ('relationship', 'İlişkide', '💑'),
+                          ('married', 'Evli', '💒'),
+                          ('complicated', 'Karmaşık', '🤷'),
+                        ],
+                        selectedValue: _selectedRelationship,
+                        onSelected: (val) =>
+                            setState(() => _selectedRelationship = val),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // — Hayat Evresi Kartı —
+                      _buildSelectionCard(
+                        icon: '🌱',
+                        title: 'Hayat Evresi',
+                        delay: 650,
+                        options: const [
+                          ('exploring', 'Keşfediyorum', '🔭'),
+                          ('building', 'İnşa Ediyorum', '🏗️'),
+                          ('established', 'Yerleştim', '🏡'),
+                          ('transitioning', 'Değişim Var', '🦋'),
+                        ],
+                        selectedValue: _selectedLifePhase,
+                        onSelected: (val) =>
+                            setState(() => _selectedLifePhase = val),
+                      ),
+                    ],
+                  ),
+
+                  // Bottom buttons
+                  Padding(
+                    padding: const EdgeInsets.only(top: 20, bottom: 24),
+                    child: Column(
+                      children: [
+                        _buildPrimaryButton(
+                          'Tamamla ve Başla! ✨',
+                          _completeOnboardingWithPersonalization,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSecondaryButton(
+                          'Atla, Sonra Yaparım',
+                          _completeOnboardingSkipPersonalization,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showBirthTimePicker() {
+    showTimePicker(
+      context: context,
+      initialTime: _birthTime ?? const TimeOfDay(hour: 12, minute: 0),
+      helpText: 'Doğum saatini seç',
+      cancelText: 'İptal',
+      confirmText: 'Tamam',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primaryPink,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppColors.textDark,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    ).then((picked) {
+      if (picked != null) {
+        setState(() => _birthTime = picked);
+      }
+    });
+  }
+
+  /// Kart bazlı bilgi girişi (doğum saati/yeri gibi custom content)
+  Widget _buildInfoCard({
+    required String icon,
+    required String title,
+    String? subtitle,
+    required int delay,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryPink.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(icon, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    if (subtitle != null)
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textDark.withOpacity(0.4),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    ).animate().fadeIn(delay: Duration(milliseconds: delay)).slideY(begin: 0.08);
+  }
+
+  /// Kart bazlı seçim sorusu (cinsiyet, ilişki, hayat evresi)
+  Widget _buildSelectionCard({
+    required String icon,
+    required String title,
+    required int delay,
+    required List<(String key, String label, String emoji)> options,
+    required String? selectedValue,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryPink.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(icon, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Grid-like layout for options
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: options.map((opt) {
+              final isSelected = selectedValue == opt.$1;
+              return GestureDetector(
+                onTap: () => onSelected(opt.$1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: isSelected ? AppColors.pinkGradient : null,
+                    color: isSelected
+                        ? null
+                        : AppColors.primaryPink.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.transparent
+                          : AppColors.primaryPink.withOpacity(0.1),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(opt.$3, style: const TextStyle(fontSize: 14)),
+                      const SizedBox(width: 6),
+                      Text(
+                        opt.$2,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : AppColors.textDark.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: Duration(milliseconds: delay)).slideY(begin: 0.08);
+  }
+
+  Future<void> _completeOnboardingWithPersonalization() async {
+    // Personalizasyon bilgilerini kaydet
+    if (FirebaseService().isAuthenticated) {
+      final updates = <String, dynamic>{};
+      if (_selectedGender != null) updates['gender'] = _selectedGender;
+      if (_selectedRelationship != null) {
+        updates['relationshipStatus'] = _selectedRelationship;
+      }
+      if (_selectedLifePhase != null) updates['lifePhase'] = _selectedLifePhase;
+
+      // Doğum saati
+      if (_birthTime != null) {
+        updates['birthTime'] =
+            '${_birthTime!.hour.toString().padLeft(2, '0')}:${_birthTime!.minute.toString().padLeft(2, '0')}';
+      }
+
+      // Doğum yeri
+      if (_birthPlaceController.text.trim().isNotEmpty) {
+        updates['birthPlace'] = _birthPlaceController.text.trim();
+      }
+
+      if (updates.isNotEmpty) {
+        try {
+          await FirebaseService()
+              .firestore
+              .collection('users')
+              .doc(FirebaseService().currentUser!.uid)
+              .set(updates, SetOptions(merge: true));
+        } catch (_) {}
+      }
+    }
+
+    _goToWelcomeScreen();
+  }
+
+  void _completeOnboardingSkipPersonalization() {
+    _goToWelcomeScreen();
+  }
+
+  void _goToWelcomeScreen() {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      CosmicFadeRoute(
+        page: WelcomeScreen(
+          userName: _nameController.text.trim().isNotEmpty
+              ? _nameController.text.trim()
+              : 'Gezgin',
+          zodiacName: _calculatedZodiac?.turkishName ?? 'Koç',
+          zodiacSymbol: _calculatedZodiac?.symbol ?? '♈',
         ),
       ),
     );
@@ -1110,34 +1670,82 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       if (userCredential != null && mounted) {
         final user = userCredential.user;
         if (user != null) {
+          final uid = user.uid;
+
+          // Mevcut veri kontrolü — varsa direkt ana sayfaya
+          String existingZodiac = '';
+          String existingName = '';
+          try {
+            final doc = await FirebaseService()
+                .firestore
+                .collection('users')
+                .doc(uid)
+                .get();
+            if (doc.exists && doc.data() != null) {
+              existingName = doc.data()!['name'] ?? '';
+              existingZodiac = doc.data()!['zodiacSign'] ?? '';
+            }
+          } catch (_) {}
+
+          if (existingZodiac.isNotEmpty && mounted) {
+            // Zaten kayıtlı kullanıcı — onboarding'i atla
+            await context.read<AuthProvider>().login(
+                  existingName.isNotEmpty
+                      ? existingName
+                      : (user.displayName ?? 'Gezgin'),
+                  user.email ?? '',
+                );
+            try {
+              final zodiac = ZodiacSign.values
+                  .firstWhere((z) => z.name == existingZodiac);
+              await context.read<AuthProvider>().selectZodiac(zodiac);
+            } catch (_) {}
+            await ActivityLogService().logLogin(method: 'google');
+
+            if (mounted) {
+              setState(() => _isLoading = false);
+              Navigator.of(context).pushReplacement(
+                CosmicFadeRoute(
+                  page: GreetingScreen(nextScreen: const MainShell()),
+                ),
+              );
+            }
+            return;
+          }
+
+          // Yeni kullanıcı — normal akış
           await context
               .read<AuthProvider>()
               .login(_nameController.text.trim(), user.email ?? '');
           if (_calculatedZodiac != null) {
-            await context.read<AuthProvider>().selectZodiac(_calculatedZodiac!);
+            await context
+                .read<AuthProvider>()
+                .selectZodiac(_calculatedZodiac!);
           }
-          if (FirebaseService().isAuthenticated && _birthDate != null) {
+
+          // Sadece eksik alanları yaz
+          final updates = <String, dynamic>{};
+          if (_nameController.text.trim().isNotEmpty &&
+              existingName.isEmpty) {
+            updates['name'] = _nameController.text.trim();
+          }
+          if (_birthDate != null) {
+            updates['birthDate'] = _birthDate!.toIso8601String();
+          }
+          if (updates.isNotEmpty && FirebaseService().isAuthenticated) {
             await FirebaseService()
                 .firestore
                 .collection('users')
-                .doc(FirebaseService().currentUser!.uid)
-                .update({'birthDate': _birthDate!.toIso8601String()});
+                .doc(uid)
+                .set(updates, SetOptions(merge: true));
           }
 
-          // Yeni kayıt logu
           await ActivityLogService().logSignup(method: 'google');
 
           if (mounted) {
             setState(() => _isLoading = false);
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => WelcomeScreen(
-                  userName: _nameController.text.trim(),
-                  zodiacName: _calculatedZodiac!.turkishName,
-                  zodiacSymbol: _calculatedZodiac!.symbol,
-                ),
-              ),
-            );
+            // Personalizasyon adımına geç
+            _nextStep();
           }
         }
       } else {
@@ -1174,7 +1782,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     try {
       final userCredential = await FirebaseService().signInWithGoogle();
       if (userCredential == null) {
-        // Kullanıcı iptal etti
         if (mounted) setState(() => _isLoading = false);
         return;
       }
@@ -1185,9 +1792,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         return;
       }
 
-      // Firebase'de kullanıcı var mı kontrol et
+      // Firebase'den kullanıcı bilgilerini çek
       String name = user.displayName ?? '';
       String zodiacStr = '';
+      bool hasExistingRecord = false;
 
       try {
         final doc = await FirebaseService()
@@ -1197,13 +1805,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             .get();
 
         if (doc.exists && doc.data() != null) {
+          hasExistingRecord = true;
           final data = doc.data()!;
           name = data['name'] ?? name;
           zodiacStr = data['zodiacSign'] ?? '';
         }
-      } catch (_) {
-        // Firestore hatası olsa bile giriş devam etsin
-      }
+      } catch (_) {}
 
       if (!mounted) return;
 
@@ -1222,30 +1829,60 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         } catch (_) {}
       }
 
-      // Giriş logu (geri dönen kullanıcı)
-      await ActivityLogService().logLogin(method: 'google');
-
       if (mounted) {
         setState(() => _isLoading = false);
 
-        // Burç bilgisi varsa direkt ana sayfaya, yoksa onboarding'e devam
-        if (zodiacStr.isNotEmpty) {
+        if (hasExistingRecord && zodiacStr.isNotEmpty) {
+          // ✅ Gerçekten mevcut üye — direkt ana sayfaya
+          await ActivityLogService().logLogin(method: 'google');
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            CosmicFadeRoute(
+              page: GreetingScreen(nextScreen: const MainShell()),
+            ),
           );
-        } else {
+        } else if (hasExistingRecord && zodiacStr.isEmpty) {
+          // Kaydı var ama burcu yok — doğum tarihi adımına
+          await ActivityLogService().logLogin(method: 'google');
           _nameController.text = name;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text(
-                  'Giriş başarılı! Bilgilerini tamamlayalım.'),
+              content: const Text('Hoş geldin! Burcunu belirleyelim.'),
               backgroundColor: AppColors.primaryPink,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
           );
-          _nextStep();
+          setState(() => _currentStep = 2);
+          _pageController.animateToPage(
+            2,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutCubic,
+          );
+        } else {
+          // ❌ Kaydı yok — aslında yeni kullanıcı, normal onboarding'e devam
+          await ActivityLogService().logSignup(method: 'google');
+          _nameController.text =
+              name.isNotEmpty ? name : (user.displayName ?? '');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                  'Hesabın oluşturuldu! Hadi bilgilerini tamamlayalım.'),
+              backgroundColor: AppColors.primaryPink,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+          // İsim zaten doluysa doğum tarihine, değilse isim adımına
+          final targetStep =
+              _nameController.text.trim().isNotEmpty ? 2 : 1;
+          setState(() => _currentStep = targetStep);
+          _pageController.animateToPage(
+            targetStep,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutCubic,
+          );
         }
       }
     } catch (e) {
@@ -1256,10 +1893,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         String errorMsg = 'Giriş başarısız oldu. Tekrar dene.';
         final errStr = e.toString();
         if (errStr.contains('ApiException: 10')) {
-          errorMsg = 'Google giriş yapılandırma hatası. Lütfen normal kayıt ile devam et.';
+          errorMsg =
+              'Google giriş yapılandırma hatası. Lütfen normal kayıt ile devam et.';
         } else if (errStr.contains('network')) {
           errorMsg = 'İnternet bağlantını kontrol et.';
-        } else if (errStr.contains('canceled') || errStr.contains('cancelled')) {
+        } else if (errStr.contains('canceled') ||
+            errStr.contains('cancelled')) {
           errorMsg = 'Giriş iptal edildi.';
         }
 
@@ -1268,8 +1907,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             content: Text(errorMsg),
             backgroundColor: AppColors.primaryPink,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
           ),
         );
       }

@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/colors.dart';
 import '../providers/auth_provider.dart';
 import '../services/ad_service.dart';
+import '../services/share_service.dart';
+import '../widgets/share_cards/cosmic_box_share_card.dart';
 
 class CosmicBoxScreen extends StatefulWidget {
   const CosmicBoxScreen({super.key});
@@ -601,9 +603,7 @@ class _CosmicBoxScreenState extends State<CosmicBoxScreen>
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () {
-                // TODO: Share implementation
-              },
+              onTap: () => _shareReward(),
               borderRadius: BorderRadius.circular(20),
               child: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
@@ -676,6 +676,28 @@ class _CosmicBoxScreenState extends State<CosmicBoxScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _shareReward() async {
+    if (_reward == null) return;
+    final authProvider = context.read<AuthProvider>();
+    final zodiac = authProvider.selectedZodiac;
+
+    final card = CosmicBoxShareCard(
+      rewardType: _reward!['type'] ?? '',
+      rewardTitle: _reward!['title'] ?? '',
+      rewardName: _reward!['name'] ?? '',
+      rewardEmoji: _reward!['emoji'] ?? '🎁',
+      rewardDescription: _reward!['description'] ?? '',
+      zodiacSymbol: zodiac?.symbol,
+      zodiacName: zodiac?.displayName,
+    );
+
+    await ShareService().shareCardWidget(
+      context,
+      card,
+      text: '🎁 Kozmik Kutum — Astro Dozi\n#AstroDozi #KozmikKutu',
     );
   }
 }

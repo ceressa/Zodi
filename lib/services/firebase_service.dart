@@ -364,6 +364,18 @@ class FirebaseService {
     }
   }
 
+  // Delete user account (Firebase Auth)
+  Future<void> deleteUserAccount() async {
+    if (currentUser == null) return;
+    try {
+      await currentUser!.delete();
+      await _analytics.logEvent(name: 'user_account_deleted');
+    } catch (e) {
+      await _crashlytics.recordError(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
   // ============ ZENGIN PROFIL GÜNCELLEMELERİ ============
 
   // Kullanım istatistiklerini güncelle
@@ -663,6 +675,7 @@ class FirebaseService {
 
   // Kişiselleştirme bilgilerini güncelle (PersonalizationScreen için)
   Future<void> updatePersonalizationInfo({
+    String? gender,
     String? relationshipStatus,
     String? partnerName,
     String? employmentStatus,
@@ -682,6 +695,9 @@ class FirebaseService {
       final updates = <String, dynamic>{
         'lastActiveAt': DateTime.now().toIso8601String(),
       };
+
+      // Cinsiyet
+      if (gender != null) updates['gender'] = gender;
 
       // İlişki bilgileri
       if (relationshipStatus != null) updates['relationshipStatus'] = relationshipStatus;
@@ -706,8 +722,8 @@ class FirebaseService {
       await _firestore
           .collection('users')
           .doc(currentUser!.uid)
-          .update(updates);
-      
+          .set(updates, SetOptions(merge: true));
+
       // Analytics event
       await _analytics.logEvent(
         name: 'profile_personalization_updated',

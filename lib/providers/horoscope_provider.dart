@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/gemini_service.dart';
 import '../services/storage_service.dart';
+import '../services/firebase_service.dart';
 import '../models/zodiac_sign.dart';
 import '../models/daily_horoscope.dart';
 import '../models/detailed_analysis.dart';
@@ -14,7 +16,8 @@ import '../models/dream_interpretation.dart';
 class HoroscopeProvider with ChangeNotifier {
   final GeminiService _geminiService = GeminiService();
   final StorageService _storageService = StorageService();
-  
+  final FirebaseService _firebaseService = FirebaseService();
+
   DailyHoroscope? _dailyHoroscope;
   DetailedAnalysis? _detailedAnalysis;
   CompatibilityResult? _compatibilityResult;
@@ -22,7 +25,7 @@ class HoroscopeProvider with ChangeNotifier {
   MonthlyHoroscope? _monthlyHoroscope;
   RisingSignResult? _risingSignResult;
   DreamInterpretation? _dreamInterpretation;
-  
+
   bool _isLoadingDaily = false;
   bool _isLoadingAnalysis = false;
   bool _isLoadingCompatibility = false;
@@ -30,12 +33,8 @@ class HoroscopeProvider with ChangeNotifier {
   bool _isLoadingMonthly = false;
   bool _isLoadingRisingSign = false;
   bool _isLoadingDream = false;
-  
+
   String? _error;
-  
-  // Cache için son yükleme zamanları
-  DateTime? _lastDailyFetch;
-  String? _lastDailyZodiac;
 
   DailyHoroscope? get dailyHoroscope => _dailyHoroscope;
   DetailedAnalysis? get detailedAnalysis => _detailedAnalysis;
@@ -44,7 +43,7 @@ class HoroscopeProvider with ChangeNotifier {
   MonthlyHoroscope? get monthlyHoroscope => _monthlyHoroscope;
   RisingSignResult? get risingSignResult => _risingSignResult;
   DreamInterpretation? get dreamInterpretation => _dreamInterpretation;
-  
+
   bool get isLoadingDaily => _isLoadingDaily;
   bool get isLoadingAnalysis => _isLoadingAnalysis;
   bool get isLoadingCompatibility => _isLoadingCompatibility;
@@ -52,36 +51,91 @@ class HoroscopeProvider with ChangeNotifier {
   bool get isLoadingMonthly => _isLoadingMonthly;
   bool get isLoadingRisingSign => _isLoadingRisingSign;
   bool get isLoadingDream => _isLoadingDream;
-  
+
   String? get error => _error;
+
+  /// Bugünün tarih anahtarı (cache key)
+  String get _todayKey {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Firebase'den günlük yorum cache'ini oku
+  Future<DailyHoroscope?> _getFirebaseCache(ZodiacSign sign) async {
+    try {
+      final uid = _firebaseService.currentUser?.uid;
+      if (uid == null) return null;
+
+      final doc = await _firebaseService.firestore
+          .collection('users')
+          .doc(uid)
+          .collection('dailyCache')
+          .doc('daily_${sign.name}_$_todayKey')
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final horoscopeJson = data['horoscope'] as String?;
+        if (horoscopeJson != null) {
+          debugPrint('☁️ Firebase cache hit for ${sign.displayName} on $_todayKey');
+          return DailyHoroscope.fromJson(jsonDecode(horoscopeJson));
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Firebase cache read error: $e');
+    }
+    return null;
+  }
+
+  /// Firebase'e günlük yorum cache'i yaz
+  Future<void> _setFirebaseCache(ZodiacSign sign, DailyHoroscope horoscope) async {
+    try {
+      final uid = _firebaseService.currentUser?.uid;
+      if (uid == null) return;
+
+      await _firebaseService.firestore
+          .collection('users')
+          .doc(uid)
+          .collection('dailyCache')
+          .doc('daily_${sign.name}_$_todayKey')
+          .set({
+        'horoscope': jsonEncode(horoscope.toJson()),
+        'zodiac': sign.name,
+        'date': _todayKey,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      debugPrint('☁️ Firebase cache saved for ${sign.displayName} on $_todayKey');
+    } catch (e) {
+      debugPrint('⚠️ Firebase cache write error: $e');
+    }
+  }
 
   Future<void> fetchDailyHoroscope(ZodiacSign sign) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     // 1. Önce dün yarın için cache'lenmiş fal var mı kontrol et
     final tomorrowCache = await _storageService.getTomorrowHoroscope();
     if (tomorrowCache != null) {
       final cachedDate = tomorrowCache['date'] as DateTime;
       final cachedZodiac = tomorrowCache['zodiac'] as String;
       final cachedHoroscope = tomorrowCache['horoscope'] as String;
-      
-      // Eğer dün yarın için cache'lenen fal bugün için geçerliyse
+
       if (cachedZodiac == sign.name &&
           cachedDate.year == today.year &&
           cachedDate.month == today.month &&
           cachedDate.day == today.day) {
         try {
           _dailyHoroscope = DailyHoroscope.fromJson(jsonDecode(cachedHoroscope));
-          debugPrint('🎯 Using YESTERDAY\'S tomorrow horoscope as today\'s horoscope - CONSISTENCY!');
-          
-          // Bugünkü cache'e de kaydet
+          debugPrint('🎯 Using YESTERDAY\'s tomorrow horoscope as today\'s');
+
           await _storageService.saveLastDailyFetch(today, sign.name);
           await _storageService.saveCachedDailyHoroscope(cachedHoroscope);
-          
-          // Yarın cache'ini temizle (artık kullanıldı)
           await _storageService.clearTomorrowCache();
-          
+
+          // Firebase'e de kaydet
+          await _setFirebaseCache(sign, _dailyHoroscope!);
+
           notifyListeners();
           return;
         } catch (e) {
@@ -89,23 +143,22 @@ class HoroscopeProvider with ChangeNotifier {
         }
       }
     }
-    
-    // 2. Normal bugünkü cache kontrolü
+
+    // 2. Normal bugünkü local cache kontrolü
     final cachedInfo = await _storageService.getLastDailyFetch();
     if (cachedInfo != null) {
       final cachedDate = cachedInfo['date'] as DateTime;
       final cachedZodiac = cachedInfo['zodiac'] as String;
-      
+
       if (cachedZodiac == sign.name &&
           cachedDate.year == today.year &&
           cachedDate.month == today.month &&
           cachedDate.day == today.day) {
-        // Cache geçerli, storage'dan yükle
         final cachedJson = await _storageService.getCachedDailyHoroscope();
         if (cachedJson != null) {
           try {
             _dailyHoroscope = DailyHoroscope.fromJson(jsonDecode(cachedJson));
-            debugPrint('✅ Using cached daily horoscope for ${sign.displayName} from storage');
+            debugPrint('✅ Using local cached daily horoscope for ${sign.displayName}');
             notifyListeners();
             return;
           } catch (e) {
@@ -114,7 +167,21 @@ class HoroscopeProvider with ChangeNotifier {
         }
       }
     }
-    
+
+    // 3. Firebase cache kontrolü (başka cihazdan üretilmiş olabilir)
+    final firebaseCached = await _getFirebaseCache(sign);
+    if (firebaseCached != null) {
+      _dailyHoroscope = firebaseCached;
+      // Local cache'e de kaydet
+      await _storageService.saveLastDailyFetch(today, sign.name);
+      await _storageService.saveCachedDailyHoroscope(
+        jsonEncode(firebaseCached.toJson()),
+      );
+      notifyListeners();
+      return;
+    }
+
+    // 4. Hiçbir cache yoksa AI ile üret
     _isLoadingDaily = true;
     _error = null;
     notifyListeners();
@@ -122,13 +189,17 @@ class HoroscopeProvider with ChangeNotifier {
     try {
       debugPrint('🌟 Fetching NEW daily horoscope for ${sign.displayName}');
       _dailyHoroscope = await _geminiService.fetchDailyHoroscope(sign);
-      
-      // Cache'e kaydet
+
+      // Local cache'e kaydet
       await _storageService.saveLastDailyFetch(today, sign.name);
       await _storageService.saveCachedDailyHoroscope(
         jsonEncode(_dailyHoroscope!.toJson()),
       );
-      debugPrint('💾 Saved daily horoscope to cache');
+
+      // Firebase cache'e de kaydet
+      await _setFirebaseCache(sign, _dailyHoroscope!);
+
+      debugPrint('💾 Saved daily horoscope to local + Firebase cache');
     } catch (e) {
       _error = e.toString();
       debugPrint('❌ Error fetching daily horoscope: $e');
@@ -152,32 +223,32 @@ class HoroscopeProvider with ChangeNotifier {
   Future<DailyHoroscope> fetchTomorrowHoroscope(ZodiacSign sign, {String? preview}) async {
     try {
       debugPrint('🔮 Fetching FULL tomorrow horoscope for ${sign.displayName}');
-      
-      // Önce cache'e bak
+
       final tomorrow = DateTime.now().add(const Duration(days: 1));
       final tomorrowDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
-      
+
       final cached = await _storageService.getTomorrowHoroscope();
       if (cached != null) {
         final cachedDate = cached['date'] as DateTime;
         final cachedZodiac = cached['zodiac'] as String;
         final cachedHoroscope = cached['horoscope'] as String;
-        
-        // Cache geçerli mi kontrol et
+
         if (cachedZodiac == sign.name &&
             cachedDate.year == tomorrowDate.year &&
             cachedDate.month == tomorrowDate.month &&
             cachedDate.day == tomorrowDate.day) {
-          debugPrint('✅ Using cached tomorrow horoscope');
-          return DailyHoroscope.fromJson(jsonDecode(cachedHoroscope));
+          try {
+            debugPrint('✅ Using cached tomorrow horoscope');
+            return DailyHoroscope.fromJson(jsonDecode(cachedHoroscope));
+          } catch (e) {
+            debugPrint('⚠️ Failed to parse cached tomorrow horoscope: $e');
+          }
         }
       }
-      
-      // Cache yoksa veya geçersizse, yeni çek
+
       debugPrint('🌟 Fetching NEW tomorrow horoscope from Gemini');
       final horoscope = await _geminiService.fetchTomorrowHoroscope(sign);
-      
-      // Cache'e kaydet (preview ile birlikte)
+
       await _storageService.saveTomorrowHoroscope(
         jsonEncode(horoscope.toJson()),
         tomorrowDate,
@@ -185,7 +256,7 @@ class HoroscopeProvider with ChangeNotifier {
         preview: preview,
       );
       debugPrint('💾 Saved tomorrow horoscope to cache with preview');
-      
+
       return horoscope;
     } catch (e) {
       debugPrint('❌ Error fetching tomorrow horoscope: $e');

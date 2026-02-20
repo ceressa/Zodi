@@ -145,9 +145,6 @@ class _DailyScreenState extends State<DailyScreen>
         }
       }
 
-      // Log activity
-      await _activityLog.logDailyHoroscope(authProvider.selectedZodiac!.name);
-      
       if (_firebaseService.isAuthenticated) {
         _firebaseService.incrementFeatureUsage('daily_horoscope');
         _firebaseService.updateConsecutiveDays();
@@ -370,7 +367,7 @@ class _DailyScreenState extends State<DailyScreen>
             ),
             child: Center(
               child: Image.asset(
-                'assets/dozi_char.webp',
+                'assets/astro_dozi_main.webp',
                 width: 120,
                 height: 120,
                 errorBuilder: (_, __, ___) => Container(
@@ -676,7 +673,7 @@ class _DailyScreenState extends State<DailyScreen>
                   ShareService().shareCardWidget(
                     context,
                     card,
-                    text: '${authProvider.selectedZodiac!.symbol} Günlük Fal — Zodi\n#Zodi #GünlükBurç',
+                    text: '${authProvider.selectedZodiac!.symbol} Günlük Fal — Astro Dozi\n#AstroDozi #GünlükBurç',
                   );
                 },
                 borderRadius: BorderRadius.circular(16),

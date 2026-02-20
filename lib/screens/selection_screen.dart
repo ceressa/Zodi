@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../models/zodiac_sign.dart';
 import '../constants/colors.dart';
 import '../constants/strings.dart';
+import '../theme/cosmic_page_route.dart';
 import 'home_screen.dart';
 
 class SelectionScreen extends StatelessWidget {
@@ -54,7 +55,7 @@ class SelectionScreen extends StatelessWidget {
                         await context.read<AuthProvider>().selectZodiac(sign);
                         if (context.mounted) {
                           Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(builder: (_) => const HomeScreen()),
+                            CosmicFadeRoute(page: const HomeScreen()),
                           );
                         }
                       },

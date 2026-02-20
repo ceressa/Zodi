@@ -8,10 +8,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/coin_provider.dart';
+import '../config/membership_config.dart';
 import '../services/ad_service.dart';
 import '../services/share_service.dart';
+import '../services/activity_log_service.dart';
 import '../widgets/share_cards/coffee_share_card.dart';
-import '../widgets/premium_lock_overlay.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
 
@@ -24,71 +26,232 @@ class CoffeeFortuneScreen extends StatefulWidget {
 
 class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
   String _step = 'intro'; // intro, capture, analyzing, result
-  File? _uploadedImage;
+  // 4 slot: 0=fincan iç (düz), 1=fincan iç (yan), 2=fincan iç (diğer yan), 3=tabaktaki telve
+  final List<File?> _images = [null, null, null, null];
+  static const List<String> _slotLabels = [
+    'Fincan İç\n(Düz Bakış)',
+    'Fincan İç\n(Yan Açı)',
+    'Fincan İç\n(Diğer Yan)',
+    'Tabak\n(Telve)',
+  ];
+  static const List<IconData> _slotIcons = [
+    Icons.coffee,
+    Icons.rotate_left,
+    Icons.rotate_right,
+    Icons.circle_outlined,
+  ];
   final ImagePicker _picker = ImagePicker();
   Map<String, dynamic>? _fortuneResult;
   String? _errorMessage;
   final _adService = AdService();
+  final _activityLog = ActivityLogService();
   int _readingCount = 0;
 
-  Future<void> _pickImageFromCamera() async {
-    final authProvider = context.read<AuthProvider>();
-    
-    // Premium kontrolü
-    if (!authProvider.isPremium) {
-      final unlocked = await _adService.showRewardedAd(placement: 'coffee_fortune');
-      if (!unlocked) {
-        if (mounted) {
-          _showPremiumDialog();
-        }
-        return;
-      }
-    }
-    
+  int get _imageCount => _images.where((f) => f != null).length;
+
+  @override
+  void initState() {
+    super.initState();
+    _adService.loadRewardedAd();
+  }
+
+  Future<void> _pickImageForSlot(int slot, ImageSource source) async {
     final XFile? image = await _picker.pickImage(
-      source: ImageSource.camera,
+      source: source,
       maxWidth: 1024,
       maxHeight: 1024,
       imageQuality: 85,
     );
-    if (image != null) {
+    if (image != null && mounted) {
       setState(() {
-        _uploadedImage = File(image.path);
-        _step = 'analyzing';
+        _images[slot] = File(image.path);
         _errorMessage = null;
       });
-      await _analyzeCoffeeCup();
     }
   }
 
-  Future<void> _pickImageFromGallery() async {
+  void _showImageSourceDialog(int slot) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFEF3C7),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _slotLabels[slot].replaceAll('\n', ' '),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF92400E),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSourceButton(
+                    icon: Icons.camera_alt,
+                    label: 'Kamera',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickImageForSlot(slot, ImageSource.camera);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildSourceButton(
+                    icon: Icons.photo_library,
+                    label: 'Galeri',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickImageForSlot(slot, ImageSource.gallery);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            if (_images[slot] != null) ...[
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  setState(() => _images[slot] = null);
+                },
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                label: const Text('Fotoğrafı Kaldır',
+                    style: TextStyle(color: Colors.red)),
+              ),
+            ],
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSourceButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF59E0B).withOpacity(0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF59E0B)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: const Color(0xFFD97706)),
+            const SizedBox(height: 4),
+            Text(label,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: Color(0xFF92400E))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startAnalysis() async {
+    if (_imageCount == 0) {
+      setState(() => _errorMessage = 'En az 1 fotoğraf eklemelisin!');
+      return;
+    }
+
     final authProvider = context.read<AuthProvider>();
-    
-    // Premium kontrolü
-    if (!authProvider.isPremium) {
-      final unlocked = await _adService.showRewardedAd(placement: 'coffee_fortune');
-      if (!unlocked) {
-        if (mounted) {
-          _showPremiumDialog();
+    final tier = authProvider.membershipTier;
+
+    // Premium/Ad Gate
+    if (tier != MembershipTier.elmas && tier != MembershipTier.platinyum) {
+      // Yıldız (altın): 5 coin VEYA reklam
+      if (tier == MembershipTier.altin) {
+        final coinProvider = context.read<CoinProvider>();
+        if (coinProvider.balance >= 5) {
+          final useCoin = await _showCoinOrAdDialog(5);
+          if (useCoin == null) return; // iptal
+          if (useCoin) {
+            await coinProvider.spendCoins(5, 'coffee_fortune');
+          } else {
+            final unlocked =
+                await _adService.showRewardedAd(placement: 'coffee_fortune');
+            if (!unlocked) {
+              if (mounted) _showPremiumDialog();
+              return;
+            }
+          }
+        } else {
+          final unlocked =
+              await _adService.showRewardedAd(placement: 'coffee_fortune');
+          if (!unlocked) {
+            if (mounted) _showPremiumDialog();
+            return;
+          }
         }
-        return;
+      } else {
+        // Standard: reklam zorunlu
+        final unlocked =
+            await _adService.showRewardedAd(placement: 'coffee_fortune');
+        if (!unlocked) {
+          if (mounted) _showPremiumDialog();
+          return;
+        }
       }
     }
-    
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
+
+    setState(() {
+      _step = 'analyzing';
+      _errorMessage = null;
+    });
+    await _analyzeCoffeeCup();
+  }
+
+  Future<bool?> _showCoinOrAdDialog(int coinCost) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFFFEF3C7),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Kahve Falı',
+            style: TextStyle(
+                color: Color(0xFF92400E), fontWeight: FontWeight.bold)),
+        content: Text(
+            '$coinCost altın harcayarak veya reklam izleyerek falına baktırabilirsin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, false),
+            icon: const Icon(Icons.play_circle_outline, size: 18),
+            label: const Text('Reklam İzle'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD97706),
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Text('🪙', style: TextStyle(fontSize: 16)),
+            label: Text('$coinCost Altın'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFB800),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
     );
-    if (image != null) {
-      setState(() {
-        _uploadedImage = File(image.path);
-        _step = 'analyzing';
-        _errorMessage = null;
-      });
-      await _analyzeCoffeeCup();
-    }
   }
 
   void _showPremiumDialog() {
@@ -96,7 +259,8 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Premium Özellik'),
-        content: const Text('Kahve falı yorumu premium kullanıcılar için özel bir özelliktir. Reklam izleyerek veya premium üyelikle erişebilirsin.'),
+        content: const Text(
+            'Kahve falı yorumu için reklam izle veya premium üyeliğe geç.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -125,17 +289,26 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
         apiKey: apiKey,
       );
 
-      final imageBytes = await _uploadedImage!.readAsBytes();
+      // Tüm resimleri DataPart olarak hazırla
+      final parts = <Part>[];
 
       final prompt = '''
 Sen deneyimli bir Türk kahve falcısısın. Zodi uygulamasında çalışıyorsun.
-Fincan fotoğrafını analiz et ve kahve falı yorumu yap.
+Kullanıcı kahve fincanının farklı açılardan fotoğraflarını ve/veya tabaktaki telveyi gönderdi.
 
-Eğer fotoğrafta kahve fincanı göremiyorsan, yine de eğlenceli ve mistik bir yorum yap.
+ÖNEMLİ KURALLAR:
+1. TÜM görselleri birlikte analiz et. Sadece bir açıdan bakma, tüm görsellerdeki şekilleri birleştirerek kapsamlı bir yorum yap.
+2. Eğer fotoğraflarda kahve fincanı/telve GÖREMİYORSAN → "isValid": false yap ve "warningMessage"'a eğlenceli bir uyarı yaz.
+3. Uygunsuz/NSFW içerik → "isValid": false, "warningMessage": "Hmm, bu pek kahve falına uygun bir görüntü değil. Fincanını getir, sırlarını anlatayım. ☕"
+4. Alakasız resim (manzara, yemek, selfie vs.) → "isValid": false, "warningMessage": eğlenceli/mizahi bir uyarı. Örnek: "Güzel manzara ama ben kahve falcısıyım, turist rehberi değil! ☕"
+5. Kaba/hakaret içeren el işareti → "isValid": false, "warningMessage": "Ay canım, bu el işaretleriyle fal bakmam ben! Fincanını düzgünce göster, sırlarını açayım. ☕😄"
 
-Yorumunu aşağıdaki JSON formatında ver:
+Eğer geçerli bir kahve fincanı/telve görüyorsan, detaylı yorum yap.
+
+Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
 {
-  "isValid": true,
+  "isValid": true/false,
+  "warningMessage": "Eğer isValid false ise burada eğlenceli uyarı mesajı (Türkçe)",
   "love": "Aşk ve ilişkiler yorumu (2-3 cümle, samimi ve dürüst)",
   "career": "Kariyer ve iş yorumu (2-3 cümle)",
   "general": "Genel yorum ve tavsiyeler (2-3 cümle)",
@@ -146,18 +319,33 @@ Yorumunu aşağıdaki JSON formatında ver:
 }
 ''';
 
-      final response = await model.generateContent([
-        Content.multi([
-          TextPart(prompt),
-          DataPart('image/jpeg', imageBytes),
-        ]),
-      ]);
+      parts.add(TextPart(prompt));
+
+      for (int i = 0; i < _images.length; i++) {
+        if (_images[i] != null) {
+          final bytes = await _images[i]!.readAsBytes();
+          parts.add(DataPart('image/jpeg', bytes));
+        }
+      }
+
+      final response = await model.generateContent([Content.multi(parts)]);
 
       final text = response.text ?? '{}';
-      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      final jsonMatch =
+          RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
       final jsonStr = jsonMatch?.group(1) ?? text;
 
-      final result = jsonDecode(jsonStr) as Map<String, dynamic>;
+      Map<String, dynamic> result;
+      try {
+        result = jsonDecode(jsonStr) as Map<String, dynamic>;
+      } catch (e) {
+        debugPrint('❌ Coffee fortune JSON parse error: $e');
+        result = {
+          'isValid': false,
+          'warningMessage':
+              'Falını okurken bir sorun oluştu. Tekrar dener misin? ☕',
+        };
+      }
 
       _readingCount++;
 
@@ -167,15 +355,31 @@ Yorumunu aşağıdaki JSON formatında ver:
         _adService.showInterstitialIfNeeded();
       }
 
-      setState(() {
-        _fortuneResult = result;
-        _step = 'result';
-      });
+      if (!mounted) return;
+
+      // isValid kontrolü
+      final isValid = result['isValid'] ?? true;
+      if (!isValid) {
+        setState(() {
+          _fortuneResult = result;
+          _step = 'invalid';
+        });
+      } else {
+        setState(() {
+          _fortuneResult = result;
+          _step = 'result';
+        });
+        _activityLog.logCoffeeFortune();
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Fincan analiz edilirken bir sorun oluştu. Tekrar deneyin!';
-        _step = 'capture';
-      });
+      debugPrint('❌ Coffee fortune analysis error: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage =
+              'Fincan analiz edilirken bir sorun oluştu. Tekrar deneyin!';
+          _step = 'capture';
+        });
+      }
     }
   }
 
@@ -187,14 +391,25 @@ Yorumunu aşağıdaki JSON formatında ver:
       careerReading: _fortuneResult!['career'] ?? '',
       generalReading: _fortuneResult!['general'] ?? '',
       luckyMessage: _fortuneResult!['luckyMessage'],
-      cupImage: _uploadedImage,
+      cupImage: _images.firstWhere((f) => f != null, orElse: () => null),
     );
 
     ShareService().shareCardWidget(
       context,
       card,
-      text: '☕ Kahve Falım — Zodi\n#Zodi #KahveFalı',
+      text: '☕ Kahve Falım — Astro Dozi\n#AstroDozi #KahveFalı',
     );
+  }
+
+  void _resetAll() {
+    setState(() {
+      _step = 'capture';
+      _fortuneResult = null;
+      _errorMessage = null;
+      for (int i = 0; i < _images.length; i++) {
+        _images[i] = null;
+      }
+    });
   }
 
   @override
@@ -261,6 +476,8 @@ Yorumunu aşağıdaki JSON formatında ver:
         return _buildAnalyzingStep();
       case 'result':
         return _buildResultStep();
+      case 'invalid':
+        return _buildInvalidStep();
       default:
         return _buildIntroStep();
     }
@@ -276,7 +493,10 @@ Yorumunu aşağıdaki JSON formatında ver:
         )
             .animate(onPlay: (controller) => controller.repeat())
             .rotate(
-                begin: 0, end: 0.05, duration: 2.seconds, curve: Curves.easeInOut)
+                begin: 0,
+                end: 0.05,
+                duration: 2.seconds,
+                curve: Curves.easeInOut)
             .then()
             .rotate(
                 begin: 0.05,
@@ -324,9 +544,11 @@ Yorumunu aşağıdaki JSON formatında ver:
             children: [
               _buildStep('1️⃣', 'Kahveni iç', 've fincanını ters çevir'),
               const SizedBox(height: 16),
-              _buildStep('2️⃣', 'Fotoğrafını çek', 'fincanının içinden'),
+              _buildStep('2️⃣', 'Farklı açılardan fotoğraf çek',
+                  '(1-4 fotoğraf)'),
               const SizedBox(height: 16),
-              _buildStep('3️⃣', 'AI analiz etsin', 've yorumunu al!'),
+              _buildStep('3️⃣', 'AI tüm açıları analiz etsin',
+                  've kapsamlı yorumunu al!'),
             ],
           ),
         ),
@@ -368,7 +590,7 @@ Yorumunu aşağıdaki JSON formatında ver:
             border: Border.all(color: const Color(0xFFF59E0B), width: 2),
           ),
           child: const Text(
-            '💡 En iyi sonuç için fotoğrafı iyi ışıkta çekin\n🔮 AI fincanınızdaki şekilleri gerçekten analiz eder!',
+            '💡 Birden fazla açıdan fotoğraf yükle, daha kapsamlı yorum al!\n🔮 AI fincanındaki şekilleri gerçekten analiz eder!',
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF92400E),
@@ -415,9 +637,9 @@ Yorumunu aşağıdaki JSON formatında ver:
   Widget _buildCaptureStep() {
     return Column(
       children: [
-        const SizedBox(height: 40),
+        const SizedBox(height: 16),
         const Text(
-          'Fincanın Hazır mı?',
+          'Fincan Fotoğrafları',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -425,9 +647,9 @@ Yorumunu aşağıdaki JSON formatında ver:
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Kamera ile çek veya galeriden seç',
-          style: TextStyle(fontSize: 16, color: Color(0xFFD97706)),
+        Text(
+          'En az 1 fotoğraf ekle (4\'e kadar ekleyebilirsin)',
+          style: TextStyle(fontSize: 14, color: const Color(0xFFD97706).withOpacity(0.8)),
         ),
 
         if (_errorMessage != null) ...[
@@ -447,84 +669,54 @@ Yorumunu aşağıdaki JSON formatında ver:
           ),
         ],
 
-        const SizedBox(height: 32),
+        const SizedBox(height: 20),
 
-        // Kamera butonu
-        GestureDetector(
-          onTap: _pickImageFromCamera,
-          child: Container(
-            padding: const EdgeInsets.all(36),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                  color: Colors.white.withOpacity(0.5), width: 4),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.camera_alt, size: 64, color: Colors.white)
-                    .animate(onPlay: (controller) => controller.repeat())
-                    .moveY(
-                        begin: 0,
-                        end: -10,
-                        duration: 2.seconds,
-                        curve: Curves.easeInOut)
-                    .then()
-                    .moveY(
-                        begin: -10,
-                        end: 0,
-                        duration: 2.seconds,
-                        curve: Curves.easeInOut),
-                const SizedBox(height: 12),
-                const Text(
-                  'Kamera ile Çek',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        // 2x2 Grid for 4 image slots
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.85,
+          children: List.generate(4, (index) => _buildImageSlot(index)),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
-        // Galeri butonu
+        // Analiz Et butonu
         SizedBox(
           width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _pickImageFromGallery,
-            icon: const Icon(Icons.photo_library, color: Color(0xFFD97706)),
-            label: const Text(
-              'Galeriden Seç',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFD97706),
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: const BorderSide(color: Color(0xFFD97706), width: 2),
+          child: ElevatedButton(
+            onPressed: _imageCount > 0 ? _startAnalysis : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: Colors.grey.shade300,
+              padding: const EdgeInsets.symmetric(vertical: 18),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
               ),
+              elevation: 6,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.auto_awesome),
+                const SizedBox(width: 8),
+                Text(
+                  _imageCount > 0
+                      ? 'Falımı Oku ($_imageCount fotoğraf)'
+                      : 'Fotoğraf Ekle',
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         TextButton(
           onPressed: () => setState(() => _step = 'intro'),
@@ -537,19 +729,139 @@ Yorumunu aşağıdaki JSON formatında ver:
     );
   }
 
+  Widget _buildImageSlot(int index) {
+    final file = _images[index];
+    final hasImage = file != null;
+
+    return GestureDetector(
+      onTap: () => _showImageSourceDialog(index),
+      child: Container(
+        decoration: BoxDecoration(
+          color: hasImage
+              ? Colors.transparent
+              : Colors.white.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: hasImage
+                ? const Color(0xFFF59E0B)
+                : const Color(0xFFD97706).withOpacity(0.3),
+            width: hasImage ? 3 : 2,
+          ),
+          boxShadow: hasImage
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFF59E0B).withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: hasImage
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.file(file, fit: BoxFit.cover),
+                    // Overlay with label
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.7),
+                            ],
+                          ),
+                        ),
+                        child: Text(
+                          _slotLabels[index].replaceAll('\n', ' '),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    // Değiştir ikonu
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.edit,
+                            size: 16, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(_slotIcons[index],
+                        size: 32,
+                        color: const Color(0xFFD97706).withOpacity(0.5)),
+                    const SizedBox(height: 8),
+                    Text(
+                      _slotLabels[index],
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: const Color(0xFF92400E).withOpacity(0.6),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Icon(Icons.add_circle_outline,
+                        size: 20,
+                        color: const Color(0xFFD97706).withOpacity(0.4)),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAnalyzingStep() {
+    // İlk yüklenen resmi göster
+    final firstImage = _images.firstWhere((f) => f != null, orElse: () => null);
+
     return Column(
       children: [
-        if (_uploadedImage != null)
+        if (firstImage != null)
           ClipRRect(
             borderRadius: BorderRadius.circular(24),
             child: Image.file(
-              _uploadedImage!,
+              firstImage,
               width: double.infinity,
-              height: 250,
+              height: 200,
               fit: BoxFit.cover,
             ),
           ).animate().scale(begin: const Offset(0.8, 0.8), duration: 500.ms),
+        if (_imageCount > 1) ...[
+          const SizedBox(height: 8),
+          Text(
+            '$_imageCount fotoğraf analiz ediliyor...',
+            style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFD97706),
+                fontWeight: FontWeight.w600),
+          ),
+        ],
         const SizedBox(height: 32),
         const Text('🔮', style: TextStyle(fontSize: 64))
             .animate(onPlay: (controller) => controller.repeat())
@@ -566,6 +878,7 @@ Yorumunu aşağıdaki JSON formatında ver:
         const SizedBox(height: 24),
         ...[
           'Şekiller tespit ediliyor',
+          'Tüm açılar karşılaştırılıyor',
           'Semboller yorumlanıyor',
           'Kozmik bağlantı kuruluyor',
           'Falın hazırlanıyor',
@@ -599,6 +912,76 @@ Yorumunu aşağıdaki JSON formatında ver:
     );
   }
 
+  /// Geçersiz resim (kahve fincanı değil) sonuç ekranı
+  Widget _buildInvalidStep() {
+    final warning =
+        _fortuneResult?['warningMessage'] ?? 'Kahve fincanı bulamadım! ☕';
+
+    return Column(
+      children: [
+        const SizedBox(height: 40),
+        const Text('🤔', style: TextStyle(fontSize: 72))
+            .animate()
+            .shake(duration: 600.ms),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.85),
+            borderRadius: BorderRadius.circular(24),
+            border:
+                Border.all(color: const Color(0xFFF59E0B).withOpacity(0.5)),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'Hmm, Bir Sorun Var!',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF92400E),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                warning,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFFD97706),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _resetAll,
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Tekrar Dene',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Ana Sayfaya Dön',
+              style: TextStyle(color: Color(0xFFD97706))),
+        ),
+      ],
+    );
+  }
+
   Widget _buildResultStep() {
     if (_fortuneResult == null) return const SizedBox();
 
@@ -607,18 +990,27 @@ Yorumunu aşağıdaki JSON formatında ver:
 
     return Column(
       children: [
-        // Fincan fotoğrafı küçük
-        if (_uploadedImage != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.file(
-              _uploadedImage!,
-              width: 120,
-              height: 120,
-              fit: BoxFit.cover,
+        // Fincan fotoğrafları küçük row
+        if (_imageCount > 0) ...[
+          SizedBox(
+            height: 80,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: _images
+                  .where((f) => f != null)
+                  .map((f) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(f!, width: 70, height: 70,
+                              fit: BoxFit.cover),
+                        ),
+                      ))
+                  .toList(),
             ),
           ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 16),
+        ],
 
         Text(
           mood == 'positive'
@@ -641,7 +1033,8 @@ Yorumunu aşağıdaki JSON formatında ver:
             runSpacing: 8,
             children: symbols.map((s) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF59E0B).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -725,7 +1118,8 @@ Yorumunu aşağıdaki JSON formatında ver:
                 ),
               ],
             ),
-          ).animate().fadeIn(delay: 800.ms).scale(begin: const Offset(0.9, 0.9)),
+          ).animate().fadeIn(delay: 800.ms).scale(
+              begin: const Offset(0.9, 0.9)),
         ],
 
         const SizedBox(height: 24),
@@ -774,11 +1168,7 @@ Yorumunu aşağıdaki JSON formatında ver:
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => setState(() {
-              _step = 'capture';
-              _fortuneResult = null;
-              _uploadedImage = null;
-            }),
+            onPressed: _resetAll,
             icon: const Icon(Icons.refresh, color: Color(0xFFD97706)),
             label: const Text(
               'Yeni Fal Baktır',

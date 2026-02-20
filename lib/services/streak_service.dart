@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/streak_data.dart';
 import 'firebase_service.dart';
 import 'storage_service.dart';
+import 'coin_service.dart';
 
 class StreakService {
   static final StreakService _instance = StreakService._internal();
@@ -57,10 +58,10 @@ class StreakService {
 
       await _saveStreakData(userId, updatedStreak);
 
-      // Award achievement for streak milestones (7, 14, 30, etc.)
+      // Award coin bonus for streak milestones (7, 14, 21, 28, etc.)
       if (updatedStreak.currentStreak % 7 == 0) {
-        // Achievement service integration will be added later
-        // await achievementService.trackAction(userId, AchievementAction.maintainStreak);
+        final coinService = CoinService();
+        await coinService.awardStreakMilestone(updatedStreak.currentStreak);
       }
     } catch (e) {
       print('Error recording daily visit: $e');

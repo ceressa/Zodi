@@ -179,6 +179,43 @@ class _RisingSignScreenState extends State<RisingSignScreen> with TickerProvider
     }
 
     _hasPrefilledProfileData = true;
+
+    // Profilde tam doğum bilgisi varsa formu atla, direkt hesapla
+    final hasBirthData = profile.birthDate.year > 1900 &&
+        profile.birthTime.trim().isNotEmpty &&
+        profile.birthPlace.trim().isNotEmpty;
+    final horoscopeProvider = Provider.of<HoroscopeProvider>(context, listen: false);
+    if (hasBirthData && horoscopeProvider.risingSignResult == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _autoCalculate();
+      });
+    }
+  }
+
+  /// Profil verileriyle otomatik hesaplama başlat (form skip)
+  Future<void> _autoCalculate() async {
+    if (_birthDate == null || _birthTimeController.text.isEmpty || _birthPlaceController.text.isEmpty) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final horoscopeProvider = context.read<HoroscopeProvider>();
+
+    if (authProvider.selectedZodiac == null) return;
+
+    _loadingMessageIndex = 0;
+    _messageController.forward(from: 0);
+
+    await horoscopeProvider.calculateRisingSign(
+      sunSign: authProvider.selectedZodiac!,
+      birthDate: _birthDate!,
+      birthTime: _birthTimeController.text,
+      birthPlace: _birthPlaceController.text,
+    );
+
+    if (horoscopeProvider.risingSignResult != null && mounted) {
+      _messageController.stop();
+      _confettiController.play();
+      await _activityLog.logRisingSign(horoscopeProvider.risingSignResult!.risingSign.name);
+    }
   }
 
   @override

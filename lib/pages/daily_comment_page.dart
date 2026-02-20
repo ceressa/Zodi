@@ -9,6 +9,11 @@ import '../screens/daily_screen.dart';
 import '../screens/tarot_screen.dart';
 import '../screens/match_screen.dart';
 import '../screens/dream_screen.dart';
+import '../screens/weekly_monthly_screen.dart';
+import '../screens/analysis_screen.dart';
+import '../screens/retro_screen.dart';
+import '../screens/cosmic_calendar_screen.dart';
+import '../constants/astro_data.dart';
 import '../theme/cosmic_page_route.dart';
 
 class DailyCommentPage extends StatefulWidget {
@@ -94,7 +99,7 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
           children: [
             const SizedBox(height: 8),
 
-            // Greeting + zodiac badge
+            // ─── GREETING HEADER ───
             Row(
               children: [
                 Expanded(
@@ -104,17 +109,19 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
                       Text(
                         '${_getGreeting()}, $firstName',
                         style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.purple800,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Text(
                         '$dayName, $dateStr',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.gray600,
+                          color: AppColors.gray600.withValues(alpha: 0.8),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -126,6 +133,13 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
                   decoration: BoxDecoration(
                     gradient: AppColors.purpleGradient,
                     borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.purple400.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -147,9 +161,9 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
               ],
             ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // Daily horoscope card
+            // ─── GÜNLÜK YORUM KARTI ───
             if (_isLoadingHoroscope)
               _buildLoadingCard()
             else if (horoscope != null)
@@ -157,23 +171,46 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
             else
               _buildFetchCard(authProvider, horoscopeProvider),
 
-            const SizedBox(height: 20),
-
-            // Metrics row
+            // ─── METRİKLER ───
             if (horoscope != null) ...[
+              const SizedBox(height: 16),
               _buildMetricsRow(horoscope),
-              const SizedBox(height: 20),
             ],
 
-            // Quick actions
-            const Text(
-              'Hızlı Erişim',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.purple800,
-              ),
-            ),
+            const SizedBox(height: 28),
+
+            // ─── BÖLÜM AYIRICI ───
+            _buildSectionDivider(),
+
+            const SizedBox(height: 20),
+
+            // ─── COSMIC ALERT ───
+            _buildCosmicAlert(),
+
+            // ─── HAFTALIK & AYLIK ───
+            _buildSectionTitle('📅', 'Haftalık & Aylık'),
+            const SizedBox(height: 12),
+            _buildWeeklyMonthlyChips(),
+
+            const SizedBox(height: 28),
+
+            // ─── BÖLÜM AYIRICI ───
+            _buildSectionDivider(),
+
+            const SizedBox(height: 20),
+
+            // ─── DETAYLI ANALİZ ───
+            _buildAnalysisSection(),
+
+            const SizedBox(height: 28),
+
+            // ─── BÖLÜM AYIRICI ───
+            _buildSectionDivider(),
+
+            const SizedBox(height: 20),
+
+            // ─── HIZLI ERİŞİM ───
+            _buildSectionTitle('⚡', 'Hızlı Erişim'),
             const SizedBox(height: 12),
             _buildQuickActions(),
 
@@ -181,6 +218,74 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionDivider() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  AppColors.purple200.withValues(alpha: 0.6),
+                  AppColors.purple200.withValues(alpha: 0.6),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.2, 0.8, 1.0],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: AppColors.purple300.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  AppColors.purple200.withValues(alpha: 0.6),
+                  AppColors.purple200.withValues(alpha: 0.6),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.2, 0.8, 1.0],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String emoji, String title) {
+    return Row(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: AppColors.purple800,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ],
     );
   }
 
@@ -275,15 +380,20 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.9),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           border:
-              Border.all(color: AppColors.purple200.withValues(alpha: 0.5)),
+              Border.all(color: AppColors.purple200.withValues(alpha: 0.4)),
           boxShadow: [
             BoxShadow(
-              color: AppColors.purple400.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: AppColors.purple400.withValues(alpha: 0.10),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.8),
+              blurRadius: 4,
+              offset: const Offset(-2, -2),
             ),
           ],
         ),
@@ -432,6 +542,8 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
   }
 
   Widget _metricTile(String emoji, String label, int value) {
+    // 0-100 değerini 0-5 yıldıza çevir
+    final stars = (value / 20).round().clamp(0, 5);
     final color = value >= 70
         ? AppColors.emerald400
         : value >= 40
@@ -440,33 +552,286 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
 
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.purple100),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: color.withValues(alpha: 0.15),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 4),
-            Text(
-              '$value',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+            Text(emoji, style: const TextStyle(fontSize: 20)),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (i) => Icon(
+                i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: 14,
+                color: i < stars ? color : color.withValues(alpha: 0.25),
+              )),
             ),
+            const SizedBox(height: 4),
             Text(
               label,
               style:
-                  const TextStyle(fontSize: 10, color: AppColors.gray600),
+                  const TextStyle(fontSize: 11, color: AppColors.gray600, fontWeight: FontWeight.w600),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildCosmicAlert() {
+    final today = DateTime.now();
+    final todayEvents = AstroData.getEventsForDay(today);
+    final activeRetro = todayEvents
+        .where((e) =>
+            e.type.name.contains('Retrograde') ||
+            e.type.name.contains('retrograde'))
+        .toList();
+
+    if (todayEvents.isEmpty) return const SizedBox.shrink();
+
+    final isWarning = activeRetro.isNotEmpty;
+    final event = isWarning ? activeRetro.first : todayEvents.first;
+    final color = isWarning ? const Color(0xFFEF4444) : const Color(0xFF7C3AED);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          CosmicPageRoute(
+            page: isWarning ? const RetroScreen() : const CosmicCalendarScreen(),
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isWarning ? Icons.warning_amber_rounded : Icons.auto_awesome_rounded,
+                size: 22,
+                color: color,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isWarning ? '${event.title} Aktif!' : '${event.emoji} ${event.title}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1E1B4B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      event.description,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: const Color(0xFF1E1B4B).withValues(alpha: 0.6),
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 20, color: color.withValues(alpha: 0.6)),
+            ],
+          ),
+        ),
+      ).animate().fadeIn(duration: 400.ms),
+    );
+  }
+
+  Widget _buildWeeklyMonthlyChips() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              CosmicPageRoute(page: const WeeklyMonthlyScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: AppColors.purple200.withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.purple400.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Column(
+                children: [
+                  Icon(Icons.date_range_rounded, size: 24, color: AppColors.purple600),
+                  SizedBox(height: 8),
+                  Text(
+                    'Haftalık',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.purple800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              CosmicPageRoute(page: const WeeklyMonthlyScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: AppColors.purple200.withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.purple400.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Column(
+                children: [
+                  Icon(Icons.calendar_month_rounded, size: 24, color: AppColors.purple600),
+                  SizedBox(height: 8),
+                  Text(
+                    'Aylık',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.purple800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    ).animate().fadeIn(delay: 100.ms);
+  }
+
+  Widget _buildAnalysisSection() {
+    const categories = [
+      {'emoji': '💗', 'label': 'Aşk', 'color': Color(0xFFEC4899)},
+      {'emoji': '🎯', 'label': 'Kariyer', 'color': Color(0xFF8B5CF6)},
+      {'emoji': '💪', 'label': 'Sağlık', 'color': Color(0xFF10B981)},
+      {'emoji': '💰', 'label': 'Para', 'color': Color(0xFFF59E0B)},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('🔮', 'Detaylı Analiz'),
+        const SizedBox(height: 14),
+        Row(
+          children: categories.asMap().entries.map((entry) {
+            final cat = entry.value;
+            final color = cat['color'] as Color;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: entry.key == 0 ? 0 : 8,
+                ),
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    CosmicPageRoute(page: const AnalysisScreen()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: color.withValues(alpha: 0.20),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.10),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(cat['emoji'] as String, style: const TextStyle(fontSize: 20)),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          cat['label'] as String,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    ).animate().fadeIn(delay: 200.ms);
   }
 
   Widget _buildQuickActions() {
@@ -488,7 +853,7 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
             'Uyum',
             [AppColors.pink400, AppColors.rose400],
             () => Navigator.push(
-                context, CosmicPageRoute(page: const MatchScreen())),
+                context, CosmicPageRoute(page: const MatchScreen(showAppBar: true))),
           ),
         ),
         const SizedBox(width: 10),
@@ -510,32 +875,33 @@ class _DailyCommentPageState extends State<DailyCommentPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18),
+        padding: const EdgeInsets.symmetric(vertical: 22),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: colors,
           ),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: colors.first.withValues(alpha: 0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
+              color: colors.first.withValues(alpha: 0.30),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Column(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 28)),
-            const SizedBox(height: 6),
+            Text(emoji, style: const TextStyle(fontSize: 30)),
+            const SizedBox(height: 8),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
+                letterSpacing: 0.3,
               ),
             ),
           ],

@@ -51,8 +51,7 @@ class AnimatedCard extends StatelessWidget {
       ),
     )
         .animate(delay: delay ?? Duration.zero)
-        .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-        .slideY(begin: 0.2, end: 0, duration: 400.ms, curve: Curves.easeOut)
-        .scale(begin: const Offset(0.95, 0.95), duration: 400.ms);
+        .fadeIn(duration: 300.ms, curve: Curves.easeOut)
+        .slideY(begin: 0.08, end: 0, duration: 300.ms, curve: Curves.easeOut);
   }
 }

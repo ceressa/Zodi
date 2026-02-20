@@ -14,10 +14,12 @@ import '../models/dream_interpretation.dart';
 import '../models/interaction_history.dart';
 import 'user_history_service.dart';
 import 'astronomy_service.dart';
+import 'api_usage_service.dart';
 
 class GeminiService {
   late final GenerativeModel _model;
   final UserHistoryService _historyService = UserHistoryService();
+  final ApiUsageService _apiUsage = ApiUsageService();
   
   static const String _baseSystemPrompt = '''
 Sen Zodi'sin - Astroloji dünyasının en dürüst, en "cool" ve bazen en huysuz rehberi.
@@ -37,6 +39,22 @@ KURALLAR:
 - Bazen sert eleştir, bazen sıcak iltifat et - ama her zaman samimi ol
 ''';
 
+  /// Dinamik tarih bilgisi ile zenginleştirilmiş system prompt
+  String _getDateAwareSystemPrompt() {
+    final now = DateTime.now();
+    final dateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(now);
+    final year = now.year;
+    return '''$_baseSystemPrompt
+
+TARİH BİLGİSİ (KRİTİK):
+- Bugünün tarihi: $dateStr
+- Şu an $year yılındayız
+- ASLA 2024 veya 2025 yılından bahsetme, geçmiş yıllara atıfta bulunma
+- Tüm yorumlarını $year yılı bağlamında yap
+- Hafta, ay ve mevsim referanslarını BUGÜNÜN tarihine göre ver
+''';
+  }
+
   GeminiService() {
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     _model = GenerativeModel(
@@ -45,9 +63,26 @@ KURALLAR:
     );
   }
 
+  /// Gemini API çağrısı yap ve kullanımı logla
+  Future<GenerateContentResponse> _generate(String prompt, String feature) async {
+    final response = await _model.generateContent([Content.text(prompt)]);
+    // Token kullanımını logla
+    final usage = response.usageMetadata;
+    final inputTokens = usage?.promptTokenCount ?? ApiUsageService.estimateTokens(prompt);
+    final outputTokens = usage?.candidatesTokenCount ?? ApiUsageService.estimateTokens(response.text ?? '');
+    final totalTokens = usage?.totalTokenCount ?? (inputTokens + outputTokens);
+    await _apiUsage.logApiCall(
+      feature: feature,
+      inputTokens: inputTokens,
+      outputTokens: outputTokens,
+      totalTokens: totalTokens,
+    );
+    return response;
+  }
+
   Future<String> _getPersonalizedPrompt() async {
     final context = await _historyService.generatePersonalizedContext();
-    return '$_baseSystemPrompt\n\n$context';
+    return '${_getDateAwareSystemPrompt()}\n\n$context';
   }
 
   Future<DailyHoroscope> fetchDailyHoroscope(ZodiacSign sign) async {
@@ -73,15 +108,15 @@ Yanıtı şu JSON formatında ver:
 ''';
 
     try {
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _generate(prompt, 'daily_horoscope');
       final text = response.text ?? '{}';
-      
+
       final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
       final jsonStr = jsonMatch?.group(1) ?? text;
-      
+
       final json = jsonDecode(jsonStr);
       final horoscope = DailyHoroscope.fromJson(json);
-      
+
       // Etkileşimi kaydet
       await _historyService.addInteraction(
         InteractionHistory(
@@ -121,30 +156,35 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    final json = jsonDecode(jsonStr);
-    final analysis = DetailedAnalysis.fromJson(json);
-    
-    // Etkileşimi kaydet
-    await _historyService.addInteraction(
-      InteractionHistory(
-        timestamp: DateTime.now(),
-        interactionType: 'analysis',
-        content: analysis.content,
-        context: {
-          'zodiac': sign.displayName,
-          'category': category,
-          'topic': category,
-        },
-      ),
-    );
-    
-    return analysis;
+    try {
+      final response = await _generate(prompt, 'detailed_analysis');
+      final text = response.text ?? '{}';
+
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      final jsonStr = jsonMatch?.group(1) ?? text;
+
+      final json = jsonDecode(jsonStr);
+      final analysis = DetailedAnalysis.fromJson(json);
+
+      // Etkileşimi kaydet
+      await _historyService.addInteraction(
+        InteractionHistory(
+          timestamp: DateTime.now(),
+          interactionType: 'analysis',
+          content: analysis.content,
+          context: {
+            'zodiac': sign.displayName,
+            'category': category,
+            'topic': category,
+          },
+        ),
+      );
+
+      return analysis;
+    } catch (e) {
+      debugPrint('❌ Detailed analysis error: $e');
+      rethrow;
+    }
   }
 
   Future<CompatibilityResult> fetchCompatibility(
@@ -170,14 +210,19 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    final json = jsonDecode(jsonStr);
-    return CompatibilityResult.fromJson(json);
+    try {
+      final response = await _generate(prompt, 'compatibility');
+      final text = response.text ?? '{}';
+
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      final jsonStr = jsonMatch?.group(1) ?? text;
+
+      final json = jsonDecode(jsonStr);
+      return CompatibilityResult.fromJson(json);
+    } catch (e) {
+      debugPrint('❌ Compatibility error: $e');
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> fetchWeeklyHoroscope(ZodiacSign sign) async {
@@ -206,13 +251,18 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    return jsonDecode(jsonStr);
+    try {
+      final response = await _generate(prompt, 'weekly_horoscope');
+      final text = response.text ?? '{}';
+
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      final jsonStr = jsonMatch?.group(1) ?? text;
+
+      return jsonDecode(jsonStr);
+    } catch (e) {
+      debugPrint('❌ Weekly horoscope error: $e');
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> fetchMonthlyHoroscope(ZodiacSign sign) async {
@@ -242,13 +292,18 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    return jsonDecode(jsonStr);
+    try {
+      final response = await _generate(prompt, 'monthly_horoscope');
+      final text = response.text ?? '{}';
+
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      final jsonStr = jsonMatch?.group(1) ?? text;
+
+      return jsonDecode(jsonStr);
+    } catch (e) {
+      debugPrint('❌ Monthly horoscope error: $e');
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> calculateRisingSign({
@@ -300,7 +355,7 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _generate(prompt, 'rising_sign');
       final text = response.text ?? '{}';
       
       final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
@@ -374,7 +429,7 @@ Samimi, dürüst ve Zodi tarzında yaz. Düz metin olarak yanıtla, JSON format�
 ''';
 
     try {
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _generate(prompt, 'birth_chart');
       final text = response.text ?? '';
 
       await _historyService.addInteraction(
@@ -420,13 +475,18 @@ Yanıtı şu JSON formatında ver:
 }
 ''';
 
-    final response = await _model.generateContent([Content.text(prompt)]);
-    final text = response.text ?? '{}';
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
-    final jsonStr = jsonMatch?.group(1) ?? text;
-    
-    return jsonDecode(jsonStr);
+    try {
+      final response = await _generate(prompt, 'dream');
+      final text = response.text ?? '{}';
+
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      final jsonStr = jsonMatch?.group(1) ?? text;
+
+      return jsonDecode(jsonStr);
+    } catch (e) {
+      debugPrint('❌ Dream interpretation error: $e');
+      rethrow;
+    }
   }
 
   Future<String> fetchTomorrowPreview(ZodiacSign sign) async {
@@ -445,9 +505,9 @@ Yanıtı düz metin olarak ver, JSON formatında değil. Sadece önizleme metnin
 ''';
 
     try {
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _generate(prompt, 'tomorrow_preview');
       final text = response.text ?? '';
-      
+
       // Eğer JSON formatında geldiyse temizle
       final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
       if (jsonMatch != null) {
@@ -490,12 +550,12 @@ Yanıtı şu JSON formatında ver:
 ''';
 
     try {
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _generate(prompt, 'tomorrow_horoscope');
       final text = response.text ?? '{}';
-      
+
       final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
       final jsonStr = jsonMatch?.group(1) ?? text;
-      
+
       final json = jsonDecode(jsonStr);
       return DailyHoroscope.fromJson(json);
     } catch (e) {
@@ -506,7 +566,7 @@ Yanıtı şu JSON formatında ver:
 
   Future<String> generateTarotInterpretation(String prompt) async {
     try {
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _generate(prompt, 'tarot');
       final text = response.text ?? '';
 
       // JSON formatında geldiyse temizle
@@ -541,11 +601,75 @@ Sadece düz metin olarak yanıtla, JSON formatı kullanma. Maksimum 80 kelime.
 ''';
 
     try {
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _generate(prompt, 'astro_tip');
       return response.text?.trim() ?? 'Bugün yıldızlar senin için sessiz.';
     } catch (e) {
       debugPrint('❌ Astro tip error: $e');
       return 'Kozmik enerjiler bugün sakin. İçsel sesini dinle.';
+    }
+  }
+
+  /// Eglenceli astroloji ozelliklerini uret (Fun Features)
+  Future<Map<String, dynamic>> generateFunFeature({
+    required String featureId,
+    required String promptTemplate,
+    required String birthDate,
+    required String birthTime,
+    required String birthPlace,
+    required String zodiacSign,
+    String? risingSign,
+    String? moonSign,
+  }) async {
+    final systemPrompt = await _getPersonalizedPrompt();
+
+    final prompt = '''
+$systemPrompt
+
+DOGUM BILGILERI:
+- Tarih: $birthDate | Saat: $birthTime | Yer: $birthPlace
+- Gunes Burcu: $zodiacSign
+${risingSign != null ? '- Yukselen Burc: $risingSign' : ''}
+${moonSign != null ? '- Ay Burcu: $moonSign' : ''}
+
+$promptTemplate
+
+Yanitini MUTLAKA su JSON formatinda ver:
+```json
+{
+  "mainResult": "Tek kelime veya kisa cümle olarak ana sonuc",
+  "emoji": "Sonucu temsil eden tek bir emoji",
+  "description": "2-3 paragraf Zodi tarzinda aciklama (150-250 kelime)",
+  "details": ["Detay 1", "Detay 2", "Detay 3", "Detay 4"]
+}
+```
+''';
+
+    try {
+      final response = await _generate(prompt, 'fun_feature');
+      final text = response.text ?? '{}';
+
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      final jsonStr = jsonMatch?.group(1) ?? text;
+
+      final json = jsonDecode(jsonStr) as Map<String, dynamic>;
+
+      // Etkilesimi kaydet
+      await _historyService.addInteraction(
+        InteractionHistory(
+          timestamp: DateTime.now(),
+          interactionType: 'fun_feature',
+          content: json['mainResult'] ?? '',
+          context: {
+            'featureId': featureId,
+            'zodiac': zodiacSign,
+          },
+        ),
+      );
+
+      return json;
+    } catch (e) {
+      debugPrint('Fun feature generation error: $e');
+      rethrow;
     }
   }
 
@@ -569,7 +693,7 @@ Sadece düz metin olarak yanıtla, JSON formatı kullanma. Maksimum 60 kelime.
 ''';
 
     try {
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _generate(prompt, 'beauty_tip');
       return response.text?.trim() ?? 'Bugün kendine biraz vakit ayır!';
     } catch (e) {
       debugPrint('❌ Beauty tip error: $e');

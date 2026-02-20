@@ -14,6 +14,7 @@ import '../widgets/candy_loading.dart';
 import '../widgets/premium_lock_overlay.dart';
 import '../widgets/share_cards/tarot_share_card.dart';
 import '../services/activity_log_service.dart';
+import '../providers/coin_provider.dart';
 import '../theme/cosmic_page_route.dart';
 import 'premium_screen.dart';
 
@@ -38,6 +39,21 @@ class _TarotScreenState extends State<TarotScreen> {
   bool _threeCardUnlockedByAd = false;
   bool _didAutoLoadOnce = false;
 
+  static const _loadingMessages = [
+    'Kartlar karılıyor...',
+    'Yıldızlara danışılıyor...',
+    'Kozmik enerjiler okunuyor...',
+    'Evrenin mesajı çözülüyor...',
+    'Kaderin sayfaları açılıyor...',
+    'Astral düzlemde aranıyor...',
+    'Gizemli güçler toplanıyor...',
+    'Ruhani bağlantı kuruluyor...',
+  ];
+
+  String get _randomLoadingMessage {
+    return _loadingMessages[DateTime.now().millisecond % _loadingMessages.length];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -46,23 +62,7 @@ class _TarotScreenState extends State<TarotScreen> {
       firebaseService: _firebaseService,
     );
     _adService.loadRewardedAd();
-    _loadDailyCard();
-  }
-
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    if (_didAutoLoadOnce || _isLoadingDaily || _dailyReading != null) return;
-
-    final authProvider = context.read<AuthProvider>();
-    final canLoad = authProvider.userId != null && authProvider.userProfile != null;
-
-    if (canLoad) {
-      _didAutoLoadOnce = true;
-      _loadDailyCard();
-    }
+    // Otomatik yükleme yok — kullanıcı butona basacak
   }
 
   Future<void> _loadDailyCard() async {
@@ -78,7 +78,7 @@ class _TarotScreenState extends State<TarotScreen> {
     try {
       final reading = await _tarotService.getDailyCard(
         authProvider.userId!,
-        authProvider.userProfile!.zodiacSign,
+        authProvider.selectedZodiac?.name ?? authProvider.userProfile!.zodiacSign,
       );
 
       if (mounted) {
@@ -185,7 +185,7 @@ class _TarotScreenState extends State<TarotScreen> {
     try {
       final reading = await _tarotService.getThreeCardSpread(
         authProvider.userId!,
-        authProvider.userProfile!.zodiacSign,
+        authProvider.selectedZodiac?.name ?? authProvider.userProfile!.zodiacSign,
       );
 
       if (mounted) {
@@ -256,7 +256,7 @@ class _TarotScreenState extends State<TarotScreen> {
       await ShareService().shareCardWidget(
         context,
         card,
-        text: '🔮 Zodi Tarot Falım\n#Zodi #Tarot',
+        text: '🔮 Astro Dozi Tarot Falım\n#AstroDozi #Tarot',
       );
 
       // Analytics
@@ -286,10 +286,28 @@ class _TarotScreenState extends State<TarotScreen> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.bgDark : AppColors.bgLight,
       appBar: AppBar(
-        title: const Text('Tarot Falı'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: isDark ? Colors.white : AppColors.textDark,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Tarot Falı',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : AppColors.textDark,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -297,7 +315,7 @@ class _TarotScreenState extends State<TarotScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: isDark
-                ? [AppColors.bgDark, AppColors.cardDark.withOpacity(0.5)]
+                ? [AppColors.bgDark, AppColors.cardDark.withValues(alpha: 0.5)]
                 : [AppColors.bgLight, AppColors.surfaceLight],
           ),
         ),
@@ -388,7 +406,7 @@ class _TarotScreenState extends State<TarotScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.accentPurple.withOpacity(0.2)
+              ? AppColors.accentPurple.withValues(alpha:0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -418,12 +436,45 @@ class _TarotScreenState extends State<TarotScreen> {
     );
   }
 
+  Future<void> _unlockDailyWithAd() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.accentPurple),
+      ),
+    );
+
+    final success = await _adService.showRewardedAd(placement: 'tarot_daily');
+    await _firebaseService.logAdWatched(
+      'rewarded_tarot_daily',
+      placement: 'tarot_daily',
+      outcome: success ? 'success' : _adService.lastRewardedDecision,
+      audienceSegment: _adService.audienceSegment,
+    );
+
+    if (mounted) Navigator.of(context).pop();
+
+    if (success && mounted) {
+      _loadDailyCard();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reklam tamamlanamadı. Lütfen tekrar deneyin.'),
+          backgroundColor: AppColors.negative,
+        ),
+      );
+    }
+  }
+
   Widget _buildDailyCardView() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final authProvider = context.watch<AuthProvider>();
+
     if (_isLoadingDaily) {
-      return const Center(
+      return Center(
         child: CandyLoading(
-          message: 'Kartlar karılıyor...',
+          message: _randomLoadingMessage,
         ),
       );
     }
@@ -459,8 +510,169 @@ class _TarotScreenState extends State<TarotScreen> {
       );
     }
 
+    // Henüz kart çekilmemiş — gate ekranı göster
     if (_dailyReading == null) {
-      return const Center(child: Text('Kart yükleniyor...'));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  gradient: AppColors.cosmicGradient,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accentPurple.withValues(alpha:0.3),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.style_rounded, size: 56, color: Colors.white),
+              ),
+              const SizedBox(height: 28),
+              const Text(
+                'Günlük Tarot Kartın',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Bugün yıldızlar senin için\nhangi mesajı taşıyor?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isDark ? AppColors.textSecondary : AppColors.textMuted,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 36),
+
+              // Premium kullanıcılar ücretsiz çeker
+              if (authProvider.isPremium) ...[
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.cosmicGradient,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.accentPurple.withValues(alpha:0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _loadDailyCard,
+                      borderRadius: BorderRadius.circular(18),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+                            SizedBox(width: 10),
+                            Text('Kartını Çek', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Coin ile çek butonu
+                Consumer<CoinProvider>(
+                  builder: (context, coinProvider, _) {
+                    const tarotCost = 5;
+                    final canAfford = coinProvider.canAfford(tarotCost);
+
+                    return Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: AppColors.cosmicGradient,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accentPurple.withValues(alpha: 0.3),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: canAfford
+                              ? () async {
+                                  final success = await coinProvider.spendCoins(tarotCost, 'tarot_daily');
+                                  if (success) _loadDailyCard();
+                                }
+                              : null,
+                          borderRadius: BorderRadius.circular(18),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.monetization_on_rounded, color: Colors.amber, size: 22),
+                                const SizedBox(width: 10),
+                                Text(
+                                  '$tarotCost Altın ile Çek',
+                                  style: TextStyle(
+                                    color: canAfford ? Colors.white : Colors.white54,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 17,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Reklam ile çek butonu
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF374151), Color(0xFF4B5563)],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _unlockDailyWithAd,
+                      borderRadius: BorderRadius.circular(18),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.play_circle_outline_rounded, color: Colors.white70, size: 22),
+                            SizedBox(width: 10),
+                            Text('Reklam İzle & Çek', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 16)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
     }
 
     return SingleChildScrollView(
@@ -501,7 +713,7 @@ class _TarotScreenState extends State<TarotScreen> {
                   : AppColors.cardLight,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.accentPurple.withOpacity(0.3),
+                color: AppColors.accentPurple.withValues(alpha:0.3),
               ),
             ),
             child: Column(
@@ -516,7 +728,7 @@ class _TarotScreenState extends State<TarotScreen> {
                     ),
                     const SizedBox(width: 8),
                     const Text(
-                      'Zodi\'nin Yorumu',
+                      'Astro Dozi\'nin Yorumu',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -543,7 +755,7 @@ class _TarotScreenState extends State<TarotScreen> {
             decoration: BoxDecoration(
               gradient: AppColors.purpleGradient,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: AppColors.accentPurple.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+              boxShadow: [BoxShadow(color: AppColors.accentPurple.withValues(alpha:0.3), blurRadius: 12, offset: const Offset(0, 4))],
             ),
             child: Material(
               color: Colors.transparent,
@@ -630,7 +842,7 @@ class _TarotScreenState extends State<TarotScreen> {
               decoration: BoxDecoration(
                 gradient: AppColors.cosmicGradient,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: AppColors.accentPurple.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+                boxShadow: [BoxShadow(color: AppColors.accentPurple.withValues(alpha:0.3), blurRadius: 12, offset: const Offset(0, 4))],
               ),
               child: Material(
                 color: Colors.transparent,
@@ -750,7 +962,7 @@ class _TarotScreenState extends State<TarotScreen> {
                   : AppColors.cardLight,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.accentPurple.withOpacity(0.3),
+                color: AppColors.accentPurple.withValues(alpha:0.3),
               ),
             ),
             child: Column(
@@ -765,7 +977,7 @@ class _TarotScreenState extends State<TarotScreen> {
                     ),
                     const SizedBox(width: 8),
                     const Text(
-                      'Zodi\'nin Yorumu',
+                      'Astro Dozi\'nin Yorumu',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -792,7 +1004,7 @@ class _TarotScreenState extends State<TarotScreen> {
             decoration: BoxDecoration(
               gradient: AppColors.purpleGradient,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: AppColors.accentPurple.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+              boxShadow: [BoxShadow(color: AppColors.accentPurple.withValues(alpha:0.3), blurRadius: 12, offset: const Offset(0, 4))],
             ),
             child: Material(
               color: Colors.transparent,

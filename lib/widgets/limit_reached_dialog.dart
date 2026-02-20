@@ -26,143 +26,192 @@ class LimitReachedDialog extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon
+            // Astro Dozi karakter
             Container(
               width: 80,
               height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: AppColors.purpleGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.20),
+                    blurRadius: 20,
+                    spreadRadius: 4,
+                  ),
+                ],
               ),
-              child: const Icon(
-                Icons.lock_clock,
-                color: Colors.white,
-                size: 40,
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/astro_dozi_hi.webp',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF7C3AED), Color(0xFFA78BFA)],
+                      ),
+                    ),
+                    child: const Icon(Icons.lock_clock, color: Colors.white, size: 40),
+                  ),
+                ),
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Title
             Text(
               title,
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: isDark ? AppColors.textPrimary : AppColors.textDark,
+                color: isDark ? Colors.white : AppColors.textDark,
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Message
             Text(
               message,
               style: TextStyle(
                 fontSize: 15,
                 height: 1.5,
-                color: isDark ? AppColors.textSecondary : AppColors.textMuted,
+                color: isDark ? Colors.white54 : AppColors.textMuted,
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 24),
-            
-            // Premium button
+
+            // Premium button — gradient
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    CosmicBottomSheetRoute(page: const PremiumScreen()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.workspace_premium, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Premium\'a Geç',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: AppColors.cosmicGradient,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7C3AED).withValues(alpha: 0.20),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        CosmicBottomSheetRoute(page: const PremiumScreen()),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.workspace_premium, size: 20, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text(
+                            'Premium\'a Geç',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
-            
-            // Ad option
+
+            // Ad option — ince, şık
             if (showAdOption) ...[
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    final adService = AdService();
-                    final success = await adService.showRewardedAd(
-                      placement: 'limit_unlock_$feature',
-                    );
-                    if (success && onAdWatched != null) {
-                      onAdWatched!();
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.accentPurple,
-                    side: const BorderSide(color: AppColors.accentPurple, width: 2),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFFA78BFA).withValues(alpha: 0.25)
+                          : const Color(0xFF7C3AED).withValues(alpha: 0.15),
+                      width: 1.5,
                     ),
+                    color: isDark
+                        ? const Color(0xFF1E1B4B).withValues(alpha: 0.3)
+                        : const Color(0xFFF8F5FF),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.play_circle_outline, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'Reklam İzle & Devam Et',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final adService = AdService();
+                        final success = await adService.showRewardedAd(
+                          placement: 'limit_unlock_$feature',
+                        );
+                        if (success && onAdWatched != null) {
+                          onAdWatched!();
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.play_circle_outline_rounded,
+                              size: 20,
+                              color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Reklam İzle & Devam Et',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ],
-            
+
             const SizedBox(height: 12),
-            
+
             // Close button
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Kapat',
                 style: TextStyle(
-                  color: isDark ? AppColors.textSecondary : AppColors.textMuted,
+                  color: isDark ? Colors.white38 : AppColors.textMuted,
                 ),
               ),
             ),

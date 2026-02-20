@@ -25,6 +25,12 @@ class ActivityLogService {
   static const String typeBirthChart = 'birth_chart';
   static const String typePremiumPurchase = 'premium_purchase';
   static const String typeAdWatched = 'ad_watched';
+  static const String typeFunFeature = 'fun_feature';
+  static const String typeCoinEarned = 'coin_earned';
+  static const String typeCoinSpent = 'coin_spent';
+  static const String typeDetailedAnalysis = 'detailed_analysis';
+  static const String typeCoffeeFortune = 'coffee_fortune';
+  static const String typeChatbot = 'chatbot';
 
   /// Ana log fonksiyonu — tüm aktiviteler buradan geçer
   Future<void> _log({
@@ -184,6 +190,64 @@ class ActivityLogService {
       type: typeAdWatched,
       action: 'Reklam izledi',
       metadata: {'placement': placement},
+    );
+  }
+
+  // ==================== FUN FEATURES ====================
+
+  /// Eglenceli ozellik kesfedildi
+  Future<void> logFunFeature(String featureId, String resultTitle) async {
+    await _log(
+      type: typeFunFeature,
+      action: 'Eglenceli icerik kesfetti',
+      metadata: {'featureId': featureId, 'result': resultTitle},
+    );
+  }
+
+  // ==================== COINS ====================
+
+  /// Altin kazanildi
+  Future<void> logCoinEarned(int amount, String source) async {
+    await _log(
+      type: typeCoinEarned,
+      action: 'Altin kazandi',
+      metadata: {'amount': amount, 'source': source},
+    );
+  }
+
+  /// Altin harcandi
+  Future<void> logCoinSpent(int amount, String featureId) async {
+    await _log(
+      type: typeCoinSpent,
+      action: 'Altin harcadi',
+      metadata: {'amount': amount, 'featureId': featureId},
+    );
+  }
+
+  // ==================== EXTRA FEATURES ====================
+
+  /// Detayli analiz yapildi
+  Future<void> logDetailedAnalysis(String category) async {
+    await _log(
+      type: typeDetailedAnalysis,
+      action: 'Detayli analiz yapti',
+      metadata: {'category': category},
+    );
+  }
+
+  /// Kahve fali baktirdi
+  Future<void> logCoffeeFortune() async {
+    await _log(
+      type: typeCoffeeFortune,
+      action: 'Kahve fali baktirdi',
+    );
+  }
+
+  /// Chatbot ile sohbet etti
+  Future<void> logChatbot() async {
+    await _log(
+      type: typeChatbot,
+      action: 'Chatbot ile sohbet etti',
     );
   }
 }

@@ -162,7 +162,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 children: [
                   // Header
                   Text(
-                    'Zodi Seni Tanısın',
+                    'Astro Dozi Seni Tanısın',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w900,

@@ -162,6 +162,9 @@ class UserHistoryService {
     if (profile != null) {
       // Temel bilgiler
       context.writeln('- İsim: ${profile.name}');
+      if (profile.gender != 'belirtilmemiş') {
+        context.writeln('- Cinsiyet: ${profile.gender}');
+      }
       context.writeln('- Doğum: ${profile.birthDate.day}/${profile.birthDate.month}/${profile.birthDate.year}');
       final age = DateTime.now().year - profile.birthDate.year;
       context.writeln('- Yaş: $age');

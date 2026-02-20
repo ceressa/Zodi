@@ -9,6 +9,7 @@ import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/horoscope_provider.dart';
+import 'providers/coin_provider.dart';
 import 'screens/splash_screen.dart';
 import 'constants/colors.dart';
 import 'services/ad_service.dart';
@@ -16,6 +17,7 @@ import 'services/firebase_service.dart';
 import 'services/notification_service.dart';
 import 'services/streak_service.dart';
 import 'services/astronomy_service.dart';
+import 'services/revenue_cat_service.dart';
 import 'utils/navigation_helper.dart';
 import 'theme/app_theme.dart'; // Yeni tema
 
@@ -36,6 +38,9 @@ void main() async {
   await dotenv.load(fileName: '.env');
   await initializeDateFormatting('tr_TR', null);
   
+  // Initialize RevenueCat
+  await RevenueCatService().initialize();
+
   // Initialize Ad Service
   final adService = AdService();
   await adService.initialize();
@@ -71,11 +76,12 @@ class ZodiApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => HoroscopeProvider()),
+        ChangeNotifierProvider(create: (_) => CoinProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           return MaterialApp(
-            title: 'Zodi',
+            title: 'Astro Dozi',
             debugShowCheckedModeBanner: false,
             navigatorKey: navigatorKey,
             localizationsDelegates: const [

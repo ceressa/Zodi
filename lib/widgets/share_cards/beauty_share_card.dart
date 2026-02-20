@@ -94,11 +94,19 @@ class BeautyShareCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFFC084FC).withOpacity(0.1),
+                  color: Colors.white.withOpacity(0.10),
+                  width: 1.5,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C3AED).withOpacity(0.06),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
               child: Column(
                 children: [
@@ -138,9 +146,19 @@ class BeautyShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
       decoration: BoxDecoration(
-        color: rating.color.withOpacity(0.05),
+        color: rating.color.withOpacity(0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: rating.color.withOpacity(0.1)),
+        border: Border.all(
+          color: rating.color.withOpacity(0.14),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: rating.color.withOpacity(0.05),
+            blurRadius: 10,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Row(
         children: [

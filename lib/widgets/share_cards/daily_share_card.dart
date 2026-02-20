@@ -51,12 +51,12 @@ class DailyShareCard extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFC084FC).withOpacity(0.25),
+                  color: const Color(0xFF7C3AED).withOpacity(0.30),
                   blurRadius: 40,
                   spreadRadius: 8,
                 ),
                 BoxShadow(
-                  color: const Color(0xFFE879F9).withOpacity(0.1),
+                  color: const Color(0xFFA78BFA).withOpacity(0.15),
                   blurRadius: 80,
                   spreadRadius: 20,
                 ),
@@ -74,9 +74,19 @@ class DailyShareCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(30),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
+              color: Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.12),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF7C3AED).withOpacity(0.08),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Column(
               children: [
@@ -170,7 +180,17 @@ class DailyShareCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(0.06),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.12)),
+        border: Border.all(
+          color: color.withOpacity(0.15),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.06),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Column(
         children: [
