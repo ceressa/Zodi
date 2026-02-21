@@ -66,6 +66,27 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ============ GÜNLÜK BURÇ YORUMLARI ============
+    // Web ve mobil uygulama burç yorumlarını okuyabilir
+    match /daily_horoscopes/{horoscopeId} {
+      allow read: if true; // Herkes okuyabilir (ücretsiz içerik)
+      allow create: if request.auth != null; // Sadece giriş yapmış kullanıcılar yorum oluşturabilir
+      allow update, delete: if isAdmin();
+    }
+
+    // ============ iOS BEKLEMEListesi ============
+    match /ios_waitlist/{docId} {
+      allow create: if true; // Herkes e-posta bırakabilir
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ============ UYGULAMA AYARLARI ============
+    match /app_config/{configId} {
+      allow read: if request.auth != null; // Sadece giriş yapmış kullanıcılar
+      allow write: if isAdmin();
+    }
+
     // ============ DİĞER TÜM DOKÜMANLAR ============
     // Varsayılan: Hiçbir şeye izin verme
     match /{document=**} {
