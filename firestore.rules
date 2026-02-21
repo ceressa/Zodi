@@ -87,6 +87,19 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ============ PADDLE ÖDEME OLAYLARI ============
+    // Cloud Function (admin SDK) yazar, admin panelden okunabilir
+    match /paddle_events/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false; // Sadece Cloud Function (admin SDK) yazabilir
+    }
+
+    // ============ RATE LIMITS ============
+    // Cloud Function tarafından yönetilir
+    match /rateLimits/{docId} {
+      allow read, write: if false; // Sadece Cloud Function (admin SDK)
+    }
+
     // ============ DİĞER TÜM DOKÜMANLAR ============
     // Varsayılan: Hiçbir şeye izin verme
     match /{document=**} {

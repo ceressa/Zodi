@@ -1,16 +1,80 @@
 import * as admin from "firebase-admin";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {onRequest} from "firebase-functions/v2/https";
 import {defineSecret} from "firebase-functions/params";
+import * as crypto from "crypto";
 
 admin.initializeApp();
 
 const db = admin.firestore();
 
-// Gemini API key - stored in Google Secret Manager
+// Secrets - stored in Google Secret Manager
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const PADDLE_WEBHOOK_SECRET = defineSecret("PADDLE_WEBHOOK_SECRET");
 
 // EU Region (same as Dozi)
 const REGION = "europe-west3";
+
+// ═══════════════════════════════════════════════════════════════
+// Paddle Price → Plan/Coin mapping
+// ═══════════════════════════════════════════════════════════════
+
+interface SubscriptionPlan {
+  type: "subscription";
+  tier: string;
+  tierName: string;
+  dailyBonus: number;
+  adReward: number;
+}
+
+interface CoinPack {
+  type: "coins";
+  amount: number;
+  label: string;
+}
+
+type PaddleProduct = SubscriptionPlan | CoinPack;
+
+const PADDLE_PRICES: Record<string, PaddleProduct> = {
+  // Subscriptions
+  "pri_01kj0d4fffjy7q1r8zkaxrtt1k": {
+    type: "subscription",
+    tier: "gold",
+    tierName: "Altın",
+    dailyBonus: 15,
+    adReward: 8,
+  },
+  "pri_01kj0da2y4y3g9dbxrk4d8xa67": {
+    type: "subscription",
+    tier: "diamond",
+    tierName: "Elmas",
+    dailyBonus: 30,
+    adReward: 15,
+  },
+  "pri_01kj0d97vgv5xrt8pqcpbekt7b": {
+    type: "subscription",
+    tier: "platinum",
+    tierName: "Platinyum",
+    dailyBonus: 50,
+    adReward: 25,
+  },
+  // Coin packs (one-time)
+  "pri_01kj0dh56rf8q77v9f74sy4bm6": {
+    type: "coins",
+    amount: 50,
+    label: "50 Yıldız Tozu",
+  },
+  "pri_01kj0dktnrt70d3kfpc6mby8wt": {
+    type: "coins",
+    amount: 600,
+    label: "600 Yıldız Tozu",
+  },
+  "pri_01kj0dn6zrpx05bqxezznkds7n": {
+    type: "coins",
+    amount: 2000,
+    label: "2000 Yıldız Tozu",
+  },
+};
 
 // ═══════════════════════════════════════════════════════════════
 // Rate limiting
@@ -315,5 +379,360 @@ export const generateFeature = onCall(
     const result = parseGeminiJson(text);
 
     return result;
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+// 💳 Paddle Webhook - Handles payment events
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Verify Paddle webhook signature (ts=...;h1=...)
+ */
+function verifyPaddleSignature(
+  rawBody: string,
+  signature: string,
+  secretKey: string
+): boolean {
+  // Parse signature: ts=TIMESTAMP;h1=HASH
+  const parts: Record<string, string> = {};
+  for (const part of signature.split(";")) {
+    const [key, val] = part.split("=");
+    if (key && val) parts[key] = val;
+  }
+
+  const ts = parts["ts"];
+  const h1 = parts["h1"];
+  if (!ts || !h1) return false;
+
+  // Check timestamp not too old (5 minute window)
+  const now = Math.floor(Date.now() / 1000);
+  const timestamp = parseInt(ts, 10);
+  if (Math.abs(now - timestamp) > 300) return false;
+
+  // Build signed payload: ts:rawBody
+  const signedPayload = `${ts}:${rawBody}`;
+  const expectedSignature = crypto
+    .createHmac("sha256", secretKey)
+    .update(signedPayload)
+    .digest("hex");
+
+  return crypto.timingSafeEqual(
+    Buffer.from(h1),
+    Buffer.from(expectedSignature)
+  );
+}
+
+export const paddleWebhook = onRequest(
+  {
+    region: REGION,
+    secrets: [PADDLE_WEBHOOK_SECRET],
+    memory: "256MiB",
+    timeoutSeconds: 30,
+  },
+  async (req, res) => {
+    // Only accept POST
+    if (req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    // Get raw body for signature verification
+    const rawBody = typeof req.body === "string"
+      ? req.body
+      : JSON.stringify(req.body);
+
+    // Verify signature
+    const signature = req.headers["paddle-signature"] as string;
+    if (!signature) {
+      console.error("Missing Paddle-Signature header");
+      res.status(401).send("Missing signature");
+      return;
+    }
+
+    const secret = PADDLE_WEBHOOK_SECRET.value();
+    if (!verifyPaddleSignature(rawBody, signature, secret)) {
+      console.error("Invalid Paddle webhook signature");
+      res.status(401).send("Invalid signature");
+      return;
+    }
+
+    // Parse event
+    const event = typeof req.body === "string"
+      ? JSON.parse(req.body)
+      : req.body;
+
+    const eventType = event.event_type as string;
+    const data = event.data;
+
+    console.log(
+      `[Paddle] Event: ${eventType}, ID: ${data?.id || "unknown"}`
+    );
+
+    try {
+      switch (eventType) {
+      // ── Subscription Created ──
+      case "subscription.created": {
+        const customData = data.custom_data;
+        const firebaseUid = customData?.firebase_uid;
+
+        if (!firebaseUid) {
+          console.error("[Paddle] No firebase_uid in custom_data");
+          res.status(200).send("OK (no uid)");
+          return;
+        }
+
+        const priceId = data.items?.[0]?.price?.id;
+        const product = priceId ? PADDLE_PRICES[priceId] : null;
+
+        if (!product || product.type !== "subscription") {
+          console.error(
+            `[Paddle] Unknown subscription price: ${priceId}`
+          );
+          res.status(200).send("OK (unknown price)");
+          return;
+        }
+
+        // Update user document
+        await db.collection("users").doc(firebaseUid).set(
+          {
+            isPremium: true,
+            membershipTier: product.tier,
+            membershipTierName: product.tierName,
+            dailyBonus: product.dailyBonus,
+            adReward: product.adReward,
+            paddleSubscriptionId: data.id,
+            paddleCustomerId: data.customer_id,
+            paddleStatus: data.status,
+            paddlePriceId: priceId,
+            subscriptionSource: "paddle_web",
+            subscriptionUpdatedAt:
+                admin.firestore.FieldValue.serverTimestamp(),
+          },
+          {merge: true}
+        );
+
+        // Log
+        await db.collection("paddle_events").add({
+          eventType,
+          subscriptionId: data.id,
+          firebaseUid,
+          priceId,
+          tier: product.tier,
+          status: data.status,
+          createdAt:
+              admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log(
+          `[Paddle] Subscription created: ${product.tierName} for ${firebaseUid}`
+        );
+        break;
+      }
+
+      // ── Subscription Updated ──
+      case "subscription.updated": {
+        const customData = data.custom_data;
+        const firebaseUid = customData?.firebase_uid;
+
+        if (!firebaseUid) {
+          console.error("[Paddle] No firebase_uid in custom_data");
+          res.status(200).send("OK (no uid)");
+          return;
+        }
+
+        const priceId = data.items?.[0]?.price?.id;
+        const product = priceId ? PADDLE_PRICES[priceId] : null;
+
+        const updateData: Record<string, unknown> = {
+          paddleStatus: data.status,
+          subscriptionUpdatedAt:
+              admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        if (data.status === "active" &&
+            product?.type === "subscription") {
+          updateData.isPremium = true;
+          updateData.membershipTier = product.tier;
+          updateData.membershipTierName = product.tierName;
+          updateData.dailyBonus = product.dailyBonus;
+          updateData.adReward = product.adReward;
+          updateData.paddlePriceId = priceId;
+        } else if (
+          data.status === "canceled" ||
+            data.status === "paused" ||
+            data.status === "past_due"
+        ) {
+          // Keep premium until end of billing period
+          // Paddle sends scheduled_change when it expires
+          if (data.scheduled_change?.action === "cancel") {
+            updateData.subscriptionCancelAt =
+                data.scheduled_change.effective_at;
+          }
+        }
+
+        await db.collection("users").doc(firebaseUid).set(
+          updateData,
+          {merge: true}
+        );
+
+        // Log
+        await db.collection("paddle_events").add({
+          eventType,
+          subscriptionId: data.id,
+          firebaseUid,
+          status: data.status,
+          createdAt:
+              admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log(
+          `[Paddle] Subscription updated: ${data.status} for ${firebaseUid}`
+        );
+        break;
+      }
+
+      // ── Subscription Canceled ──
+      case "subscription.canceled": {
+        const customData = data.custom_data;
+        const firebaseUid = customData?.firebase_uid;
+
+        if (!firebaseUid) {
+          res.status(200).send("OK (no uid)");
+          return;
+        }
+
+        await db.collection("users").doc(firebaseUid).set(
+          {
+            isPremium: false,
+            membershipTier: "standard",
+            membershipTierName: "Standart",
+            dailyBonus: 5,
+            adReward: 5,
+            paddleStatus: "canceled",
+            subscriptionUpdatedAt:
+                admin.firestore.FieldValue.serverTimestamp(),
+          },
+          {merge: true}
+        );
+
+        await db.collection("paddle_events").add({
+          eventType,
+          subscriptionId: data.id,
+          firebaseUid,
+          status: "canceled",
+          createdAt:
+              admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        console.log(
+          `[Paddle] Subscription canceled for ${firebaseUid}`
+        );
+        break;
+      }
+
+      // ── Transaction Completed (coin packs + subscription payments) ──
+      case "transaction.completed": {
+        const customData = data.custom_data;
+        const firebaseUid = customData?.firebase_uid;
+
+        if (!firebaseUid) {
+          console.error("[Paddle] No firebase_uid in custom_data");
+          res.status(200).send("OK (no uid)");
+          return;
+        }
+
+        // Check if this is a coin pack purchase
+        const priceId = data.items?.[0]?.price?.id;
+        const product = priceId ? PADDLE_PRICES[priceId] : null;
+
+        if (product?.type === "coins") {
+          // Check idempotency — don't credit twice
+          const txnId = data.id;
+          const existing = await db
+            .collection("paddle_events")
+            .where("transactionId", "==", txnId)
+            .where("coinsAwarded", "==", true)
+            .limit(1)
+            .get();
+
+          if (!existing.empty) {
+            console.log(
+              `[Paddle] Coins already awarded for txn ${txnId}`
+            );
+            res.status(200).send("OK (already processed)");
+            return;
+          }
+
+          // Credit coins
+          await db.collection("users").doc(firebaseUid).set(
+            {
+              coinBalance: admin.firestore.FieldValue.increment(
+                product.amount
+              ),
+            },
+            {merge: true}
+          );
+
+          // Log
+          await db.collection("paddle_events").add({
+            eventType,
+            transactionId: txnId,
+            firebaseUid,
+            priceId,
+            coinsAwarded: true,
+            coinAmount: product.amount,
+            label: product.label,
+            createdAt:
+                admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          console.log(
+            `[Paddle] ${product.amount} coins credited to ${firebaseUid}`
+          );
+        } else {
+          // Subscription payment — just log it
+          await db.collection("paddle_events").add({
+            eventType,
+            transactionId: data.id,
+            firebaseUid,
+            priceId,
+            createdAt:
+                admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+        break;
+      }
+
+      // ── Transaction Payment Failed ──
+      case "transaction.payment_failed": {
+        const customData = data.custom_data;
+        const firebaseUid = customData?.firebase_uid;
+
+        if (firebaseUid) {
+          await db.collection("paddle_events").add({
+            eventType,
+            transactionId: data.id,
+            firebaseUid,
+            error: data.payments?.[0]?.error_code || "unknown",
+            createdAt:
+                admin.firestore.FieldValue.serverTimestamp(),
+          });
+          console.log(
+            `[Paddle] Payment failed for ${firebaseUid}`
+          );
+        }
+        break;
+      }
+
+      default:
+        console.log(`[Paddle] Unhandled event: ${eventType}`);
+      }
+
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("[Paddle] Webhook processing error:", err);
+      res.status(500).send("Internal error");
+    }
   }
 );
