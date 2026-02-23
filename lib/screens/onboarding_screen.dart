@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -781,6 +782,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               .animate()
               .fadeIn(delay: 400.ms)
               .slideY(begin: 0.2),
+          if (Platform.isIOS) ...[
+            const SizedBox(height: 14),
+            _buildAppleButton()
+                .animate()
+                .fadeIn(delay: 500.ms)
+                .slideY(begin: 0.2),
+          ],
           const Spacer(flex: 3),
           Text(
             'Giriş yaparak Gizlilik Politikası ve\nKullanım Koşullarını kabul etmiş olursun',
@@ -1662,7 +1670,160 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
+  Widget _buildAppleButton() {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.10),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _handleAppleSignIn,
+          borderRadius: BorderRadius.circular(18),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.apple, size: 26, color: Colors.white),
+              SizedBox(width: 10),
+              Text(
+                'Apple ile Devam Et',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ===================== AUTH HANDLERS =====================
+
+  /// Apple Sign In ile giriş — _handleGoogleSignIn ile aynı akış
+  Future<void> _handleAppleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final userCredential = await FirebaseService().signInWithApple();
+      if (userCredential != null && mounted) {
+        final user = userCredential.user;
+        if (user != null) {
+          final uid = user.uid;
+
+          // Mevcut veri kontrolü — varsa direkt ana sayfaya
+          String existingZodiac = '';
+          String existingName = '';
+          try {
+            final doc = await FirebaseService()
+                .firestore
+                .collection('users')
+                .doc(uid)
+                .get();
+            if (doc.exists && doc.data() != null) {
+              existingName = doc.data()!['name'] ?? '';
+              existingZodiac = doc.data()!['zodiacSign'] ?? '';
+            }
+          } catch (_) {}
+
+          if (existingZodiac.isNotEmpty && mounted) {
+            // Zaten kayıtlı kullanıcı — onboarding'i atla
+            await context.read<AuthProvider>().login(
+                  existingName.isNotEmpty
+                      ? existingName
+                      : (user.displayName ?? 'Gezgin'),
+                  user.email ?? '',
+                );
+            try {
+              final zodiac = ZodiacSign.values
+                  .firstWhere((z) => z.name == existingZodiac);
+              await context.read<AuthProvider>().selectZodiac(zodiac);
+            } catch (_) {}
+            await ActivityLogService().logLogin(method: 'apple');
+
+            if (mounted) {
+              setState(() => _isLoading = false);
+              Navigator.of(context).pushReplacement(
+                CosmicFadeRoute(
+                  page: GreetingScreen(nextScreen: const MainShell()),
+                ),
+              );
+            }
+            return;
+          }
+
+          // Yeni kullanıcı — normal akış
+          await context
+              .read<AuthProvider>()
+              .login(_nameController.text.trim(), user.email ?? '');
+          if (_calculatedZodiac != null) {
+            await context
+                .read<AuthProvider>()
+                .selectZodiac(_calculatedZodiac!);
+          }
+
+          // Sadece eksik alanları yaz
+          final updates = <String, dynamic>{};
+          if (_nameController.text.trim().isNotEmpty &&
+              existingName.isEmpty) {
+            updates['name'] = _nameController.text.trim();
+          }
+          if (_birthDate != null) {
+            updates['birthDate'] = _birthDate!.toIso8601String();
+          }
+          if (updates.isNotEmpty && FirebaseService().isAuthenticated) {
+            await FirebaseService()
+                .firestore
+                .collection('users')
+                .doc(uid)
+                .set(updates, SetOptions(merge: true));
+          }
+
+          await ActivityLogService().logSignup(method: 'apple');
+
+          if (mounted) {
+            setState(() => _isLoading = false);
+            _nextStep();
+          }
+        }
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Apple sign-in error: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        String errorMsg = 'Apple ile giriş başarısız oldu. Tekrar dene.';
+        final errStr = e.toString();
+        if (errStr.contains('network')) {
+          errorMsg = 'İnternet bağlantını kontrol et.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: AppColors.primaryPink,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
@@ -1778,9 +1939,149 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _handleAlreadyMember() async {
+    // iOS'ta hem Google hem Apple seçeneği sun
+    if (Platform.isIOS) {
+      _showSignInProviderSheet();
+      return;
+    }
+    // Android'de direkt Google ile devam
+    await _handleAlreadyMemberWithProvider('google');
+  }
+
+  /// iOS'ta giriş yöntemi seçtir
+  void _showSignInProviderSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.primaryPink.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Giriş Yöntemi Seç',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Google
+            _buildProviderSheetButton(
+              icon: Icons.g_mobiledata,
+              iconSize: 28,
+              label: 'Google ile Giriş Yap',
+              bgColor: Colors.white,
+              textColor: AppColors.textDark,
+              useNetworkIcon: true,
+              onTap: () {
+                Navigator.pop(ctx);
+                _handleAlreadyMemberWithProvider('google');
+              },
+            ),
+            const SizedBox(height: 12),
+            // Apple
+            _buildProviderSheetButton(
+              icon: Icons.apple,
+              iconSize: 26,
+              label: 'Apple ile Giriş Yap',
+              bgColor: Colors.black,
+              textColor: Colors.white,
+              onTap: () {
+                Navigator.pop(ctx);
+                _handleAlreadyMemberWithProvider('apple');
+              },
+            ),
+            SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProviderSheetButton({
+    required IconData icon,
+    required double iconSize,
+    required String label,
+    required Color bgColor,
+    required Color textColor,
+    required VoidCallback onTap,
+    bool useNetworkIcon = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        border: bgColor == Colors.white
+            ? Border.all(color: Colors.grey.withOpacity(0.15))
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (useNetworkIcon)
+                Image.network(
+                  'https://www.google.com/favicon.ico',
+                  width: 22,
+                  height: 22,
+                  errorBuilder: (_, __, ___) => Icon(
+                    icon,
+                    size: iconSize,
+                    color: textColor,
+                  ),
+                )
+              else
+                Icon(icon, size: iconSize, color: textColor),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleAlreadyMemberWithProvider(String provider) async {
     setState(() => _isLoading = true);
     try {
-      final userCredential = await FirebaseService().signInWithGoogle();
+      final userCredential = provider == 'apple'
+          ? await FirebaseService().signInWithApple()
+          : await FirebaseService().signInWithGoogle();
       if (userCredential == null) {
         if (mounted) setState(() => _isLoading = false);
         return;
@@ -1834,7 +2135,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
         if (hasExistingRecord && zodiacStr.isNotEmpty) {
           // ✅ Gerçekten mevcut üye — direkt ana sayfaya
-          await ActivityLogService().logLogin(method: 'google');
+          await ActivityLogService().logLogin(method: provider);
           Navigator.of(context).pushReplacement(
             CosmicFadeRoute(
               page: GreetingScreen(nextScreen: const MainShell()),
@@ -1842,7 +2143,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           );
         } else if (hasExistingRecord && zodiacStr.isEmpty) {
           // Kaydı var ama burcu yok — doğum tarihi adımına
-          await ActivityLogService().logLogin(method: 'google');
+          await ActivityLogService().logLogin(method: provider);
           _nameController.text = name;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1861,7 +2162,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           );
         } else {
           // ❌ Kaydı yok — aslında yeni kullanıcı, normal onboarding'e devam
-          await ActivityLogService().logSignup(method: 'google');
+          await ActivityLogService().logSignup(method: provider);
           _nameController.text =
               name.isNotEmpty ? name : (user.displayName ?? '');
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1893,8 +2194,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         String errorMsg = 'Giriş başarısız oldu. Tekrar dene.';
         final errStr = e.toString();
         if (errStr.contains('ApiException: 10')) {
-          errorMsg =
-              'Google giriş yapılandırma hatası. Lütfen normal kayıt ile devam et.';
+          errorMsg = 'Giriş yapılandırma hatası. Lütfen başka bir yöntemle dene.';
         } else if (errStr.contains('network')) {
           errorMsg = 'İnternet bağlantını kontrol et.';
         } else if (errStr.contains('canceled') ||

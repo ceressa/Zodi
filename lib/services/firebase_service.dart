@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -5,6 +7,8 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:crypto/crypto.dart';
 import '../models/user_profile.dart';
 import '../models/interaction_history.dart';
 
@@ -115,6 +119,81 @@ class FirebaseService {
       await _crashlytics.recordError(e, StackTrace.current);
       rethrow;
     }
+  }
+
+  /// Apple ile giriş yap (Apple Store gereksinimi — Google Sign-In varsa zorunlu)
+  Future<UserCredential?> signInWithApple() async {
+    try {
+      // Nonce oluştur — replay attack'leri önlemek için
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
+
+      // Apple Sign In akışını başlat
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonce,
+      );
+
+      // Firebase credential oluştur
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
+      );
+
+      // Firebase'e giriş yap
+      final userCredential = await _auth.signInWithCredential(oauthCredential);
+
+      // Apple ilk girişte isim veriyor, sonraki girişlerde vermiyor
+      // İlk girişte displayName güncelle
+      final user = userCredential.user;
+      if (user != null &&
+          (user.displayName == null || user.displayName!.isEmpty)) {
+        final givenName = appleCredential.givenName ?? '';
+        final familyName = appleCredential.familyName ?? '';
+        final fullName = '$givenName $familyName'.trim();
+        if (fullName.isNotEmpty) {
+          await user.updateDisplayName(fullName);
+          await user.reload();
+        }
+      }
+
+      // Analytics
+      final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+      if (isNewUser) {
+        await _analytics.logSignUp(signUpMethod: 'apple');
+      } else {
+        await _analytics.logLogin(loginMethod: 'apple');
+      }
+
+      return userCredential;
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        // Kullanıcı iptal etti
+        return null;
+      }
+      await _crashlytics.recordError(e, StackTrace.current);
+      rethrow;
+    } catch (e) {
+      await _crashlytics.recordError(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  /// Rastgele nonce oluştur
+  String _generateNonce([int length = 32]) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+  }
+
+  /// SHA256 hash
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 
   Future<void> signOut() async {

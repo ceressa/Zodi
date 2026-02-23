@@ -101,6 +101,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// Satın alımları geri yükle — Apple App Store gereksinimi
+  Future<void> _handleRestorePurchases() async {
+    // Loading göster
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final customerInfo = await RevenueCatService().restorePurchases();
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Loading kapat
+
+      if (customerInfo != null) {
+        final entitlement = customerInfo.entitlements.all[RevenueCatService.entitlementId];
+        if (entitlement != null && entitlement.isActive) {
+          // Premium geri yüklendi
+          final authProvider = context.read<AuthProvider>();
+          await authProvider.refreshPremiumStatus();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('✅ Aboneliğin başarıyla geri yüklendi!'),
+                backgroundColor: const Color(0xFF10B981),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        } else {
+          // Aktif abonelik bulunamadı
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Aktif bir abonelik bulunamadı.'),
+                backgroundColor: AppColors.primaryPink,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Geri yükleme sırasında bir hata oluştu.'),
+              backgroundColor: AppColors.negative,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Loading kapat
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Geri yükleme başarısız oldu. Lütfen tekrar dene.'),
+            backgroundColor: AppColors.negative,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _toggleNotifications(bool value, AuthProvider authProvider) async {
     try {
       if (value) {
@@ -314,6 +385,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
           if (authProvider.isPremium) const SizedBox(height: 12),
+
+          // Satın Alımları Geri Yükle (Apple App Store gereksinimi)
+          _SettingItem(
+            icon: Icons.restore,
+            title: 'Satın Alımları Geri Yükle',
+            subtitle: 'Önceki aboneliğini veya satın alımlarını kurtar',
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: AppColors.textMuted,
+            ),
+            onTap: _handleRestorePurchases,
+          ),
+          const SizedBox(height: 12),
 
           // Referral
           _SettingItem(

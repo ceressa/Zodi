@@ -42,6 +42,8 @@ dependencies:
   package_info_plus: ^8.0.0
   purchases_flutter: ^9.12.1
   purchases_ui_flutter: ^9.12.1
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:
