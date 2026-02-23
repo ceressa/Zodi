@@ -4,6 +4,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../services/storage_service.dart';
 import '../services/firebase_service.dart';
 import '../services/fun_feature_service.dart';
+import '../services/notification_service.dart';
 import '../services/revenue_cat_service.dart';
 import '../models/zodiac_sign.dart';
 import '../models/user_profile.dart';
@@ -99,6 +100,11 @@ class AuthProvider with ChangeNotifier {
     if (_firebaseService.isAuthenticated) {
       _userProfile = await _firebaseService.getUserProfile();
 
+      // Firebase'den gelen profil ile local storage'ı senkronize et
+      if (_userProfile != null) {
+        await _syncProfileToLocal(_userProfile!);
+      }
+
       // RevenueCat kullanıcısını eşleştir
       if (_revenueCatService.isInitialized) {
         await _revenueCatService.loginUser(_firebaseService.currentUser!.uid);
@@ -118,22 +124,54 @@ class AuthProvider with ChangeNotifier {
         _loadTierFromFirebase(oldIsPremium);
       }
 
+      // Tier local storage'a kaydet
+      await _storage.saveIsPremium(_membershipTier != MembershipTier.standard);
+      await _storage.saveMembershipTier(_membershipTier.name);
+
       // Zodiac sign senkronizasyonu
       if (_userProfile != null && _userProfile!.zodiacSign.isNotEmpty) {
         try {
           _selectedZodiac = ZodiacSign.values.firstWhere(
             (z) => z.name == _userProfile!.zodiacSign,
           );
+          await _storage.saveSelectedZodiac(_selectedZodiac!);
         } catch (e) {
           // Zodiac sign bulunamazsa local storage'dakini kullan
         }
       }
     } else if (oldIsPremium) {
-      _membershipTier = MembershipTier.platinyum;
+      // Local'den tier'ı oku (sadece boolean yerine gerçek tier)
+      final savedTier = await _storage.getMembershipTier();
+      if (savedTier != null) {
+        _membershipTier = MembershipTierConfig.parseTier(savedTier);
+      } else {
+        _membershipTier = MembershipTier.platinyum;
+      }
     }
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Firebase profilini local storage ile senkronize et
+  Future<void> _syncProfileToLocal(UserProfile profile) async {
+    // Temel bilgileri local'e kaydet
+    if (profile.name.isNotEmpty) {
+      _userName = profile.name;
+      await _storage.saveUserName(profile.name);
+    }
+    if (profile.email.isNotEmpty) {
+      _userEmail = profile.email;
+      await _storage.saveUserEmail(profile.email);
+    }
+
+    // Bildirim ayarlarını Firebase'den local'e senkronize et
+    if (profile.notificationsEnabled) {
+      await _storage.setNotificationsEnabled(true);
+      if (profile.notificationTime.isNotEmpty) {
+        await _storage.setNotificationTime(profile.notificationTime);
+      }
+    }
   }
 
   /// Firebase'den tier yükle (RevenueCat yoksa veya aktif abonelik yoksa)
@@ -305,6 +343,9 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     await _storage.clearAll();
+
+    // Cancel all notifications
+    await NotificationService().cancelAll();
 
     // RevenueCat'ten çıkış yap
     await _revenueCatService.logoutUser();

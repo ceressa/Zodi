@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_colors.dart';
 import 'providers/auth_provider.dart';
@@ -7,11 +8,15 @@ import 'providers/coin_provider.dart';
 import 'config/membership_config.dart';
 import 'pages/daily_comment_page.dart';
 import 'pages/fallar_page.dart';
+import 'pages/kesfet_page.dart';
 import 'pages/chatbot_page.dart';
 import 'pages/settings_page.dart';
 import 'widgets/app_header.dart';
 import 'widgets/bottom_nav.dart';
 import 'services/streak_service.dart';
+import 'services/ad_service.dart';
+import 'services/firebase_service.dart';
+import 'services/activity_log_service.dart';
 import 'models/streak_data.dart';
 import 'screens/premium_screen.dart';
 import 'theme/cosmic_page_route.dart';
@@ -41,10 +46,14 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
   StreakData? _streakData;
   final StreakService _streakService = StreakService();
+  final AdService _adService = AdService();
+  final FirebaseService _firebaseService = FirebaseService();
+  bool _isFabLoading = false;
 
   final _pages = const [
     DailyCommentPage(),
     FallarPage(),
+    KesfetPage(),
     ChatbotPage(),
     SettingsPage(),
   ];
@@ -63,12 +72,27 @@ class _MainShellState extends State<MainShell> {
     // Set tier on coin provider for tier-aware bonuses
     coinProvider.setTier(authProvider.membershipTier);
 
-    await coinProvider.loadBalance();
+    // Firebase'den coin bakiyesini al (senkronizasyon için)
+    int? firebaseBalance;
+    try {
+      final profile = authProvider.userProfile;
+      if (profile != null) {
+        firebaseBalance = profile.coinBalance;
+      }
+    } catch (e) {
+      debugPrint('⚠️ Firebase coin read error: $e');
+    }
+
+    await coinProvider.loadBalance(firebaseBalance: firebaseBalance);
 
     if (!mounted) return;
 
+    // Bonus mesajları sadece bir kez gösterilir (consumeBonusMessage sonrası tekrar gösterilmez)
+    final initialBonus = coinProvider.initialBonusAwarded;
+    final dailyBonus = coinProvider.lastDailyBonus;
+
     // Show initial balance snackbar for new users
-    if (coinProvider.initialBonusAwarded > 0) {
+    if (initialBonus > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -76,7 +100,7 @@ class _MainShellState extends State<MainShell> {
               const Icon(Icons.card_giftcard_rounded, color: Colors.amber, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Hoş geldin! 🎉 +${coinProvider.initialBonusAwarded} Yıldız Tozu hediye!',
+                'Hoş geldin! 🎉 +$initialBonus Yıldız Tozu hediye!',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
@@ -90,9 +114,9 @@ class _MainShellState extends State<MainShell> {
     }
 
     // Show daily bonus snackbar
-    if (mounted && coinProvider.lastDailyBonus > 0) {
+    if (mounted && dailyBonus > 0) {
       // Small delay to not overlap with initial bonus
-      await Future.delayed(Duration(milliseconds: coinProvider.initialBonusAwarded > 0 ? 2000 : 0));
+      await Future.delayed(Duration(milliseconds: initialBonus > 0 ? 2000 : 0));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -101,7 +125,7 @@ class _MainShellState extends State<MainShell> {
               const Icon(Icons.monetization_on, color: Colors.amber, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Günlük bonus: +${coinProvider.lastDailyBonus} Yıldız Tozu!',
+                'Günlük bonus: +$dailyBonus Yıldız Tozu!',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
@@ -113,6 +137,9 @@ class _MainShellState extends State<MainShell> {
         ),
       );
     }
+
+    // Mesajları tüket — widget tekrar mount edilse bile gösterilmez
+    coinProvider.consumeBonusMessage();
   }
 
   Future<void> _loadStreakData() async {
@@ -270,10 +297,10 @@ class _MainShellState extends State<MainShell> {
                   const SizedBox(height: 12),
                   _buildSummaryRow('🔮 Tarot Falı', '5 ✨'),
                   _buildSummaryRow('💕 Burç Uyumu', '5 ✨'),
-                  _buildSummaryRow('🌈 Aura Okuma', '8 ✨'),
                   _buildSummaryRow('📊 Detaylı Analiz', '10 ✨'),
-                  _buildSummaryRow('🔢 Numeroloji', '5 ✨'),
-                  _buildSummaryRow('🕰️ Geçmiş Yaşam', '12 ✨'),
+                  _buildSummaryRow('🛤️ Yaşam Yolu', '8 ✨'),
+                  _buildSummaryRow('🕰️ Geçmiş Yaşam', '15 ✨'),
+                  _buildSummaryRow('🎨 Ruh Eşi Çizimi', '100 ✨'),
                 ],
               ),
             ),
@@ -336,40 +363,55 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+
     return Container(
       decoration: const BoxDecoration(
         gradient: AppColors.backgroundGradient,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: Column(
+        body: Stack(
           children: [
-            Consumer2<CoinProvider, AuthProvider>(
-              builder: (context, coinProvider, authProvider, _) => AppHeader(
-                streakCount: _streakData?.currentStreak ?? 0,
-                coinCount: coinProvider.balance,
-                zodiacSymbol: authProvider.selectedZodiac?.symbol,
-                userName: authProvider.userName,
-                onCoinTap: () => _showCoinSummarySheet(coinProvider, authProvider),
-              ),
-            ),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  );
-                },
-                child: KeyedSubtree(
-                  key: ValueKey<int>(_currentIndex),
-                  child: _pages[_currentIndex],
+            // === Ana içerik ===
+            Column(
+              children: [
+                Consumer2<CoinProvider, AuthProvider>(
+                  builder: (context, coinProvider, authProvider, _) => AppHeader(
+                    streakCount: _streakData?.currentStreak ?? 0,
+                    coinCount: coinProvider.balance,
+                    zodiacSymbol: authProvider.selectedZodiac?.symbol,
+                    userName: authProvider.userName,
+                    onCoinTap: () => _showCoinSummarySheet(coinProvider, authProvider),
+                  ),
                 ),
-              ),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      );
+                    },
+                    child: KeyedSubtree(
+                      key: ValueKey<int>(_currentIndex),
+                      child: _pages[_currentIndex],
+                    ),
+                  ),
+                ),
+              ],
             ),
+
+            // === FAB — Yıldız Tozu kazan (Settings hariç) ===
+            if (_currentIndex != 4 && _buildEarnGoldFab(authProvider) != null)
+              Positioned(
+                right: 16,
+                bottom: 90,
+                child: _buildEarnGoldFab(authProvider)!,
+              ),
           ],
         ),
         bottomNavigationBar: BottomNav(
@@ -378,5 +420,132 @@ class _MainShellState extends State<MainShell> {
         ),
       ),
     );
+  }
+
+  /// Yıldız Tozu kazan FAB — reklam izle, Yıldız Tozu kazan
+  Widget? _buildEarnGoldFab(AuthProvider authProvider) {
+    // Platinyum kullanıcılar için reklam kapalı, FAB gösterme
+    final tier = authProvider.membershipTier;
+    if (tier == MembershipTier.platinyum) {
+      return null;
+    }
+
+    final coinProvider = context.watch<CoinProvider>();
+    final rewardAmount = coinProvider.adRewardAmount;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.white.withOpacity(0.25),
+            blurRadius: 6,
+            offset: const Offset(-2, -2),
+          ),
+          BoxShadow(
+            color: const Color(0xFFD97706).withOpacity(0.45),
+            blurRadius: 14,
+            offset: const Offset(4, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: _isFabLoading ? null : _onFabTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isFabLoading)
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                else
+                  const Icon(Icons.monetization_on_rounded,
+                      color: Colors.white, size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  _isFabLoading ? 'İzleniyor...' : '+$rewardAmount 🪙',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).animate().scale(
+          delay: 500.ms,
+          duration: 400.ms,
+          curve: Curves.elasticOut,
+        );
+  }
+
+  Future<void> _onFabTap() async {
+    if (_isFabLoading) return;
+
+    setState(() => _isFabLoading = true);
+
+    try {
+      final rewarded = await _adService.showRewardedAd(placement: 'fab_earn_gold');
+
+      if (rewarded && mounted) {
+        final coinProvider = context.read<CoinProvider>();
+        await coinProvider.earnFromAd();
+        ActivityLogService().logCoinEarned(coinProvider.adRewardAmount, 'fab_earn_gold');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Text('🪙', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '+${coinProvider.adRewardAmount} Yıldız Tozu kazandın!',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFFD97706),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+            ),
+          );
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Reklam yüklenemedi, biraz sonra tekrar dene!'),
+            backgroundColor: Colors.orange.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ FAB ad error: $e');
+    } finally {
+      if (mounted) setState(() => _isFabLoading = false);
+      _adService.loadRewardedAd();
+    }
   }
 }

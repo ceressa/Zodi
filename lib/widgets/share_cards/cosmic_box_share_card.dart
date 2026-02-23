@@ -45,8 +45,8 @@ class CosmicBoxShareCard extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFF7C3AED).withOpacity(0.20),
-                  const Color(0xFF7C3AED).withOpacity(0.05),
+                  const Color(0xFF7C3AED).withValues(alpha:0.20),
+                  const Color(0xFF7C3AED).withValues(alpha:0.05),
                   Colors.transparent,
                 ],
               ),
@@ -64,7 +64,7 @@ class CosmicBoxShareCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w500,
-              color: Colors.white.withOpacity(0.4),
+              color: Colors.white.withValues(alpha:0.4),
               letterSpacing: 2,
             ),
           ),
@@ -96,10 +96,10 @@ class CosmicBoxShareCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
+              color: Colors.white.withValues(alpha:0.04),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: const Color(0xFFF59E0B).withOpacity(0.10),
+                color: const Color(0xFFF59E0B).withValues(alpha:0.10),
                 width: 1,
               ),
             ),
@@ -107,7 +107,7 @@ class CosmicBoxShareCard extends StatelessWidget {
               rewardDescription,
               style: TextStyle(
                 fontSize: 20,
-                color: Colors.white.withOpacity(0.65),
+                color: Colors.white.withValues(alpha:0.65),
                 height: 1.6,
               ),
               textAlign: TextAlign.center,
@@ -128,7 +128,7 @@ class CosmicBoxShareCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(30),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFF59E0B).withOpacity(0.30),
+                  color: const Color(0xFFF59E0B).withValues(alpha:0.30),
                   blurRadius: 20,
                   offset: const Offset(0, 6),
                 ),

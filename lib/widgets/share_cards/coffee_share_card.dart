@@ -46,12 +46,12 @@ class CoffeeShareCard extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: const Color(0xFFF59E0B).withOpacity(0.30),
+                  color: const Color(0xFFF59E0B).withValues(alpha:0.30),
                   width: 2.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFF59E0B).withOpacity(0.15),
+                    color: const Color(0xFFF59E0B).withValues(alpha:0.15),
                     blurRadius: 40,
                     spreadRadius: 10,
                   ),
@@ -90,13 +90,13 @@ class CoffeeShareCard extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFFD97706).withOpacity(0.15),
-                    const Color(0xFFFBBF24).withOpacity(0.08),
+                    const Color(0xFFD97706).withValues(alpha:0.15),
+                    const Color(0xFFFBBF24).withValues(alpha:0.08),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFFD97706).withOpacity(0.15),
+                  color: const Color(0xFFD97706).withValues(alpha:0.15),
                 ),
               ),
               child: Row(
@@ -109,7 +109,7 @@ class CoffeeShareCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 21,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFFFBBF24).withOpacity(0.8),
+                        color: const Color(0xFFFBBF24).withValues(alpha:0.8),
                         height: 1.3,
                       ),
                       maxLines: 2,
@@ -132,17 +132,17 @@ class CoffeeShareCard extends StatelessWidget {
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            const Color(0xFF3D2B1F).withOpacity(0.6),
+            const Color(0xFF3D2B1F).withValues(alpha:0.6),
             const Color(0xFF2A1E0E),
           ],
         ),
         border: Border.all(
-          color: const Color(0xFFD4A574).withOpacity(0.2),
+          color: const Color(0xFFD4A574).withValues(alpha:0.2),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD97706).withOpacity(0.12),
+            color: const Color(0xFFD97706).withValues(alpha:0.12),
             blurRadius: 30,
             spreadRadius: 5,
           ),
@@ -162,15 +162,15 @@ class CoffeeShareCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          color: accentColor.withOpacity(0.05),
+          color: accentColor.withValues(alpha:0.05),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: accentColor.withOpacity(0.12),
+            color: accentColor.withValues(alpha:0.12),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: accentColor.withOpacity(0.05),
+              color: accentColor.withValues(alpha:0.05),
               blurRadius: 10,
               spreadRadius: 1,
             ),
@@ -184,7 +184,7 @@ class CoffeeShareCard extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: accentColor.withOpacity(0.1),
+                color: accentColor.withValues(alpha:0.1),
               ),
               child: Center(
                 child: Text(emoji, style: const TextStyle(fontSize: 22)),
@@ -200,7 +200,7 @@ class CoffeeShareCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: accentColor.withOpacity(0.8),
+                      color: accentColor.withValues(alpha:0.8),
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -211,7 +211,7 @@ class CoffeeShareCard extends StatelessWidget {
                         : content,
                     style: TextStyle(
                       fontSize: 19,
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha:0.5),
                       height: 1.4,
                     ),
                     maxLines: 3,

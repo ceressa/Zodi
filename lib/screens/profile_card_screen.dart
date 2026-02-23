@@ -9,6 +9,7 @@ import '../services/share_service.dart';
 import '../services/ad_service.dart';
 import '../services/usage_limit_service.dart';
 import '../widgets/limit_reached_dialog.dart';
+import '../widgets/sticky_bottom_actions.dart';
 
 class ProfileCardScreen extends StatefulWidget {
   const ProfileCardScreen({super.key});
@@ -106,6 +107,16 @@ class _ProfileCardScreenState extends State<ProfileCardScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F5FF),
+      bottomNavigationBar: StickyBottomActions(
+        children: [
+          StickyBottomActions.primaryButton(
+            label: 'Profilimi Paylaş',
+            icon: Icons.share_rounded,
+            gradient: [AppColors.accentPurple, const Color(0xFFA78BFA)],
+            onTap: _shareCard,
+          ),
+        ],
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -155,72 +166,6 @@ class _ProfileCardScreenState extends State<ProfileCardScreen> {
                         key: _cardKey,
                         child: _buildProfileCard(isDark, zodiac, name, elementData),
                       ),
-
-                      const SizedBox(height: 32),
-
-                      // Paylaş butonu
-                      Builder(
-                        builder: (ctx) {
-                          final isPremium = ctx.read<AuthProvider>().isPremium;
-                          return Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              gradient: AppColors.cosmicGradient,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: _shareCard,
-                                borderRadius: BorderRadius.circular(20),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.share, color: Colors.white),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'Profilimi Paylaş',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      if (!isPremium) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withOpacity(0.25),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.play_circle_outline, color: Colors.white, size: 14),
-                                              SizedBox(width: 3),
-                                              Text(
-                                                'AD',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ).animate().fadeIn(delay: 600.ms),
 
                       const SizedBox(height: 16),
 

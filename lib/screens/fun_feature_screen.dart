@@ -11,13 +11,16 @@ import '../services/ad_service.dart';
 import '../services/gemini_service.dart';
 import '../services/fun_feature_service.dart';
 import '../services/share_service.dart';
+import '../services/daily_discovery_service.dart';
 import '../widgets/share_cards/fun_feature_share_card.dart';
+import '../widgets/sticky_bottom_actions.dart';
 
 /// Eğlenceli özellik detay ve içerik ekranı — Gerçek AI entegrasyonu
 class FunFeatureScreen extends StatefulWidget {
   final FunFeatureConfig config;
+  final int? overrideCoinCost;
 
-  const FunFeatureScreen({super.key, required this.config});
+  const FunFeatureScreen({super.key, required this.config, this.overrideCoinCost});
 
   @override
   State<FunFeatureScreen> createState() => _FunFeatureScreenState();
@@ -150,6 +153,26 @@ Günün kozmik temasını ve evrensel enerji akışını yansıtmalı.
 "mainResult" olarak kısa ve güçlü bir kozmik mesaj ver (max 8 kelime).
 "details" olarak: [bugünün kozmik teması, evrenin sana fısıldadığı, dikkat etmen gereken işaretler, günün affirmasyonu]
 ''';
+      case 'soulmate_sketch':
+        return '''
+RUH EŞİ PROFİLİ OLUŞTUR
+
+Bu kişinin doğum haritasına göre ruh eşinin profilini oluştur:
+
+1. Kişilik özellikleri (2-3 cümle)
+2. Fiziksel ipuçları (göz rengi, saç, genel enerji)
+3. Nasıl tanışacakları (mekan, durum)
+4. İlişkinin güçlü yönleri
+5. Dikkat etmeleri gereken konular
+
+Eğlenceli, romantik ama gerçekçi ol. Zodi tarzında samimi ve dürüst yaz.
+
+JSON yanıtında:
+- "mainResult": Ruh eşinin en belirgin özelliği (2-3 kelime)
+- "emoji": Ruh eşini temsil eden emoji
+- "description": Detaylı profil açıklaması
+- "details": ["Kişilik", "Görünüm ipucu", "Tanışma şekli", "İlişki dinamiği"]
+''';
       default:
         return '''
 Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı bir astrolojik analiz yap.
@@ -167,8 +190,9 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
 
     // Coin kontrolü
     if (!isIncluded) {
+      final effectiveCost = widget.overrideCoinCost ?? widget.config.coinCost;
       final success = await coinProvider.spendCoins(
-        widget.config.coinCost,
+        effectiveCost,
         'fun_feature_${widget.config.id}',
       );
       if (!success) {
@@ -176,7 +200,7 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Yetersiz Yıldız Tozu! Bu özellik için ${widget.config.coinCost} Yıldız Tozu gerekli.',
+                'Yetersiz Yıldız Tozu! Bu özellik için $effectiveCost Yıldız Tozu gerekli.',
               ),
               backgroundColor: AppColors.warning,
               behavior: SnackBarBehavior.floating,
@@ -185,6 +209,10 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
           );
         }
         return;
+      }
+      // Günün keşfi indirimi kullanıldıysa işaretle
+      if (widget.overrideCoinCost != null) {
+        await DailyDiscoveryService().markDiscountUsed();
       }
     }
 
@@ -345,6 +373,24 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
           onPressed: () => Navigator.pop(context),
         ),
       ),
+      // Sonuç varsa butonlar altta sabit
+      bottomNavigationBar: (_resultLoaded && _result != null && !isLocked)
+          ? StickyBottomActions(
+              children: [
+                StickyBottomActions.primaryButton(
+                  label: 'Paylaş',
+                  icon: Icons.share_rounded,
+                  gradient: widget.config.gradient,
+                  onTap: _shareResult,
+                ),
+                StickyBottomActions.iconButton(
+                  icon: Icons.refresh_rounded,
+                  color: widget.config.gradient.first,
+                  onTap: _generate,
+                ),
+              ],
+            )
+          : null,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -423,8 +469,21 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
                 children: [
                   const Icon(Icons.monetization_on, size: 16, color: Colors.amber),
                   const SizedBox(width: 6),
+                  if (widget.overrideCoinCost != null) ...[
+                    Text(
+                      '${widget.config.coinCost}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white54,
+                        decoration: TextDecoration.lineThrough,
+                        decorationColor: Colors.white54,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   Text(
-                    '${widget.config.coinCost} Yıldız Tozu',
+                    '${widget.overrideCoinCost ?? widget.config.coinCost} Yıldız Tozu',
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -530,7 +589,7 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
           ),
         ],
       ),
-    ).animate(onPlay: (c) => c.repeat()).fadeIn(duration: 400.ms);
+    ).animate().fadeIn(duration: 400.ms);
   }
 
   Widget _buildErrorState() {
@@ -693,76 +752,8 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
           }),
         ],
 
-        const SizedBox(height: 24),
-
-        // Aksiyon butonları
-        Row(
-          children: [
-            // Paylaş butonu
-            Expanded(
-              child: Container(
-                height: 52,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: widget.config.gradient),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: widget.config.gradient.first.withOpacity(0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _shareResult,
-                    borderRadius: BorderRadius.circular(16),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.share_rounded, size: 18, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text(
-                          'Paylaş',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Tekrar dene butonu
-            Container(
-              height: 52,
-              width: 52,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: widget.config.gradient.first.withOpacity(0.2),
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _generate,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Icon(
-                    Icons.refresh_rounded,
-                    color: widget.config.gradient.first,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ).animate(delay: 400.ms).fadeIn(duration: 300.ms),
+        // Butonlar artık altta sabit (bottomNavigationBar)
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -796,7 +787,7 @@ Bu konu hakkında kullanıcının burcuna ve doğum bilgilerine göre detaylı b
           Text(
             isIncluded
                 ? 'Analizi başlatmak için tıkla'
-                : '${widget.config.coinCost} Yıldız Tozu karşılığında analizi al',
+                : '${widget.overrideCoinCost ?? widget.config.coinCost} Yıldız Tozu karşılığında analizi al',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,

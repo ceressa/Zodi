@@ -155,13 +155,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _buildBottomNav(isDark),
               ),
 
-              // === FAB — overlay ===
-              if (_buildEarnGoldFab(authProvider) != null)
-                Positioned(
-                  right: 16,
-                  bottom: 90,
-                  child: _buildEarnGoldFab(authProvider)!,
-                ),
+              // === FAB — overlay (Settings hariç tüm sayfalarda) ===
+              if (_currentIndex != 4) ...[
+                Builder(builder: (ctx) {
+                  final fab = _buildEarnGoldFab(authProvider);
+                  if (fab == null) return const SizedBox.shrink();
+                  return Positioned(
+                    right: 16,
+                    bottom: 90,
+                    child: fab,
+                  );
+                }),
+              ],
             ],
           ),
         ),
@@ -278,9 +283,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Yıldız Tozu kazan FAB — reklam izle, Yıldız Tozu kazan
   Widget? _buildEarnGoldFab(AuthProvider authProvider) {
-    // Elmas ve üstü kullanıcılar için reklam kapalı, FAB gösterme
+    // Platinyum kullanıcılar için reklam kapalı, FAB gösterme
     final tier = authProvider.membershipTier;
-    if (tier == MembershipTier.elmas || tier == MembershipTier.platinyum) {
+    if (tier == MembershipTier.platinyum) {
       return null;
     }
 

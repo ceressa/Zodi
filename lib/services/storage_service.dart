@@ -6,6 +6,7 @@ class StorageService {
   static const String _keyUserEmail = 'userEmail';
   static const String _keySelectedZodiac = 'selectedZodiac';
   static const String _keyIsPremium = 'isPremium';
+  static const String _keyMembershipTier = 'membershipTier';
   static const String _keyThemeMode = 'themeMode';
   static const String _keyLastDailyFetch = 'lastDailyFetch';
   static const String _keyLastDailyZodiac = 'lastDailyZodiac';
@@ -16,6 +17,7 @@ class StorageService {
   static const String _keyTomorrowUnlocked = 'tomorrowUnlocked';
   static const String _keyNotificationsEnabled = 'notificationsEnabled';
   static const String _keyNotificationTime = 'notificationTime';
+  static const String _transitNotificationsKey = 'transitNotificationsEnabled';
 
   Future<void> saveUserName(String name) async {
     final prefs = await SharedPreferences.getInstance();
@@ -62,6 +64,16 @@ class StorageService {
   Future<bool> getIsPremium() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyIsPremium) ?? false;
+  }
+
+  Future<void> saveMembershipTier(String tier) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyMembershipTier, tier);
+  }
+
+  Future<String?> getMembershipTier() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyMembershipTier);
   }
 
   Future<void> saveThemeMode(String mode) async {
@@ -174,6 +186,17 @@ class StorageService {
   Future<String?> getNotificationTime() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyNotificationTime);
+  }
+
+  // Transit notification settings
+  Future<bool> getTransitNotificationsEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_transitNotificationsKey) ?? false;
+  }
+
+  Future<void> setTransitNotificationsEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_transitNotificationsKey, value);
   }
 
   /// Burç değiştiğinde tüm horoscope cache'lerini temizle

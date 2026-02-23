@@ -13,6 +13,7 @@ import '../services/share_service.dart';
 import '../widgets/share_cards/compatibility_share_card.dart';
 import 'premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
+import '../widgets/sticky_bottom_actions.dart';
 
 class CompatibilityReportScreen extends StatefulWidget {
   final ZodiacSign userSign;
@@ -150,6 +151,18 @@ Yanıtı aşağıdaki JSON formatında ver:
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F5FF),
+      bottomNavigationBar: (_report != null && !_isLoading && _hasAccess)
+          ? StickyBottomActions(
+              children: [
+                StickyBottomActions.primaryButton(
+                  label: 'Raporu Paylaş',
+                  icon: Icons.share_rounded,
+                  gradient: [AppColors.accentPurple, const Color(0xFFFF1493)],
+                  onTap: _shareReport,
+                ),
+              ],
+            )
+          : null,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -487,42 +500,6 @@ Yanıtı aşağıdaki JSON formatında ver:
           ],
 
           const SizedBox(height: 24),
-
-          // Paylaş
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: AppColors.cosmicGradient,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _shareReport,
-                borderRadius: BorderRadius.circular(20),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.share, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text(
-                        'Raporu Paylaş',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
         ],
       ),
     );

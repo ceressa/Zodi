@@ -159,6 +159,50 @@ class AstroData {
       emoji: '☿️',
     ),
 
+    // Venüs Retrosu 2026
+    AstroEvent(
+      date: DateTime(2026, 12, 16),
+      endDate: DateTime(2027, 1, 27),
+      title: 'Venüs Retrosu',
+      description: 'Oğlak burcunda Venüs retrosu. İlişkilerde ve mali konularda geçmişe dönüş. Eski bağlar yeniden değerlendirilir.',
+      type: AstroEventType.venusRetrograde,
+      affectedSign: 'Oğlak',
+      emoji: '♀️',
+    ),
+
+    // Mars Retrosu 2026
+    AstroEvent(
+      date: DateTime(2026, 10, 30),
+      endDate: DateTime(2027, 1, 12),
+      title: 'Mars Retrosu',
+      description: 'Aslan burcunda Mars retrosu. Enerji ve motivasyon düşebilir, büyük projeleri ertelemek akıllıca olabilir.',
+      type: AstroEventType.marsRetrograde,
+      affectedSign: 'Aslan',
+      emoji: '♂️',
+    ),
+
+    // Jüpiter Retrosu 2026
+    AstroEvent(
+      date: DateTime(2026, 7, 14),
+      endDate: DateTime(2026, 11, 10),
+      title: 'Jüpiter Retrosu',
+      description: 'Yengeç burcunda Jüpiter retrosu. İçsel büyüme ve duygusal iyileşme dönemi. Şans dışarıdan değil içeriden gelir.',
+      type: AstroEventType.jupiterRetrograde,
+      affectedSign: 'Yengeç',
+      emoji: '♃',
+    ),
+
+    // Satürn Retrosu 2026
+    AstroEvent(
+      date: DateTime(2026, 6, 1),
+      endDate: DateTime(2026, 10, 18),
+      title: 'Satürn Retrosu',
+      description: 'Koç burcunda Satürn retrosu. Sorumluluklar ve sınırlar yeniden sorgulanır. Sabırla yapısal değişimler için ideal.',
+      type: AstroEventType.saturnRetrograde,
+      affectedSign: 'Koç',
+      emoji: '♄',
+    ),
+
     // Tutulmalar 2026
     AstroEvent(
       date: DateTime(2026, 2, 17),
@@ -194,43 +238,51 @@ class AstroData {
     ),
 
     // Dolunaylar 2026
-    AstroEvent(date: DateTime(2026, 1, 3), title: 'Dolunay', description: 'Yengeç burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Yengeç', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 2, 1), title: 'Dolunay', description: 'Aslan burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Aslan', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 4, 2), title: 'Dolunay', description: 'Terazi burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Terazi', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 5, 1), title: 'Dolunay', description: 'Akrep burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Akrep', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 5, 31), title: 'Dolunay', description: 'Yay burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Yay', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 6, 29), title: 'Dolunay', description: 'Oğlak burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Oğlak', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 7, 29), title: 'Dolunay', description: 'Kova burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Kova', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 9, 26), title: 'Dolunay', description: 'Koç burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Koç', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 10, 26), title: 'Dolunay', description: 'Boğa burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Boğa', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 11, 24), title: 'Dolunay', description: 'İkizler burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'İkizler', emoji: '🌕'),
-    AstroEvent(date: DateTime(2026, 12, 24), title: 'Dolunay', description: 'Yengeç burcunda Dolunay.', type: AstroEventType.fullMoon, affectedSign: 'Yengeç', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 1, 3), title: 'Dolunay', description: 'Yengeç burcunda Dolunay. Duygusal yoğunluk, aile bağları güçlenir.', type: AstroEventType.fullMoon, affectedSign: 'Yengeç', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 2, 1), title: 'Dolunay', description: 'Aslan burcunda Dolunay. Yaratıcılık ve kendini ifade ön planda.', type: AstroEventType.fullMoon, affectedSign: 'Aslan', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 3, 3), title: 'Dolunay', description: 'Başak burcunda Dolunay (Ay Tutulması). Sağlık ve düzen konularında dönüm noktası.', type: AstroEventType.fullMoon, affectedSign: 'Başak', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 4, 2), title: 'Dolunay', description: 'Terazi burcunda Dolunay. İlişkilerde denge ve uyum arayışı.', type: AstroEventType.fullMoon, affectedSign: 'Terazi', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 5, 1), title: 'Dolunay', description: 'Akrep burcunda Dolunay. Derin duygusal dönüşüm ve arınma.', type: AstroEventType.fullMoon, affectedSign: 'Akrep', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 5, 31), title: 'Dolunay', description: 'Yay burcunda Dolunay. Macera ruhu ve genişleme isteği yükselir.', type: AstroEventType.fullMoon, affectedSign: 'Yay', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 6, 29), title: 'Dolunay', description: 'Oğlak burcunda Dolunay. Kariyer hedefleri netleşir, sorumluluklar belirginleşir.', type: AstroEventType.fullMoon, affectedSign: 'Oğlak', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 7, 29), title: 'Dolunay', description: 'Kova burcunda Dolunay. Sosyal çevre ve toplumsal bilinç öne çıkar.', type: AstroEventType.fullMoon, affectedSign: 'Kova', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 8, 28), title: 'Dolunay', description: 'Balık burcunda Dolunay (Ay Tutulması). Ruhsal uyanış ve sezgisel derinleşme.', type: AstroEventType.fullMoon, affectedSign: 'Balık', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 9, 26), title: 'Dolunay', description: 'Koç burcunda Dolunay. Bireysel cesaret ve yeni atılımlar.', type: AstroEventType.fullMoon, affectedSign: 'Koç', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 10, 26), title: 'Dolunay', description: 'Boğa burcunda Dolunay. Maddi güvenlik ve değerler sorgulanır.', type: AstroEventType.fullMoon, affectedSign: 'Boğa', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 11, 24), title: 'Dolunay', description: 'İkizler burcunda Dolunay. İletişim ve öğrenme zirve yapar.', type: AstroEventType.fullMoon, affectedSign: 'İkizler', emoji: '🌕'),
+    AstroEvent(date: DateTime(2026, 12, 24), title: 'Dolunay', description: 'Yengeç burcunda Dolunay. Yılın kapanışında aile sıcaklığı ve duygusal derinlik.', type: AstroEventType.fullMoon, affectedSign: 'Yengeç', emoji: '🌕'),
 
     // Yeniaylar 2026
-    AstroEvent(date: DateTime(2026, 1, 18), title: 'Yeniay', description: 'Oğlak burcunda Yeniay.', type: AstroEventType.newMoon, affectedSign: 'Oğlak', emoji: '🌑'),
-    AstroEvent(date: DateTime(2026, 4, 17), title: 'Yeniay', description: 'Koç burcunda Yeniay.', type: AstroEventType.newMoon, affectedSign: 'Koç', emoji: '🌑'),
-    AstroEvent(date: DateTime(2026, 5, 16), title: 'Yeniay', description: 'Boğa burcunda Yeniay.', type: AstroEventType.newMoon, affectedSign: 'Boğa', emoji: '🌑'),
-    AstroEvent(date: DateTime(2026, 6, 15), title: 'Yeniay', description: 'İkizler burcunda Yeniay.', type: AstroEventType.newMoon, affectedSign: 'İkizler', emoji: '🌑'),
-    AstroEvent(date: DateTime(2026, 7, 14), title: 'Yeniay', description: 'Yengeç burcunda Yeniay.', type: AstroEventType.newMoon, affectedSign: 'Yengeç', emoji: '🌑'),
-    AstroEvent(date: DateTime(2026, 9, 11), title: 'Yeniay', description: 'Başak burcunda Yeniay.', type: AstroEventType.newMoon, affectedSign: 'Başak', emoji: '🌑'),
-    AstroEvent(date: DateTime(2026, 10, 10), title: 'Yeniay', description: 'Terazi burcunda Yeniay.', type: AstroEventType.newMoon, affectedSign: 'Terazi', emoji: '🌑'),
-    AstroEvent(date: DateTime(2026, 11, 9), title: 'Yeniay', description: 'Akrep burcunda Yeniay.', type: AstroEventType.newMoon, affectedSign: 'Akrep', emoji: '🌑'),
-    AstroEvent(date: DateTime(2026, 12, 9), title: 'Yeniay', description: 'Yay burcunda Yeniay.', type: AstroEventType.newMoon, affectedSign: 'Yay', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 1, 18), title: 'Yeniay', description: 'Oğlak burcunda Yeniay. Kariyer ve uzun vadeli hedefler için yeni başlangıç.', type: AstroEventType.newMoon, affectedSign: 'Oğlak', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 2, 17), title: 'Yeniay', description: 'Kova burcunda Yeniay (Güneş Tutulması). Toplumsal bilinçte güçlü yeni başlangıçlar.', type: AstroEventType.newMoon, affectedSign: 'Kova', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 3, 19), title: 'Yeniay', description: 'Balık burcunda Yeniay. Ruhsal derinleşme ve sezgisel yenilenme zamanı.', type: AstroEventType.newMoon, affectedSign: 'Balık', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 4, 17), title: 'Yeniay', description: 'Koç burcunda Yeniay. Cesaret ve girişimcilik enerjisi yüksek.', type: AstroEventType.newMoon, affectedSign: 'Koç', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 5, 16), title: 'Yeniay', description: 'Boğa burcunda Yeniay. Maddi hedefler ve konfor arayışı için yeni sayfa.', type: AstroEventType.newMoon, affectedSign: 'Boğa', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 6, 15), title: 'Yeniay', description: 'İkizler burcunda Yeniay. İletişim projeleri ve yeni fikirler filizlenir.', type: AstroEventType.newMoon, affectedSign: 'İkizler', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 7, 14), title: 'Yeniay', description: 'Yengeç burcunda Yeniay. Ev, aile ve duygusal güvenlik odaklı yeni dönem.', type: AstroEventType.newMoon, affectedSign: 'Yengeç', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 8, 12), title: 'Yeniay', description: 'Aslan burcunda Yeniay (Güneş Tutulması). Güçlü yaratıcı enerji ve cesaret dolu başlangıçlar.', type: AstroEventType.newMoon, affectedSign: 'Aslan', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 9, 11), title: 'Yeniay', description: 'Başak burcunda Yeniay. Düzen, sağlık ve verimlilik için yeni alışkanlıklar başlat.', type: AstroEventType.newMoon, affectedSign: 'Başak', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 10, 10), title: 'Yeniay', description: 'Terazi burcunda Yeniay. İlişkilerde yeni bir sayfa açma zamanı.', type: AstroEventType.newMoon, affectedSign: 'Terazi', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 11, 9), title: 'Yeniay', description: 'Akrep burcunda Yeniay. Derin dönüşüm ve yeniden doğuş enerjisi.', type: AstroEventType.newMoon, affectedSign: 'Akrep', emoji: '🌑'),
+    AstroEvent(date: DateTime(2026, 12, 9), title: 'Yeniay', description: 'Yay burcunda Yeniay. Macera ve keşif ruhu canlanır, ufuklar genişler.', type: AstroEventType.newMoon, affectedSign: 'Yay', emoji: '🌑'),
 
     // Burç Mevsim Geçişleri 2026
-    AstroEvent(date: DateTime(2026, 1, 20), title: 'Kova Mevsimi', description: 'Güneş Kova burcuna giriyor.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Kova', emoji: '♒'),
-    AstroEvent(date: DateTime(2026, 2, 19), title: 'Balık Mevsimi', description: 'Güneş Balık burcuna giriyor.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Balık', emoji: '♓'),
-    AstroEvent(date: DateTime(2026, 3, 20), title: 'Koç Mevsimi', description: 'İlkbahar ekinoksu!', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Koç', emoji: '♈'),
-    AstroEvent(date: DateTime(2026, 4, 20), title: 'Boğa Mevsimi', description: 'Güneş Boğa burcuna giriyor.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Boğa', emoji: '♉'),
-    AstroEvent(date: DateTime(2026, 5, 21), title: 'İkizler Mevsimi', description: 'Güneş İkizler burcuna giriyor.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'İkizler', emoji: '♊'),
-    AstroEvent(date: DateTime(2026, 6, 21), title: 'Yengeç Mevsimi', description: 'Yaz gündönümü!', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Yengeç', emoji: '♋'),
-    AstroEvent(date: DateTime(2026, 7, 22), title: 'Aslan Mevsimi', description: 'Güneş Aslan burcuna giriyor.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Aslan', emoji: '♌'),
-    AstroEvent(date: DateTime(2026, 8, 23), title: 'Başak Mevsimi', description: 'Güneş Başak burcuna giriyor.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Başak', emoji: '♍'),
-    AstroEvent(date: DateTime(2026, 9, 22), title: 'Terazi Mevsimi', description: 'Sonbahar ekinoksu!', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Terazi', emoji: '♎'),
-    AstroEvent(date: DateTime(2026, 10, 23), title: 'Akrep Mevsimi', description: 'Güneş Akrep burcuna giriyor.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Akrep', emoji: '♏'),
-    AstroEvent(date: DateTime(2026, 11, 22), title: 'Yay Mevsimi', description: 'Güneş Yay burcuna giriyor.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Yay', emoji: '♐'),
-    AstroEvent(date: DateTime(2026, 12, 21), title: 'Oğlak Mevsimi', description: 'Kış gündönümü!', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Oğlak', emoji: '♑'),
+    AstroEvent(date: DateTime(2026, 1, 20), title: 'Kova Mevsimi', description: 'Güneş Kova burcuna giriyor. Yenilikçi fikirler ve sosyal bağlantılar ön planda.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Kova', emoji: '♒'),
+    AstroEvent(date: DateTime(2026, 2, 19), title: 'Balık Mevsimi', description: 'Güneş Balık burcuna giriyor. Hayal gücü ve ruhani derinlik zamanı.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Balık', emoji: '♓'),
+    AstroEvent(date: DateTime(2026, 3, 20), title: 'Koç Mevsimi', description: 'İlkbahar ekinoksu! Güneş Koç burcuna giriyor. Yeni başlangıçlar ve enerji patlaması.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Koç', emoji: '♈'),
+    AstroEvent(date: DateTime(2026, 4, 20), title: 'Boğa Mevsimi', description: 'Güneş Boğa burcuna giriyor. Sabır, kararlılık ve maddi konular ön planda.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Boğa', emoji: '♉'),
+    AstroEvent(date: DateTime(2026, 5, 21), title: 'İkizler Mevsimi', description: 'Güneş İkizler burcuna giriyor. İletişim, merak ve sosyal hareketlilik dönemi.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'İkizler', emoji: '♊'),
+    AstroEvent(date: DateTime(2026, 6, 21), title: 'Yengeç Mevsimi', description: 'Yaz gündönümü! Güneş Yengeç burcuna giriyor. Aile, yuva ve duygusal bağlar güçlenir.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Yengeç', emoji: '♋'),
+    AstroEvent(date: DateTime(2026, 7, 22), title: 'Aslan Mevsimi', description: 'Güneş Aslan burcuna giriyor. Parıldama, liderlik ve kendini ifade zamanı!', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Aslan', emoji: '♌'),
+    AstroEvent(date: DateTime(2026, 8, 23), title: 'Başak Mevsimi', description: 'Güneş Başak burcuna giriyor. Düzen, detay ve verimlilik odaklı dönem.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Başak', emoji: '♍'),
+    AstroEvent(date: DateTime(2026, 9, 22), title: 'Terazi Mevsimi', description: 'Sonbahar ekinoksu! Güneş Terazi burcuna giriyor. Denge, estetik ve ilişkiler ön planda.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Terazi', emoji: '♎'),
+    AstroEvent(date: DateTime(2026, 10, 23), title: 'Akrep Mevsimi', description: 'Güneş Akrep burcuna giriyor. Derinlik, dönüşüm ve gizemli enerjiler.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Akrep', emoji: '♏'),
+    AstroEvent(date: DateTime(2026, 11, 22), title: 'Yay Mevsimi', description: 'Güneş Yay burcuna giriyor. Macera, keşif ve genişleme enerjisi yükselir!', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Yay', emoji: '♐'),
+    AstroEvent(date: DateTime(2026, 12, 21), title: 'Oğlak Mevsimi', description: 'Kış gündönümü! Güneş Oğlak burcuna giriyor. Hedef belirleme ve disiplin dönemi.', type: AstroEventType.zodiacSeasonChange, affectedSign: 'Oğlak', emoji: '♑'),
   ];
+
+  /// Tüm astrolojik olayları getir
+  static List<AstroEvent> getAllEvents() => events;
 
   /// Belirli bir ay için olayları getir
   static List<AstroEvent> getEventsForMonth(int year, int month) {

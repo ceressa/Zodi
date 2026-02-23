@@ -41,15 +41,15 @@ class FunFeatureShareCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  gradientColors.first.withOpacity(0.20),
-                  gradientColors.last.withOpacity(0.10),
+                  gradientColors.first.withValues(alpha:0.20),
+                  gradientColors.last.withValues(alpha:0.10),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(32),
               border: Border.all(
-                color: gradientColors.first.withOpacity(0.15),
+                color: gradientColors.first.withValues(alpha:0.15),
                 width: 1.5,
               ),
             ),
@@ -80,10 +80,10 @@ class FunFeatureShareCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha:0.05),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha:0.10),
                   width: 1,
                 ),
               ),
@@ -91,7 +91,7 @@ class FunFeatureShareCard extends StatelessWidget {
                 description,
                 style: TextStyle(
                   fontSize: 20,
-                  color: Colors.white.withOpacity(0.75),
+                  color: Colors.white.withValues(alpha:0.75),
                   height: 1.6,
                 ),
                 maxLines: 8,
@@ -112,10 +112,10 @@ class FunFeatureShareCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.04),
+                    color: Colors.white.withValues(alpha:0.04),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.06),
+                      color: Colors.white.withValues(alpha:0.06),
                     ),
                   ),
                   child: Row(
@@ -145,7 +145,7 @@ class FunFeatureShareCard extends StatelessWidget {
                           detail,
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.white.withOpacity(0.65),
+                            color: Colors.white.withValues(alpha:0.65),
                             height: 1.4,
                           ),
                           maxLines: 3,

@@ -16,6 +16,7 @@ import '../widgets/share_cards/tarot_share_card.dart';
 import '../services/activity_log_service.dart';
 import '../providers/coin_provider.dart';
 import '../theme/cosmic_page_route.dart';
+import '../widgets/sticky_bottom_actions.dart';
 import 'premium_screen.dart';
 
 class TarotScreen extends StatefulWidget {
@@ -285,6 +286,9 @@ class _TarotScreenState extends State<TarotScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authProvider = context.watch<AuthProvider>();
 
+    final showBottomBar = (_selectedTab == 0 && _dailyReading != null) ||
+        (_selectedTab == 1 && _threeCardReading != null);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F5FF),
       appBar: AppBar(
@@ -309,6 +313,20 @@ class _TarotScreenState extends State<TarotScreen> {
         ),
         centerTitle: true,
       ),
+      bottomNavigationBar: showBottomBar
+          ? StickyBottomActions(
+              children: [
+                StickyBottomActions.primaryButton(
+                  label: 'Paylaş',
+                  icon: Icons.share_rounded,
+                  gradient: [AppColors.accentPurple, const Color(0xFFA78BFA)],
+                  onTap: () => _shareReading(
+                    _selectedTab == 0 ? _dailyReading! : _threeCardReading!,
+                  ),
+                ),
+              ],
+            )
+          : null,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -747,33 +765,6 @@ class _TarotScreenState extends State<TarotScreen> {
           ),
 
           const SizedBox(height: 24),
-
-          // Paylaş butonu
-          Container(
-            decoration: BoxDecoration(
-              gradient: AppColors.purpleGradient,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: AppColors.accentPurple.withValues(alpha:0.3), blurRadius: 12, offset: const Offset(0, 4))],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _shareReading(_dailyReading!),
-                borderRadius: BorderRadius.circular(16),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.share, color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text('Paylaş', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -996,33 +987,6 @@ class _TarotScreenState extends State<TarotScreen> {
           ),
 
           const SizedBox(height: 24),
-
-          // Paylaş butonu
-          Container(
-            decoration: BoxDecoration(
-              gradient: AppColors.purpleGradient,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: AppColors.accentPurple.withValues(alpha:0.3), blurRadius: 12, offset: const Offset(0, 4))],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _shareReading(_threeCardReading!),
-                borderRadius: BorderRadius.circular(16),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.share, color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text('Paylaş', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

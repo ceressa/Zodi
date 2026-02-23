@@ -29,7 +29,7 @@ class CompatibilityShareCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ShareCardBase(
-      featureTag: 'Burç Uyumu',
+      featureTag: 'Burc Uyumu',
       showZodiacBadge: false,
       backgroundColors: const [
         Color(0xFF080510),
@@ -42,7 +42,7 @@ class CompatibilityShareCard extends StatelessWidget {
         children: [
           const SizedBox(height: 10),
 
-          // === İki burç — merkez kompozisyon ===
+          // === Iki burc — merkez kompozisyon ===
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -59,14 +59,14 @@ class CompatibilityShareCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFF472B6).withOpacity(0.2),
+                            color: const Color(0xFFF472B6).withValues(alpha: 0.2),
                             blurRadius: 20,
                             spreadRadius: 5,
                           ),
                         ],
                       ),
                       child: const Center(
-                        child: Text('💕', style: TextStyle(fontSize: 36)),
+                        child: Text('\u{1F495}', style: TextStyle(fontSize: 36)),
                       ),
                     ),
                   ],
@@ -76,9 +76,9 @@ class CompatibilityShareCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 44),
+          const SizedBox(height: 36),
 
-          // === Büyük skor dairesi — ring style ===
+          // === Buyuk skor dairesi — ring style ===
           Container(
             width: 220,
             height: 220,
@@ -86,17 +86,17 @@ class CompatibilityShareCard extends StatelessWidget {
               shape: BoxShape.circle,
               color: Colors.transparent,
               border: Border.all(
-                color: _getScoreColor(overallScore).withOpacity(0.30),
+                color: _getScoreColor(overallScore).withValues(alpha: 0.30),
                 width: 3,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _getScoreColor(overallScore).withOpacity(0.18),
+                  color: _getScoreColor(overallScore).withValues(alpha: 0.18),
                   blurRadius: 50,
                   spreadRadius: 10,
                 ),
                 BoxShadow(
-                  color: _getScoreColor(overallScore).withOpacity(0.08),
+                  color: _getScoreColor(overallScore).withValues(alpha: 0.08),
                   blurRadius: 80,
                   spreadRadius: 20,
                 ),
@@ -108,7 +108,7 @@ class CompatibilityShareCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    _getScoreColor(overallScore).withOpacity(0.08),
+                    _getScoreColor(overallScore).withValues(alpha: 0.08),
                     Colors.transparent,
                   ],
                 ),
@@ -120,7 +120,7 @@ class CompatibilityShareCard extends StatelessWidget {
                     shaderCallback: (bounds) => LinearGradient(
                       colors: [
                         _getScoreColor(overallScore),
-                        _getScoreColor(overallScore).withOpacity(0.7),
+                        _getScoreColor(overallScore).withValues(alpha: 0.7),
                       ],
                     ).createShader(bounds),
                     child: Text(
@@ -136,7 +136,7 @@ class CompatibilityShareCard extends StatelessWidget {
                     'Uyum',
                     style: TextStyle(
                       fontSize: 22,
-                      color: Colors.white.withOpacity(0.4),
+                      color: Colors.white.withValues(alpha: 0.4),
                       fontWeight: FontWeight.w400,
                       letterSpacing: 2,
                     ),
@@ -146,35 +146,32 @@ class CompatibilityShareCard extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 44),
-
-          // === Alt skorlar ===
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildSubScore('💕', 'Aşk', loveScore, const Color(0xFFF472B6)),
-              _buildSubScore('💬', 'İletişim', communicationScore, const Color(0xFF60A5FA)),
-              _buildSubScore('🤝', 'Güven', trustScore, const Color(0xFF34D399)),
-            ],
-          ),
-
           const SizedBox(height: 36),
 
-          // === Özet ===
+          // === Alt skorlar — progress bar'li ===
+          _buildScoreBar('\u{1F495}', 'Ask', loveScore, const Color(0xFFF472B6)),
+          const SizedBox(height: 14),
+          _buildScoreBar('\u{1F4AC}', 'Iletisim', communicationScore, const Color(0xFF60A5FA)),
+          const SizedBox(height: 14),
+          _buildScoreBar('\u{1F91D}', 'Guven', trustScore, const Color(0xFF34D399)),
+
+          const SizedBox(height: 28),
+
+          // === Ozet ===
           Expanded(
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
+                color: Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha: 0.10),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7C3AED).withOpacity(0.06),
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
                     blurRadius: 16,
                     spreadRadius: 2,
                   ),
@@ -186,7 +183,7 @@ class CompatibilityShareCard extends StatelessWidget {
                     : summary,
                 style: TextStyle(
                   fontSize: 21,
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                   height: 1.5,
                   fontWeight: FontWeight.w400,
                 ),
@@ -212,16 +209,16 @@ class CompatibilityShareCard extends StatelessWidget {
             gradient: RadialGradient(
               colors: [
                 const Color(0xFF2D1B69),
-                const Color(0xFF1A0A3E).withOpacity(0.8),
+                const Color(0xFF1A0A3E).withValues(alpha: 0.8),
               ],
             ),
             border: Border.all(
-              color: const Color(0xFFA78BFA).withOpacity(0.30),
+              color: const Color(0xFFA78BFA).withValues(alpha: 0.30),
               width: 2.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF7C3AED).withOpacity(0.20),
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.20),
                 blurRadius: 24,
                 spreadRadius: 5,
               ),
@@ -245,36 +242,52 @@ class CompatibilityShareCard extends StatelessWidget {
     );
   }
 
-  Widget _buildSubScore(String emoji, String label, int score, Color color) {
-    return Column(
+  Widget _buildScoreBar(String emoji, String label, int score, Color color) {
+    return Row(
       children: [
         Container(
-          width: 52,
-          height: 52,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.10),
           ),
           child: Center(
-            child: Text(emoji, style: const TextStyle(fontSize: 26)),
+            child: Text(emoji, style: const TextStyle(fontSize: 22)),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(width: 14),
+        SizedBox(
+          width: 140,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 20,
+              color: Colors.white.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              height: 10,
+              child: LinearProgressIndicator(
+                value: score / 100,
+                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                valueColor: AlwaysStoppedAnimation(color.withValues(alpha: 0.75)),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
         Text(
           '%$score',
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 22,
             fontWeight: FontWeight.w800,
-            color: color.withOpacity(0.85),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.white.withOpacity(0.35),
-            fontWeight: FontWeight.w400,
+            color: color.withValues(alpha: 0.85),
           ),
         ),
       ],

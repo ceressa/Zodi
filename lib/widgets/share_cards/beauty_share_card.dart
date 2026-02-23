@@ -37,7 +37,7 @@ class BeautyShareCard extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFBBF24).withOpacity(0.08),
+                  color: const Color(0xFFFBBF24).withValues(alpha:0.08),
                   blurRadius: 40,
                   spreadRadius: 15,
                 ),
@@ -70,7 +70,7 @@ class BeautyShareCard extends StatelessWidget {
             'Ay Burcu: ${beautyDay.moonSign}',
             style: TextStyle(
               fontSize: 20,
-              color: Colors.white.withOpacity(0.35),
+              color: Colors.white.withValues(alpha:0.35),
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -94,15 +94,15 @@ class BeautyShareCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
+                color: Colors.white.withValues(alpha:0.04),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha:0.10),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7C3AED).withOpacity(0.06),
+                    color: const Color(0xFF7C3AED).withValues(alpha:0.06),
                     blurRadius: 16,
                     spreadRadius: 2,
                   ),
@@ -115,7 +115,7 @@ class BeautyShareCard extends StatelessWidget {
                     height: 40,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFFC084FC).withOpacity(0.1),
+                      color: const Color(0xFFC084FC).withValues(alpha:0.1),
                     ),
                     child: const Center(
                       child: Text('💡', style: TextStyle(fontSize: 20)),
@@ -126,7 +126,7 @@ class BeautyShareCard extends StatelessWidget {
                     beautyDay.aiTip!,
                     style: TextStyle(
                       fontSize: 20,
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha:0.5),
                       height: 1.4,
                       fontStyle: FontStyle.italic,
                     ),
@@ -146,15 +146,15 @@ class BeautyShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
       decoration: BoxDecoration(
-        color: rating.color.withOpacity(0.06),
+        color: rating.color.withValues(alpha:0.06),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: rating.color.withOpacity(0.14),
+          color: rating.color.withValues(alpha:0.14),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: rating.color.withOpacity(0.05),
+            color: rating.color.withValues(alpha:0.05),
             blurRadius: 10,
             spreadRadius: 1,
           ),
@@ -167,7 +167,7 @@ class BeautyShareCard extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: rating.color.withOpacity(0.08),
+              color: rating.color.withValues(alpha:0.08),
             ),
             child: Center(
               child: Text(emoji, style: const TextStyle(fontSize: 24)),
@@ -187,7 +187,7 @@ class BeautyShareCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: rating.color.withOpacity(0.12),
+              color: rating.color.withValues(alpha:0.12),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -200,7 +200,7 @@ class BeautyShareCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: rating.color.withOpacity(0.9),
+                    color: rating.color.withValues(alpha:0.9),
                   ),
                 ),
               ],

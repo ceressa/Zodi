@@ -36,6 +36,9 @@ class UserProfile {
   final bool notificationsEnabled;
   final String notificationTime; // Günlük bildirim saati
   
+  // Coin Bakiyesi
+  final int coinBalance;
+
   // Premium & Abonelik
   final bool isPremium;
   final String membershipTier; // 'standard', 'altin', 'elmas', 'platinyum'
@@ -139,6 +142,7 @@ class UserProfile {
     this.preferredTone = 'casual',
     this.notificationsEnabled = true,
     this.notificationTime = '09:00',
+    this.coinBalance = 0,
     this.isPremium = false,
     this.membershipTier = 'standard',
     this.premiumStartDate,
@@ -232,6 +236,9 @@ class UserProfile {
         'notificationsEnabled': notificationsEnabled,
         'notificationTime': notificationTime,
         
+        // Coin Bakiyesi
+        'coinBalance': coinBalance,
+
         // Premium & Abonelik
         'isPremium': isPremium,
         'membershipTier': membershipTier,
@@ -357,6 +364,7 @@ class UserProfile {
         preferredTone: json['preferredTone'] ?? 'casual',
         notificationsEnabled: json['notificationsEnabled'] ?? true,
         notificationTime: json['notificationTime'] ?? '09:00',
+        coinBalance: json['coinBalance'] ?? 0,
         isPremium: json['isPremium'] ?? false,
         membershipTier: json['membershipTier'] ?? 'standard',
         premiumStartDate: json['premiumStartDate'] != null
@@ -435,33 +443,31 @@ class UserProfile {
   // Helper method: Profil tamamlanma yüzdesi
   double get completionPercentage {
     int completed = 0;
-    int total = 12; // Önemli kişiselleştirme alanları
-    
+    const int total = 11; // Önemli kişiselleştirme alanları
+
     // Temel bilgiler (3)
     if (name.isNotEmpty) completed++;
     if (birthPlace.isNotEmpty) completed++;
     if (birthTime.isNotEmpty) completed++;
-    
+
     // Astrolojik (2)
-    if (risingSign != null) completed++;
-    if (moonSign != null) completed++;
-    
-    // İlişki (2)
-    if (relationshipStatus != null) completed++;
-    if (relationshipStatus != 'single' && partnerName != null && partnerName!.isNotEmpty) completed++;
-    if (relationshipStatus == 'single') completed++; // Bekarsa partner adı gerekmez
-    
+    if (risingSign != null && risingSign!.isNotEmpty) completed++;
+    if (moonSign != null && moonSign!.isNotEmpty) completed++;
+
+    // İlişki (1) — durum seçildiyse yeterli
+    if (relationshipStatus != null && relationshipStatus!.isNotEmpty) completed++;
+
     // Kariyer (2)
     if (occupation != null && occupation!.isNotEmpty) completed++;
-    if (employmentStatus != null) completed++;
-    
+    if (employmentStatus != null && employmentStatus!.isNotEmpty) completed++;
+
     // Yaşam (2)
     if (currentCity != null && currentCity!.isNotEmpty) completed++;
     if (interests.isNotEmpty) completed++;
-    
+
     // Hedefler (1)
     if (currentChallenges.isNotEmpty || lifeGoals.isNotEmpty) completed++;
-    
+
     return (completed / total) * 100;
   }
   

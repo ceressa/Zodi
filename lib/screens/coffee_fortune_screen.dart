@@ -7,6 +7,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
+import '../models/zodiac_sign.dart';
 import '../providers/auth_provider.dart';
 import '../providers/coin_provider.dart';
 import '../config/membership_config.dart';
@@ -16,6 +17,7 @@ import '../services/activity_log_service.dart';
 import '../widgets/share_cards/coffee_share_card.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
+import '../widgets/sticky_bottom_actions.dart';
 
 class CoffeeFortuneScreen extends StatefulWidget {
   const CoffeeFortuneScreen({super.key});
@@ -24,8 +26,10 @@ class CoffeeFortuneScreen extends StatefulWidget {
   State<CoffeeFortuneScreen> createState() => _CoffeeFortuneScreenState();
 }
 
-class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
-  String _step = 'intro'; // intro, capture, analyzing, result
+class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen>
+    with TickerProviderStateMixin {
+  String _step = 'intro'; // intro, capture, analyzing, analyzing_nophoto, result
+  bool _isNoPhotoFortune = false;
   // 4 slot: 0=fincan iç (düz), 1=fincan iç (yan), 2=fincan iç (diğer yan), 3=tabaktaki telve
   final List<File?> _images = [null, null, null, null];
   static const List<String> _slotLabels = [
@@ -47,12 +51,56 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
   final _activityLog = ActivityLogService();
   int _readingCount = 0;
 
+  // Animated tip index for the analyzing screen
+  late AnimationController _tipAnimController;
+  int _currentTipIndex = 0;
+
+  static const List<String> _analyzingTips = [
+    'Fincan telveleri yuzlerce yildir insanlarin gelecegini aydınlatır...',
+    'Fincandaki her şekil bir hikaye anlatır...',
+    'Kahve falında yollar, yeni baslangiclara isaret eder...',
+    'Fincanın dibindeki semboller en derin sırları saklar...',
+    'Turk kahvesi falı, dunyada en cok basvurulan fal yontemlerinden biridir...',
+    'Kus figuru fincanında gorulurse, iyi haberler kapıda demektir...',
+    'Yıldız şekli fincanında parlıyorsa, sans sana gulumsuyor...',
+  ];
+
+  static const List<String> _noPhotoTips = [
+    'Burcunun kozmik enerjisi okunuyor...',
+    'Yıldız haritanla kahve enerjisi birlestiriliyor...',
+    'Evrensel semboller yorumlanıyor...',
+    'Burcunun bugunku enerjisi analiz ediliyor...',
+    'Kozmik baglantılar kuruluyor...',
+  ];
+
   int get _imageCount => _images.where((f) => f != null).length;
 
   @override
   void initState() {
     super.initState();
     _adService.loadRewardedAd();
+    _tipAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          if (mounted &&
+              (_step == 'analyzing' || _step == 'analyzing_nophoto')) {
+            final tips =
+                _isNoPhotoFortune ? _noPhotoTips : _analyzingTips;
+            setState(() {
+              _currentTipIndex = (_currentTipIndex + 1) % tips.length;
+            });
+            _tipAnimController.forward(from: 0);
+          }
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _tipAnimController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickImageForSlot(int slot, ImageSource source) async {
@@ -211,8 +259,151 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
     setState(() {
       _step = 'analyzing';
       _errorMessage = null;
+      _isNoPhotoFortune = false;
     });
+    _currentTipIndex = 0;
+    _tipAnimController.forward(from: 0);
     await _analyzeCoffeeCup();
+  }
+
+  /// Fotoğrafsız kahve falı: Burca göre AI'dan yorum al
+  Future<void> _startNoPhotoFortune() async {
+    final authProvider = context.read<AuthProvider>();
+    final zodiac = authProvider.selectedZodiac;
+
+    if (zodiac == null) {
+      setState(() => _errorMessage = 'Burcun belirlenmemiş. Profil ayarlarını kontrol et.');
+      return;
+    }
+
+    final tier = authProvider.membershipTier;
+
+    // Premium/Ad Gate — aynı _startAnalysis ile
+    if (tier != MembershipTier.elmas && tier != MembershipTier.platinyum) {
+      if (tier == MembershipTier.altin) {
+        final coinProvider = context.read<CoinProvider>();
+        if (coinProvider.balance >= 5) {
+          final useCoin = await _showCoinOrAdDialog(5);
+          if (useCoin == null) return;
+          if (useCoin) {
+            await coinProvider.spendCoins(5, 'coffee_fortune_nophoto');
+          } else {
+            final unlocked =
+                await _adService.showRewardedAd(placement: 'coffee_fortune');
+            if (!unlocked) {
+              if (mounted) _showPremiumDialog();
+              return;
+            }
+          }
+        } else {
+          final unlocked =
+              await _adService.showRewardedAd(placement: 'coffee_fortune');
+          if (!unlocked) {
+            if (mounted) _showPremiumDialog();
+            return;
+          }
+        }
+      } else {
+        final unlocked =
+            await _adService.showRewardedAd(placement: 'coffee_fortune');
+        if (!unlocked) {
+          if (mounted) _showPremiumDialog();
+          return;
+        }
+      }
+    }
+
+    setState(() {
+      _step = 'analyzing_nophoto';
+      _errorMessage = null;
+      _isNoPhotoFortune = true;
+    });
+    _currentTipIndex = 0;
+    _tipAnimController.forward(from: 0);
+    await _generateNoPhotoFortune(zodiac);
+  }
+
+  Future<void> _generateNoPhotoFortune(ZodiacSign zodiac) async {
+    try {
+      final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+      final model = GenerativeModel(
+        model: 'gemini-2.5-flash',
+        apiKey: apiKey,
+      );
+
+      final prompt = '''
+Sen deneyimli bir Turk kahve falcısısın. Astro Dozi uygulamasında calısıyorsun.
+Kullanıcının burcü: ${zodiac.displayName} (${zodiac.symbol})
+
+Kullanıcı fotoğraf cekmeden, burcuna göre kahve falı yorumu istiyor.
+Sanki onun fincanına bakmıs gibi, burcunun guncel enerji haritasına göre detaylı ve samimi bir kahve falı yorumu yap.
+Mistik, sıcak ve samimi bir dil kullan. Kullanıcının burcunun ozelliklerini yorumuna yansıt.
+
+Yorumunu MUTLAKA asagidaki JSON formatında ver:
+{
+  "isValid": true,
+  "love": "Ask ve iliskiler yorumu (3-4 cumle, burcuna ozel, samimi ve derinlemesine)",
+  "career": "Kariyer ve is yorumu (3-4 cumle, burcuna ozel)",
+  "general": "Genel gorunum ve tavsiyeler (3-4 cumle, burcuna ozel, yol gosterici)",
+  "health": "Saglik ve enerji yorumu (2-3 cumle, burcuna ozel)",
+  "warnings": "Dikkat edilmesi gereken uyarılar ve onemsenmesi gerekenler (1-2 cumle)",
+  "symbols": ["Burcunla iliskili 3-5 kozmik sembol"],
+  "luckyMessage": "Kısa bir sans mesajı (1 cumle, vurucu, burcuna ozel)",
+  "overallMood": "positive veya neutral veya cautious"
+}
+''';
+
+      final response =
+          await model.generateContent([Content.text(prompt)]);
+
+      final text = response.text ?? '{}';
+      final jsonMatch =
+          RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      final jsonStr = jsonMatch?.group(1) ?? text;
+
+      Map<String, dynamic> result;
+      try {
+        result = jsonDecode(jsonStr) as Map<String, dynamic>;
+      } catch (e) {
+        debugPrint('Coffee fortune (no photo) JSON parse error: $e');
+        result = {
+          'isValid': false,
+          'warningMessage':
+              'Falını okurken bir sorun olustu. Tekrar dener misin?',
+        };
+      }
+
+      _readingCount++;
+      if (_readingCount > 1) {
+        _adService.trackScreenNavigation();
+        _adService.showInterstitialIfNeeded();
+      }
+
+      if (!mounted) return;
+
+      final isValid = result['isValid'] ?? true;
+      if (!isValid) {
+        setState(() {
+          _fortuneResult = result;
+          _step = 'invalid';
+        });
+      } else {
+        setState(() {
+          _fortuneResult = result;
+          _step = 'result';
+        });
+        _activityLog.logCoffeeFortune();
+      }
+    } catch (e) {
+      debugPrint('Coffee fortune (no photo) analysis error: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage =
+              'Fal olusturulurken bir sorun olustu. Tekrar deneyin!';
+          _step = 'intro';
+        });
+      }
+    }
   }
 
   Future<bool?> _showCoinOrAdDialog(int coinCost) async {
@@ -293,28 +484,30 @@ class _CoffeeFortuneScreenState extends State<CoffeeFortuneScreen> {
       final parts = <Part>[];
 
       final prompt = '''
-Sen deneyimli bir Türk kahve falcısısın. Zodi uygulamasında çalışıyorsun.
-Kullanıcı kahve fincanının farklı açılardan fotoğraflarını ve/veya tabaktaki telveyi gönderdi.
+Sen deneyimli bir Turk kahve falcısısın. Astro Dozi uygulamasında calısıyorsun.
+Kullanıcı kahve fincanının farklı açılardan fotoğraflarını ve/veya tabaktaki telveyi gonderdi.
 
-ÖNEMLİ KURALLAR:
-1. TÜM görselleri birlikte analiz et. Sadece bir açıdan bakma, tüm görsellerdeki şekilleri birleştirerek kapsamlı bir yorum yap.
-2. Eğer fotoğraflarda kahve fincanı/telve GÖREMİYORSAN → "isValid": false yap ve "warningMessage"'a eğlenceli bir uyarı yaz.
-3. Uygunsuz/NSFW içerik → "isValid": false, "warningMessage": "Hmm, bu pek kahve falına uygun bir görüntü değil. Fincanını getir, sırlarını anlatayım. ☕"
-4. Alakasız resim (manzara, yemek, selfie vs.) → "isValid": false, "warningMessage": eğlenceli/mizahi bir uyarı. Örnek: "Güzel manzara ama ben kahve falcısıyım, turist rehberi değil! ☕"
-5. Kaba/hakaret içeren el işareti → "isValid": false, "warningMessage": "Ay canım, bu el işaretleriyle fal bakmam ben! Fincanını düzgünce göster, sırlarını açayım. ☕😄"
+ONEMLI KURALLAR:
+1. TUM gorselleri birlikte analiz et. Sadece bir açıdan bakma, tum gorsellerdeki şekilleri birlestirerek kapsamlı bir yorum yap.
+2. Eğer fotoğraflarda kahve fincanı/telve GOREMIYORSAN -> "isValid": false yap ve "warningMessage"'a eğlenceli bir uyarı yaz.
+3. Uygunsuz/NSFW icerik -> "isValid": false, "warningMessage": "Hmm, bu pek kahve falına uygun bir goruntu değil. Fincanını getir, sırlarını anlatayım."
+4. Alakasız resim (manzara, yemek, selfie vs.) -> "isValid": false, "warningMessage": eglenceli/mizahi bir uyarı. Ornek: "Guzel manzara ama ben kahve falcısıyım, turist rehberi değil!"
+5. Kaba/hakaret iceren el isareti -> "isValid": false, "warningMessage": "Ay canım, bu el isaretleriyle fal bakmam ben! Fincanını duzgunce goster, sırlarını acayım."
 
-Eğer geçerli bir kahve fincanı/telve görüyorsan, detaylı yorum yap.
+Eğer gecerli bir kahve fincanı/telve goruyorsan, detaylı yorum yap.
+Mistik, sıcak ve samimi bir dil kullan. Kullanıcının fincanındaki sekilleri gercekten analiz et.
 
-Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
+Yorumunu MUTLAKA asağıdaki JSON formatında ver:
 {
   "isValid": true/false,
-  "warningMessage": "Eğer isValid false ise burada eğlenceli uyarı mesajı (Türkçe)",
-  "love": "Aşk ve ilişkiler yorumu (2-3 cümle, samimi ve dürüst)",
-  "career": "Kariyer ve iş yorumu (2-3 cümle)",
-  "general": "Genel yorum ve tavsiyeler (2-3 cümle)",
-  "health": "Sağlık ve enerji yorumu (1-2 cümle)",
-  "symbols": ["Fincanda gördüğün 3-5 sembol"],
-  "luckyMessage": "Kısa bir şans mesajı (1 cümle, vurucu)",
+  "warningMessage": "Eğer isValid false ise burada eglenceli uyarı mesajı (Turkce)",
+  "love": "Ask ve iliskiler yorumu (3-4 cumle, samimi, derinlemesine ve durust)",
+  "career": "Kariyer ve is yorumu (3-4 cumle, somut ve yol gosterici)",
+  "general": "Genel gorunum ve tavsiyeler (3-4 cumle, kapsamlı)",
+  "health": "Saglik ve enerji yorumu (2-3 cumle)",
+  "warnings": "Dikkat edilmesi gereken uyarılar ve onemsenmesi gerekenler (1-2 cumle, yapıcı ve nazik)",
+  "symbols": ["Fincanda gordügun 3-5 sembol"],
+  "luckyMessage": "Kısa bir sans mesajı (1 cumle, vurucu)",
   "overallMood": "positive veya neutral veya cautious"
 }
 ''';
@@ -386,12 +579,19 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
   void _shareResult() {
     if (_fortuneResult == null) return;
 
+    final authProvider = context.read<AuthProvider>();
+    final zodiac = authProvider.selectedZodiac;
+
     final card = CoffeeShareCard(
       loveReading: _fortuneResult!['love'] ?? '',
       careerReading: _fortuneResult!['career'] ?? '',
       generalReading: _fortuneResult!['general'] ?? '',
       luckyMessage: _fortuneResult!['luckyMessage'],
-      cupImage: _images.firstWhere((f) => f != null, orElse: () => null),
+      cupImage: _isNoPhotoFortune
+          ? null
+          : _images.firstWhere((f) => f != null, orElse: () => null),
+      zodiacSymbol: zodiac?.symbol,
+      zodiacName: zodiac?.displayName,
     );
 
     ShareService().shareCardWidget(
@@ -403,9 +603,10 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
 
   void _resetAll() {
     setState(() {
-      _step = 'capture';
+      _step = _isNoPhotoFortune ? 'intro' : 'capture';
       _fortuneResult = null;
       _errorMessage = null;
+      _isNoPhotoFortune = false;
       for (int i = 0; i < _images.length; i++) {
         _images[i] = null;
       }
@@ -416,6 +617,25 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F5FF),
+      bottomNavigationBar: (_step == 'result' && _fortuneResult != null)
+          ? StickyBottomActions(
+              children: [
+                StickyBottomActions.primaryButton(
+                  label: 'Falımı Paylaş',
+                  icon: Icons.share_rounded,
+                  gradient: const [Color(0xFFD97706), Color(0xFFF59E0B)],
+                  onTap: _shareResult,
+                ),
+                const SizedBox(width: 12),
+                StickyBottomActions.outlineButton(
+                  label: 'Yeni Fal',
+                  icon: Icons.refresh,
+                  color: const Color(0xFFD97706),
+                  onTap: _resetAll,
+                ),
+              ],
+            )
+          : null,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -428,6 +648,7 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
           child: Column(
             children: [
               _buildAppBar(),
+              if (_step != 'intro') _buildStepIndicator(),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
@@ -467,6 +688,90 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
     );
   }
 
+  /// Step indicator: Fotograf -> Analiz -> Sonuc
+  Widget _buildStepIndicator() {
+    int activeIndex;
+    switch (_step) {
+      case 'capture':
+        activeIndex = 0;
+        break;
+      case 'analyzing':
+      case 'analyzing_nophoto':
+        activeIndex = 1;
+        break;
+      case 'result':
+      case 'invalid':
+        activeIndex = 2;
+        break;
+      default:
+        activeIndex = 0;
+    }
+
+    const labels = ['Fotograf', 'Analiz', 'Sonuc'];
+    const icons = [Icons.camera_alt, Icons.auto_awesome, Icons.check_circle];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      child: Row(
+        children: [
+          for (int i = 0; i < 3; i++) ...[
+            // Connector line before each step (except the first)
+            if (i > 0)
+              Expanded(
+                child: Container(
+                  height: 2,
+                  color: i <= activeIndex
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFFD97706).withOpacity(0.2),
+                ),
+              ),
+            // Step circle + label
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i <= activeIndex
+                        ? const Color(0xFFF59E0B)
+                        : Colors.white.withOpacity(0.6),
+                    border: Border.all(
+                      color: i <= activeIndex
+                          ? const Color(0xFFD97706)
+                          : const Color(0xFFD97706).withOpacity(0.3),
+                      width: i == activeIndex ? 2.5 : 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    icons[i],
+                    size: 16,
+                    color: i <= activeIndex
+                        ? Colors.white
+                        : const Color(0xFFD97706).withOpacity(0.4),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  labels[i],
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight:
+                        i == activeIndex ? FontWeight.bold : FontWeight.w500,
+                    color: i <= activeIndex
+                        ? const Color(0xFF92400E)
+                        : const Color(0xFF92400E).withOpacity(0.4),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildContent() {
     switch (_step) {
       case 'intro':
@@ -475,6 +780,8 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
         return _buildCaptureStep();
       case 'analyzing':
         return _buildAnalyzingStep();
+      case 'analyzing_nophoto':
+        return _buildAnalyzingNoPhotoStep();
       case 'result':
         return _buildResultStep();
       case 'invalid':
@@ -582,6 +889,39 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        // Fotografsiz Devam Et butonu
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _startNoPhotoFortune,
+            icon: const Icon(Icons.auto_fix_high, color: Color(0xFFD97706)),
+            label: const Text(
+              'Fotografsiz Devam Et',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFD97706),
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              side: const BorderSide(color: Color(0xFFD97706), width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Burcuna gore AI kahve falı yorumu al',
+          style: TextStyle(
+            fontSize: 12,
+            color: const Color(0xFF92400E).withOpacity(0.6),
+          ),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(16),
@@ -591,7 +931,7 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
             border: Border.all(color: const Color(0xFFF59E0B), width: 2),
           ),
           child: const Text(
-            '💡 Birden fazla açıdan fotoğraf yükle, daha kapsamlı yorum al!\n🔮 AI fincanındaki şekilleri gerçekten analiz eder!',
+            'Birden fazla acidan fotograf yukle, daha kapsamlı yorum al!\nAI fincanındaki sekilleri gercekten analiz eder!',
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF92400E),
@@ -719,10 +1059,26 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
 
         const SizedBox(height: 12),
 
+        // Fotografsiz secenek
+        TextButton.icon(
+          onPressed: _startNoPhotoFortune,
+          icon: Icon(Icons.auto_fix_high,
+              size: 18, color: const Color(0xFFD97706).withOpacity(0.7)),
+          label: Text(
+            'Fotografsiz Devam Et',
+            style: TextStyle(
+              color: const Color(0xFFD97706).withOpacity(0.7),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 4),
+
         TextButton(
           onPressed: () => setState(() => _step = 'intro'),
           child: const Text(
-            'Geri Dön',
+            'Geri Don',
             style: TextStyle(color: Color(0xFFD97706)),
           ),
         ),
@@ -838,8 +1194,9 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
   }
 
   Widget _buildAnalyzingStep() {
-    // İlk yüklenen resmi göster
+    // Ilk yuklenen resmi goster
     final firstImage = _images.firstWhere((f) => f != null, orElse: () => null);
+    final tip = _analyzingTips[_currentTipIndex % _analyzingTips.length];
 
     return Column(
       children: [
@@ -856,7 +1213,7 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
         if (_imageCount > 1) ...[
           const SizedBox(height: 8),
           Text(
-            '$_imageCount fotoğraf analiz ediliyor...',
+            '$_imageCount fotograf analiz ediliyor...',
             style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFFD97706),
@@ -864,9 +1221,13 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
           ),
         ],
         const SizedBox(height: 32),
-        const Text('🔮', style: TextStyle(fontSize: 64))
+        const Text('☕', style: TextStyle(fontSize: 64))
             .animate(onPlay: (controller) => controller.repeat())
-            .rotate(duration: 3.seconds),
+            .rotate(
+                begin: 0,
+                end: 1,
+                duration: 3.seconds,
+                curve: Curves.easeInOut),
         const SizedBox(height: 16),
         const Text(
           'Fincanın Okunuyor...',
@@ -878,10 +1239,10 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
         ),
         const SizedBox(height: 24),
         ...[
-          'Şekiller tespit ediliyor',
-          'Tüm açılar karşılaştırılıyor',
+          'Sekiller tespit ediliyor',
+          'Tum acılar karsılastırılıyor',
           'Semboller yorumlanıyor',
-          'Kozmik bağlantı kuruluyor',
+          'Kozmik baglantı kuruluyor',
           'Falın hazırlanıyor',
         ]
             .asMap()
@@ -909,7 +1270,160 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
                       .animate(delay: Duration(milliseconds: entry.key * 800))
                       .fadeIn(),
                 )),
+        const SizedBox(height: 28),
+        // Animated cycling tip
+        _buildAnimatedTip(tip),
       ],
+    );
+  }
+
+  /// Fotografsiz fal icin analiz ekranı
+  Widget _buildAnalyzingNoPhotoStep() {
+    final tip = _noPhotoTips[_currentTipIndex % _noPhotoTips.length];
+    final authProvider = context.read<AuthProvider>();
+    final zodiac = authProvider.selectedZodiac;
+
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        // Burc sembolü
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFF59E0B).withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              zodiac?.symbol ?? '☕',
+              style: const TextStyle(fontSize: 48),
+            ),
+          ),
+        )
+            .animate(onPlay: (c) => c.repeat(reverse: true))
+            .scale(
+                begin: const Offset(0.95, 0.95),
+                end: const Offset(1.05, 1.05),
+                duration: 2.seconds),
+        const SizedBox(height: 16),
+        if (zodiac != null)
+          Text(
+            zodiac.displayName,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF92400E),
+            ),
+          ),
+        const SizedBox(height: 24),
+        const Text('☕', style: TextStyle(fontSize: 56))
+            .animate(onPlay: (controller) => controller.repeat())
+            .rotate(
+                begin: 0,
+                end: 1,
+                duration: 3.seconds,
+                curve: Curves.easeInOut),
+        const SizedBox(height: 16),
+        const Text(
+          'Falın Hazırlanıyor...',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF92400E),
+          ),
+        ),
+        const SizedBox(height: 24),
+        ...[
+          'Burc enerjisi okunuyor',
+          'Kozmik semboller yükleniyor',
+          'Kahve falın yorumlanıyor',
+        ]
+            .asMap()
+            .entries
+            .map((entry) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFFD97706),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${entry.value}...',
+                        style: const TextStyle(color: Color(0xFFD97706)),
+                      ),
+                    ],
+                  )
+                      .animate(delay: Duration(milliseconds: entry.key * 800))
+                      .fadeIn(),
+                )),
+        const SizedBox(height: 28),
+        _buildAnimatedTip(tip),
+      ],
+    );
+  }
+
+  /// Animated tip bubble shared by both analyzing screens
+  Widget _buildAnimatedTip(String tip) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 600),
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.2),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        key: ValueKey<int>(_currentTipIndex),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.75),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFF59E0B).withOpacity(0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Text('💡', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                tip,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  color: const Color(0xFF92400E).withOpacity(0.8),
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -989,10 +1503,13 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
     final mood = _fortuneResult!['overallMood'] ?? 'neutral';
     final symbols = (_fortuneResult!['symbols'] as List<dynamic>?) ?? [];
 
+    final authProvider = context.read<AuthProvider>();
+    final zodiac = authProvider.selectedZodiac;
+
     return Column(
       children: [
-        // Fincan fotoğrafları küçük row
-        if (_imageCount > 0) ...[
+        // Fincan fotografları veya burc gostergesi
+        if (!_isNoPhotoFortune && _imageCount > 0) ...[
           SizedBox(
             height: 80,
             child: Row(
@@ -1008,6 +1525,31 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
                         ),
                       ))
                   .toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ] else if (_isNoPhotoFortune && zodiac != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFF59E0B)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(zodiac.symbol, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Text(
+                  '${zodiac.displayName} Burcu Kahve Falı',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF92400E),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -1085,7 +1627,19 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
           const [Color(0xFFA78BFA), Color(0xFF7C3AED)],
         ),
 
-        // Şans mesajı
+        // Uyarılar
+        if (_fortuneResult!['warnings'] != null &&
+            (_fortuneResult!['warnings'] as String).isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildResultCard(
+            '⚠️',
+            'Uyarılar',
+            _fortuneResult!['warnings'] ?? '',
+            const [Color(0xFFFB923C), Color(0xFFEA580C)],
+          ),
+        ],
+
+        // Sans mesajı
         if (_fortuneResult!['luckyMessage'] != null) ...[
           const SizedBox(height: 16),
           Container(
@@ -1124,69 +1678,6 @@ Yorumunu MUTLAKA aşağıdaki JSON formatında ver:
         ],
 
         const SizedBox(height: 24),
-
-        // Paylaş butonu
-        SizedBox(
-          width: double.infinity,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFD97706), Color(0xFFF59E0B)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _shareResult,
-                borderRadius: BorderRadius.circular(16),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.share, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text(
-                        'Falımı Paylaş',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        // Tekrar baktır
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _resetAll,
-            icon: const Icon(Icons.refresh, color: Color(0xFFD97706)),
-            label: const Text(
-              'Yeni Fal Baktır',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFD97706),
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: const BorderSide(color: Color(0xFFD97706)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }

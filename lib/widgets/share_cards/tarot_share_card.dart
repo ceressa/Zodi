@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'share_card_base.dart';
 
-/// Tarot falı paylaşım kartı — premium tasarım
+/// Tarot fali paylasim karti — premium tasarim
 class TarotShareCard extends StatelessWidget {
   final String cardName;
   final String interpretation;
@@ -38,13 +38,13 @@ class TarotShareCard extends StatelessWidget {
           const SizedBox(height: 10),
 
           if (isThreeCard && threeCardNames != null) ...[
-            // === Üç kart spread ===
+            // === Uc kart spread ===
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildMiniCard(threeCardNames![0], 'Geçmiş', const Color(0xFF7C3AED)),
+                _buildMiniCard(threeCardNames![0], 'Gecmis', const Color(0xFF7C3AED)),
                 const SizedBox(width: 16),
-                _buildMiniCard(threeCardNames![1], 'Şimdi', const Color(0xFFC084FC)),
+                _buildMiniCard(threeCardNames![1], 'Simdi', const Color(0xFFC084FC)),
                 const SizedBox(width: 16),
                 _buildMiniCard(threeCardNames![2], 'Gelecek', const Color(0xFFE879F9)),
               ],
@@ -62,15 +62,15 @@ class TarotShareCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
+                color: Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha: 0.10),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7C3AED).withOpacity(0.06),
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.06),
                     blurRadius: 16,
                     spreadRadius: 2,
                   ),
@@ -79,7 +79,7 @@ class TarotShareCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Başlık
+                  // Baslik
                   Row(
                     children: [
                       Container(
@@ -89,13 +89,13 @@ class TarotShareCard extends StatelessWidget {
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFFC084FC).withOpacity(0.3),
-                              const Color(0xFFE879F9).withOpacity(0.3),
+                              const Color(0xFFC084FC).withValues(alpha: 0.3),
+                              const Color(0xFFE879F9).withValues(alpha: 0.3),
                             ],
                           ),
                         ),
                         child: const Center(
-                          child: Text('🔮', style: TextStyle(fontSize: 18)),
+                          child: Text('\u{1F52E}', style: TextStyle(fontSize: 18)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -104,7 +104,7 @@ class TarotShareCard extends StatelessWidget {
                           colors: [Color(0xFFC084FC), Color(0xFFE879F9)],
                         ).createShader(bounds),
                         child: const Text(
-                          'Kartların Mesajı',
+                          'Kartlarin Mesaji',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
@@ -115,7 +115,7 @@ class TarotShareCard extends StatelessWidget {
                     ],
                   ),
 
-                  // Ayırıcı
+                  // Ayirici
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Container(
@@ -123,7 +123,7 @@ class TarotShareCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            const Color(0xFFC084FC).withOpacity(0.2),
+                            const Color(0xFFC084FC).withValues(alpha: 0.2),
                             Colors.transparent,
                           ],
                         ),
@@ -139,7 +139,7 @@ class TarotShareCard extends StatelessWidget {
                           : interpretation,
                       style: TextStyle(
                         fontSize: 22,
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         height: 1.6,
                         fontWeight: FontWeight.w400,
                       ),
@@ -168,20 +168,25 @@ class TarotShareCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFF59E0B).withOpacity(0.30),
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.30),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF59E0B).withOpacity(0.12),
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
             blurRadius: 30,
             spreadRadius: 5,
+          ),
+          BoxShadow(
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.10),
+            blurRadius: 50,
+            spreadRadius: 10,
           ),
         ],
       ),
       child: Stack(
         children: [
-          // Köşe dekorasyon
+          // Kose dekorasyon
           Positioned(
             top: 16,
             left: 16,
@@ -202,17 +207,17 @@ class TarotShareCard extends StatelessWidget {
             right: 16,
             child: Transform.scale(scaleX: -1, scaleY: -1, child: _cornerDecor()),
           ),
-          // İçerik
+          // Icerik
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('🃏', style: TextStyle(fontSize: 80)),
+                const Text('\u{1F0CF}', style: TextStyle(fontSize: 80)),
                 const SizedBox(height: 24),
                 Container(
                   width: 80,
                   height: 1,
-                  color: const Color(0xFFF59E0B).withOpacity(0.4),
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
                 ),
                 const SizedBox(height: 20),
                 Padding(
@@ -251,7 +256,7 @@ class TarotShareCard extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 17,
-            color: accentColor.withOpacity(0.7),
+            color: accentColor.withValues(alpha: 0.7),
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
           ),
@@ -265,25 +270,32 @@ class TarotShareCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                accentColor.withOpacity(0.15),
-                accentColor.withOpacity(0.05),
+                accentColor.withValues(alpha: 0.15),
+                accentColor.withValues(alpha: 0.05),
               ],
             ),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: accentColor.withOpacity(0.2),
+              color: accentColor.withValues(alpha: 0.2),
               width: 1.5,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: accentColor.withValues(alpha: 0.08),
+                blurRadius: 16,
+                spreadRadius: 2,
+              ),
+            ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('🃏', style: TextStyle(fontSize: 50)),
+              const Text('\u{1F0CF}', style: TextStyle(fontSize: 50)),
               const SizedBox(height: 14),
               Container(
                 width: 40,
                 height: 1,
-                color: accentColor.withOpacity(0.3),
+                color: accentColor.withValues(alpha: 0.3),
               ),
               const SizedBox(height: 12),
               Padding(
@@ -312,7 +324,7 @@ class _CornerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFF59E0B).withOpacity(0.45)
+      ..color = const Color(0xFFF59E0B).withValues(alpha: 0.45)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 

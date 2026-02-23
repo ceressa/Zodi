@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/membership_config.dart';
+import '../services/firebase_service.dart';
 
 /// Kullanıcının Yıldız Tozu bakiyesini yöneten provider
 class CoinProvider with ChangeNotifier {
@@ -12,10 +13,18 @@ class CoinProvider with ChangeNotifier {
   int _lastDailyBonus = 0;
   int _initialBonusAwarded = 0;
   MembershipTier _tier = MembershipTier.standard;
+  bool _bonusMessageConsumed = false;
 
   int get balance => _balance;
   int get lastDailyBonus => _lastDailyBonus;
   int get initialBonusAwarded => _initialBonusAwarded;
+
+  /// Bonus mesajı gösterildikten sonra çağır — ikinci kez göstermeyi engeller
+  void consumeBonusMessage() {
+    _lastDailyBonus = 0;
+    _initialBonusAwarded = 0;
+    _bonusMessageConsumed = true;
+  }
 
   /// Günlük reklam ödülü (tier'a göre)
   int get adRewardAmount {
@@ -29,11 +38,18 @@ class CoinProvider with ChangeNotifier {
   }
 
   /// Bakiyeyi SharedPreferences'tan yükle ve günlük bonus ver
-  Future<void> loadBalance() async {
+  /// [firebaseBalance]: Firebase'deki coinBalance değeri (varsa senkronize eder)
+  Future<void> loadBalance({int? firebaseBalance}) async {
     final prefs = await SharedPreferences.getInstance();
     _balance = prefs.getInt(_keyBalance) ?? 0;
     _initialBonusAwarded = 0;
     _lastDailyBonus = 0;
+
+    // Firebase'deki bakiyeyi her zaman kullan (admin panelden değişmiş olabilir)
+    if (firebaseBalance != null && firebaseBalance != _balance) {
+      _balance = firebaseBalance;
+      await prefs.setInt(_keyBalance, _balance);
+    }
 
     // Yeni kullanıcıya hoş geldin bonusu (ilk 3-4 deneme için yeterli)
     final initialBonusGiven = prefs.getBool('${_keyInitialBonusAwarded}_given') ?? false;
@@ -96,6 +112,16 @@ class CoinProvider with ChangeNotifier {
   Future<void> _saveBalance() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyBalance, _balance);
+
+    // Firebase'e de kaydet (senkronizasyon için)
+    try {
+      final firebase = FirebaseService();
+      if (firebase.isAuthenticated) {
+        await firebase.updateUserField('coinBalance', _balance);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Firebase coin sync error: $e');
+    }
   }
 
   String _todayString() {

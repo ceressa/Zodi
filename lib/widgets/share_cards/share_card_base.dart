@@ -61,8 +61,8 @@ class ShareCardBase extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF7C3AED).withOpacity(0.10),
-                    const Color(0xFF7C3AED).withOpacity(0.03),
+                    const Color(0xFF7C3AED).withValues(alpha:0.10),
+                    const Color(0xFF7C3AED).withValues(alpha:0.03),
                     Colors.transparent,
                   ],
                 ),
@@ -79,8 +79,8 @@ class ShareCardBase extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFA78BFA).withOpacity(0.07),
-                    const Color(0xFFA78BFA).withOpacity(0.02),
+                    const Color(0xFFA78BFA).withValues(alpha:0.07),
+                    const Color(0xFFA78BFA).withValues(alpha:0.02),
                     Colors.transparent,
                   ],
                 ),
@@ -97,7 +97,7 @@ class ShareCardBase extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFC084FC).withOpacity(0.06),
+                    const Color(0xFFC084FC).withValues(alpha:0.06),
                     Colors.transparent,
                   ],
                 ),
@@ -118,11 +118,11 @@ class ShareCardBase extends StatelessWidget {
                 height: size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(opacity),
+                  color: Colors.white.withValues(alpha:opacity),
                   boxShadow: size > 2
                       ? [
                           BoxShadow(
-                            color: Colors.white.withOpacity(opacity * 0.5),
+                            color: Colors.white.withValues(alpha:opacity * 0.5),
                             blurRadius: 4,
                             spreadRadius: 1,
                           ),
@@ -217,7 +217,7 @@ class ShareCardBase extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF7C3AED).withOpacity(0.35),
+                color: const Color(0xFF7C3AED).withValues(alpha:0.35),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -280,7 +280,7 @@ class ShareCardBase extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFF59E0B).withOpacity(0.30),
+                      color: const Color(0xFFF59E0B).withValues(alpha:0.30),
                       blurRadius: 12,
                       offset: const Offset(0, 3),
                     ),
@@ -301,7 +301,7 @@ class ShareCardBase extends StatelessWidget {
               dateStr,
               style: TextStyle(
                 fontSize: 17,
-                color: Colors.white.withOpacity(0.35),
+                color: Colors.white.withValues(alpha:0.35),
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -315,10 +315,10 @@ class ShareCardBase extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha:0.06),
         borderRadius: BorderRadius.circular(50),
         border: Border.all(
-          color: Colors.white.withOpacity(0.12),
+          color: Colors.white.withValues(alpha:0.12),
           width: 1.5,
         ),
       ),
@@ -352,8 +352,8 @@ class ShareCardBase extends StatelessWidget {
             gradient: LinearGradient(
               colors: [
                 Colors.transparent,
-                Colors.white.withOpacity(0.15),
-                Colors.white.withOpacity(0.15),
+                Colors.white.withValues(alpha:0.15),
+                Colors.white.withValues(alpha:0.15),
                 Colors.transparent,
               ],
               stops: const [0.0, 0.3, 0.7, 1.0],
@@ -368,13 +368,13 @@ class ShareCardBase extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                const Color(0xFF7C3AED).withOpacity(0.18),
-                const Color(0xFFA78BFA).withOpacity(0.10),
+                const Color(0xFF7C3AED).withValues(alpha:0.18),
+                const Color(0xFFA78BFA).withValues(alpha:0.10),
               ],
             ),
             borderRadius: BorderRadius.circular(40),
             border: Border.all(
-              color: const Color(0xFF7C3AED).withOpacity(0.20),
+              color: const Color(0xFF7C3AED).withValues(alpha:0.20),
               width: 1.5,
             ),
           ),
@@ -421,7 +421,7 @@ class ShareCardBase extends StatelessWidget {
                     'Sen de kesfet!',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.45),
+                      color: Colors.white.withValues(alpha:0.45),
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -444,7 +444,7 @@ class ShareCardBase extends StatelessWidget {
               'Bardino Technology',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha:0.2),
                 letterSpacing: 1,
               ),
             ),
@@ -457,7 +457,7 @@ class ShareCardBase extends StatelessWidget {
           '#AstroDozi  #Astroloji  #BurcYorumu',
           style: TextStyle(
             fontSize: 16,
-            color: Colors.white.withOpacity(0.20),
+            color: Colors.white.withValues(alpha:0.20),
             letterSpacing: 2,
             fontWeight: FontWeight.w400,
           ),

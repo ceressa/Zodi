@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -22,21 +24,31 @@ class GeminiService {
   final ApiUsageService _apiUsage = ApiUsageService();
   
   static const String _baseSystemPrompt = '''
-Sen Zodi'sin - Astroloji dünyasının en dürüst, en "cool" ve bazen en huysuz rehberi.
+Sen Zodi'sin - Astroloji dünyasının en samimi, en eğlenceli ve en dürüst rehberi.
 
 KİŞİLİK:
-- 25-30 yaş arası genç yetişkin enerjisi
-- Samimi, direkt, bazen alaycı ama sevecen
-- "En iyi arkadaşın" gibi - gerçekleri söyler, övgüyü hak ettiğinde över, eleştiriyi hak ettiğinde eleştirir
-- Yaşlı bir ruh genç bir bedende - hem modern hem mistik
-- Kuru, zeki mizah - bazen dark ama asla kırıcı değil
+- 25-30 yaş arası genç yetişkin enerjisi, en yakın arkadaş gibi
+- Samimi, direkt, bazen alaycı ama her zaman sevecen
+- Gerçekleri söyler ama kırıcı değil — eleştirirken bile gülümsetir
+- Hem modern hem mistik — TikTok jargonu ile antik bilgeliği harmanlar
+- Kuru, zeki mizah — pop kültür referansları, gündem esprileri yapar
+
+KONUŞMA TARZI:
+- Kullanıcıya ASLA burcuyla değil, İSMİYLE hitap et (profilde ismi var, onu kullan!)
+- "Sen bir Koç olduğun için..." gibi robot cümleler KURMA. Bunun yerine doğal konuş:
+  ✗ YANLIŞ: "Koç burcu olarak bugün enerjin yüksek olacak."
+  ✓ DOĞRU: "Bugün enerji patlaması yaşayacaksın, o yüzden spor planlarını erteleme bence!"
+- Burç bilgisini doğal olarak cümlelerin içine ser, kalıplaşmış giriş yapma
+- "Günaydın canım", "Bak sana bir şey söyleyeyim", "Dinle beni" gibi doğal girişler kullan
+- Kısa cümleler tercih et, paragraflar duvar gibi olmasın
+- Emoji kullan ama abartma (cümle başına max 1)
 
 KURALLAR:
-- Kullanıcıya ASLA 'siz' diye hitap etme, her zaman 'sen' dilini kullan
-- Gereksiz yere övme - dürüst ol
-- Tutarlı ol - önceki yorumlarınla çelişme
-- Mistik terimleri modern hayatın dertleriyle harmanla
-- Bazen sert eleştir, bazen sıcak iltifat et - ama her zaman samimi ol
+- ASLA 'siz' deme, her zaman 'sen' de
+- Kullanıcının kişisel bilgilerini (meslek, şehir, ilişki durumu, ilgi alanları) MUTLAKA yoruma dahil et
+- Astroloji dışı sorulara da eğlenceli yanıt ver (maç tahmini, yemek önerisi vs.) — gönlünü al, eğlendir
+- Gereksiz yere övme — dürüst ol ama sevecen ol
+- Tutarlı ol — önceki yorumlarınla çelişme
 ''';
 
   /// Dinamik tarih bilgisi ile zenginleştirilmiş system prompt
@@ -85,19 +97,33 @@ TARİH BİLGİSİ (KRİTİK):
     return '${_getDateAwareSystemPrompt()}\n\n$context';
   }
 
+  /// Kullanıcının adını al — prompt'lara doğrudan enjekte etmek için
+  Future<String> _getUserName() async {
+    final profile = await _historyService.getUserProfile();
+    return profile?.name ?? 'arkadaş';
+  }
+
   Future<DailyHoroscope> fetchDailyHoroscope(ZodiacSign sign) async {
     final dateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(DateTime.now());
     final systemPrompt = await _getPersonalizedPrompt();
-    
+    final userName = await _getUserName();
+
     final prompt = '''
 $systemPrompt
 
-Burç: ${sign.displayName}, Bugünün tarihi: $dateStr. Zodi olarak bugünün gerçeklerini anlat.
+Kullanıcının adı: $userName
+Kullanıcının burcu: ${sign.displayName}
+Bugünün tarihi: $dateStr
+
+ÖNEMLİ YÖNERGE: Yorumuna "$userName" diye hitap ederek başla. "Sen bir ${sign.displayName} olduğun için..." gibi yapay cümleler KURMA.
+Örnek giriş: "$userName, bugün harika bir gün seni bekliyor!" veya "Bak $userName, sana bir şey söyleyeyim..." gibi.
+Kullanıcının mesleğine, şehrine, ilişki durumuna, ilgi alanlarına değin.
+Yorumun sıcak, samimi ve kişisel olsun — sanki en yakın arkadaşıyla sohbet ediyor gibi.
 
 Yanıtı şu JSON formatında ver:
 {
-  "motto": "Günün mottosu (kısa, vurucu)",
-  "commentary": "Detaylı yorum (2-3 paragraf, Zodi tarzında dürüst, toplam 150-250 kelime, kullanıcı bilgilerine göre kişiselleştirilmiş)",
+  "motto": "Günün mottosu (kısa, vurucu, kişiye özel)",
+  "commentary": "Detaylı yorum (2-3 paragraf, samimi arkadaş tarzında, 150-250 kelime, kullanıcının ismi ve kişisel bilgileriyle kişiselleştirilmiş)",
   "love": 0-100 arası sayı,
   "money": 0-100 arası sayı,
   "health": 0-100 arası sayı,
@@ -142,11 +168,14 @@ Yanıtı şu JSON formatında ver:
     String category,
   ) async {
     final systemPrompt = await _getPersonalizedPrompt();
-    
+    final userName = await _getUserName();
+
     final prompt = '''
 $systemPrompt
 
-Burç: ${sign.displayName}, Konu: $category. Zodi gibi dürüst bir analiz yap.
+Kullanıcının adı: $userName
+Kullanıcının burcu: ${sign.displayName}, Konu: $category.
+Kullanıcıya "$userName" diye hitap et. Burcuyla değil, kişisel bilgileriyle bağlantı kur. Samimi ve doğal bir dil kullan.
 
 Yanıtı şu JSON formatında ver:
 {
@@ -192,11 +221,14 @@ Yanıtı şu JSON formatında ver:
     ZodiacSign sign2,
   ) async {
     final systemPrompt = await _getPersonalizedPrompt();
-    
+    final userName = await _getUserName();
+
     final prompt = '''
 $systemPrompt
 
-${sign1.displayName} ve ${sign2.displayName} burçları arasındaki uyumu Zodi tarzında analiz et.
+Kullanıcının adı: $userName
+Kullanıcının burcu ${sign1.displayName}, karşı tarafın burcu ${sign2.displayName}.
+Kullanıcıya "$userName" diye hitap et. Sevgilisi/partneri varsa adını kullan. Robot gibi "Bu iki burç şöyledir" deme, doğal ve samimi anlat.
 
 Yanıtı şu JSON formatında ver:
 {
@@ -231,11 +263,14 @@ Yanıtı şu JSON formatında ver:
     final weekEnd = weekStart.add(const Duration(days: 6));
     final weekRange = '${DateFormat('d MMM', 'tr_TR').format(weekStart)} - ${DateFormat('d MMM', 'tr_TR').format(weekEnd)}';
     final systemPrompt = await _getPersonalizedPrompt();
-    
+    final userName = await _getUserName();
+
     final prompt = '''
 $systemPrompt
 
-Burç: ${sign.displayName}, Hafta: $weekRange. Zodi olarak bu haftayı analiz et.
+Kullanıcının adı: $userName
+Kullanıcının burcu: ${sign.displayName}, Hafta: $weekRange.
+"$userName, bu hafta senin haftanla başlıyoruz!" gibi samimi bir giriş yap. Kişisel bilgilerini yoruma dahil et.
 
 Yanıtı şu JSON formatında ver:
 {
@@ -268,11 +303,14 @@ Yanıtı şu JSON formatında ver:
   Future<Map<String, dynamic>> fetchMonthlyHoroscope(ZodiacSign sign) async {
     final month = DateFormat('MMMM yyyy', 'tr_TR').format(DateTime.now());
     final systemPrompt = await _getPersonalizedPrompt();
-    
+    final userName = await _getUserName();
+
     final prompt = '''
 $systemPrompt
 
-Burç: ${sign.displayName}, Ay: $month. Zodi olarak bu ayı detaylı analiz et.
+Kullanıcının adı: $userName
+Kullanıcının burcu: ${sign.displayName}, Ay: $month.
+Kullanıcıya "$userName" diye hitap et. Samimi ve doğal konuş. Kişisel bilgilerini (meslek, şehir, ilişki durumu) aya özel yoruma entegre et.
 
 Yanıtı şu JSON formatında ver:
 {
@@ -493,13 +531,15 @@ Yanıtı şu JSON formatında ver:
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     final dateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(tomorrow);
     final systemPrompt = await _getPersonalizedPrompt();
-    
+    final userName = await _getUserName();
+
     final prompt = '''
 $systemPrompt
 
-Burç: ${sign.displayName}, Yarının tarihi: $dateStr. 
+Kullanıcının adı: $userName
+Kullanıcının burcu: ${sign.displayName}, Yarının tarihi: $dateStr.
 
-Zodi olarak yarın için KISA bir önizleme yap. Sadece 2-3 cümle, merak uyandıran, vurucu bir önizleme. Detaya girme, sadece genel havayı ver.
+Kullanıcıya "$userName" diye hitap et. Yarın için 2-3 cümlelik kısa, merak uyandıran, samimi bir önizleme yap. Doğal konuş.
 
 Yanıtı düz metin olarak ver, JSON formatında değil. Sadece önizleme metnini yaz.
 ''';
@@ -524,17 +564,69 @@ Yanıtı düz metin olarak ver, JSON formatında değil. Sadece önizleme metnin
     }
   }
 
+  /// 7 gunluk emoji tahmini
+  Future<List<Map<String, dynamic>>> fetchWeeklyEmojiForecast(ZodiacSign sign) async {
+    final now = DateTime.now();
+    final days = List.generate(7, (i) {
+      final date = now.add(Duration(days: i));
+      return DateFormat('EEEE d MMMM', 'tr_TR').format(date);
+    });
+    final systemPrompt = await _getPersonalizedPrompt();
+
+    final prompt = '''
+$systemPrompt
+
+Burc: ${sign.displayName}
+Tarihler: ${days.join(', ')}
+
+Her gun icin bir emoji, ruh hali puani (0-100) ve tek kelimelik Turkce anahtar kelime ver.
+
+Yaniti su JSON formatinda ver:
+```json
+{
+  "forecasts": [
+    {"emoji": "\u{1F525}", "moodScore": 85, "keyword": "Enerjik"},
+    {"emoji": "\u{2728}", "moodScore": 72, "keyword": "Parlak"},
+    {"emoji": "\u{1F324}", "moodScore": 55, "keyword": "Sakin"},
+    {"emoji": "\u{1F4AB}", "moodScore": 78, "keyword": "Ilham"},
+    {"emoji": "\u{1F327}", "moodScore": 30, "keyword": "Durgun"},
+    {"emoji": "\u{1F525}", "moodScore": 90, "keyword": "Atesli"},
+    {"emoji": "\u{2728}", "moodScore": 65, "keyword": "Huzurlu"}
+  ]
+}
+```
+''';
+
+    try {
+      final response = await _generate(prompt, 'weekly_emoji_forecast');
+      final text = response.text ?? '{}';
+
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(text);
+      final jsonStr = jsonMatch?.group(1) ?? text;
+
+      final json = jsonDecode(jsonStr);
+      final forecasts = json['forecasts'] as List<dynamic>? ?? [];
+      return forecasts.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Weekly emoji forecast error: $e');
+      rethrow;
+    }
+  }
+
   Future<DailyHoroscope> fetchTomorrowHoroscope(ZodiacSign sign) async {
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     final dateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(tomorrow);
     final systemPrompt = await _getPersonalizedPrompt();
-    
+    final userName = await _getUserName();
+
     final prompt = '''
 $systemPrompt
 
-Burç: ${sign.displayName}, Yarının tarihi: $dateStr. Zodi olarak YARININ gerçeklerini anlat.
+Kullanıcının adı: $userName
+Kullanıcının burcu: ${sign.displayName}, Yarının tarihi: $dateStr.
+Kullanıcıya "$userName" diye hitap et. Doğal ve samimi konuş. Burcuyla değil kişisel bilgileriyle bağ kur.
 
-ÖNEMLİ: Bu yarın için bir yorum, bugün için değil. Yarın ne olacağını anlat.
+ÖNEMLİ: Bu YARIN için bir yorum, bugün için değil.
 
 Yanıtı şu JSON formatında ver:
 {
@@ -621,15 +713,19 @@ Sadece düz metin olarak yanıtla, JSON formatı kullanma. Maksimum 80 kelime.
     String? moonSign,
   }) async {
     final systemPrompt = await _getPersonalizedPrompt();
+    final userName = await _getUserName();
 
     final prompt = '''
 $systemPrompt
 
+Kullanıcının adı: $userName
 DOGUM BILGILERI:
 - Tarih: $birthDate | Saat: $birthTime | Yer: $birthPlace
 - Gunes Burcu: $zodiacSign
 ${risingSign != null ? '- Yukselen Burc: $risingSign' : ''}
 ${moonSign != null ? '- Ay Burcu: $moonSign' : ''}
+
+ÖNEMLİ: Kullanıcıya "$userName" diye hitap et. Doğal, samimi ve eğlenceli konuş. "Sen bir X burcusun" gibi klişe cümleler KURMA.
 
 $promptTemplate
 
@@ -698,6 +794,237 @@ Sadece düz metin olarak yanıtla, JSON formatı kullanma. Maksimum 60 kelime.
     } catch (e) {
       debugPrint('❌ Beauty tip error: $e');
       return 'Ay enerjisi bugün güzelliğini destekliyor. Kendine iyi bak!';
+    }
+  }
+
+  // ============ RUH EŞİ ÇİZİMİ (IMAGEN 3) ============
+
+  /// Ruh eşi çizimi oluştur — iki aşamalı: Gemini text → Imagen 3 görsel
+  /// [gender]: Ruh eşinin cinsiyeti ('erkek' veya 'kadın') — kullanıcı ekrandan seçiyor
+  Future<Uint8List> generateSoulmateSketch({
+    required String zodiacSign,
+    required String birthDate,
+    required String gender,
+    String? risingSign,
+    String? moonSign,
+  }) async {
+    final soulmateGenderEn = gender == 'erkek' ? 'male' : 'female';
+
+    // Adım 1: Gemini ile fiziksel tanım oluştur
+    final descriptionPrompt = '''
+GÖREV: Aşağıdaki doğum bilgilerine göre bu kişinin ruh eşinin FİZİKSEL GÖRÜNÜMÜNÜ tanımla.
+
+Ruh eşinin cinsiyeti: $gender
+
+Doğum Bilgileri:
+- Güneş Burcu: $zodiacSign
+- Doğum Tarihi: $birthDate
+${risingSign != null ? '- Yükselen Burç: $risingSign' : ''}
+${moonSign != null ? '- Ay Burcu: $moonSign' : ''}
+
+KURALLAR:
+1. Ruh eşi $gender olmalı
+2. Türk/Akdeniz fenotipine uygun: koyu veya kestane saç, ela/kahve/yeşil göz, buğday ten, doğal Anadolu tipleri
+3. Sıradan, günlük bir insan tarif et — manken veya ünlü gibi DEĞİL
+4. Makyajsız, doğal hali ile tanımla
+5. Saç rengi/stili, göz rengi, ten rengi, yüz şekli gibi somut detaylar ver
+6. Yanıtı tamamen İNGİLİZCE yaz
+7. Maksimum 50 kelime, sadece fiziksel tanım, başka hiçbir şey yazma
+
+Yanıt:
+''';
+
+    try {
+      final descResponse = await _generate(descriptionPrompt, 'soulmate_sketch_desc');
+      final description = descResponse.text?.trim() ?? '';
+
+      if (description.isEmpty) {
+        throw Exception('Fiziksel tanım oluşturulamadı');
+      }
+
+      // Adım 2: Doğal, günlük, gerçekçi fotoğraf — farklı mekanlardan rastgele seç
+      final locations = [
+        'sitting at a simple Turkish café table with a tea glass, flat indoor daylight',
+        'walking on a narrow street in an old Turkish neighborhood, cloudy day',
+        'standing at a bus stop checking their phone, ordinary overcast light',
+        'sitting on a park bench, flat natural daylight, no dramatic lighting',
+        'at a simple kitchen counter making coffee, normal room lighting',
+        'browsing shelves at a small grocery store, fluorescent store lighting',
+        'sitting on apartment stairs scrolling phone, ordinary hallway light',
+        'at an outdoor market carrying a bag, midday flat sunlight',
+        'leaning on a wall texting someone, shade under a building overhang',
+        'waiting in line at a bakery, normal indoor light from window',
+        'walking on a sidewalk with headphones, regular daytime light',
+        'sitting at a work desk in front of a laptop, office lighting',
+      ];
+      final randomLocation = locations[DateTime.now().millisecond % locations.length];
+
+      final imagePrompt = 'iPhone photo of a real ordinary $soulmateGenderEn person, '
+          'Turkish/Mediterranean ethnicity, age 25-35: '
+          '$description. '
+          '$randomLocation. '
+          'Caught in a random moment, NOT posing, NOT looking at camera, doing something mundane, '
+          'genuine bored or neutral expression, natural slouchy body language, '
+          'zero makeup, messy or unstyled hair, wrinkled everyday clothes, '
+          'average looking real person NOT attractive NOT a model, '
+          'slightly unflattering angle like a friend took this photo without warning, '
+          'no color grading, no filters, no dramatic lighting, no bokeh, '
+          'visible skin texture with pores and blemishes, '
+          'slightly grainy low quality like a real phone camera photo, '
+          'NOT a painting, NOT digital art, NOT illustration, NOT studio shot, NOT glamorous, NOT cinematic. '
+          'Raw unedited phone snapshot look. No text, no watermark.';
+
+      final imageBytes = await _generateImageWithImagen(imagePrompt);
+
+      // Kullanımı logla
+      await _apiUsage.logApiCall(
+        feature: 'soulmate_sketch_image',
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+      );
+
+      return imageBytes;
+    } catch (e) {
+      debugPrint('❌ Soulmate sketch error: $e');
+      rethrow;
+    }
+  }
+
+  /// Imagen 4 REST API ile görsel üret
+  Future<Uint8List> _generateImageWithImagen(String prompt) async {
+    final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+    if (apiKey.isEmpty) {
+      throw Exception('GEMINI_API_KEY bulunamadı');
+    }
+
+    // Önce Imagen 4 dene, başarısız olursa Gemini native image generation kullan
+    try {
+      return await _tryImagen4(prompt, apiKey);
+    } catch (e) {
+      debugPrint('⚠️ Imagen 4 başarısız, Gemini native deneniyor: $e');
+      return await _tryGeminiNativeImage(prompt, apiKey);
+    }
+  }
+
+  /// Imagen 4 REST API
+  Future<Uint8List> _tryImagen4(String prompt, String apiKey) async {
+    final uri = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/'
+      'imagen-4.0-generate-001:predict',
+    );
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 60);
+
+    try {
+      final request = await client.postUrl(uri);
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('x-goog-api-key', apiKey);
+      request.write(jsonEncode({
+        'instances': [
+          {'prompt': prompt}
+        ],
+        'parameters': {
+          'sampleCount': 1,
+          'aspectRatio': '3:4',
+        },
+      }));
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 90),
+        onTimeout: () => throw Exception('Görsel oluşturma zaman aşımına uğradı'),
+      );
+
+      final responseBody = await response.transform(utf8.decoder).join();
+      final json = jsonDecode(responseBody) as Map<String, dynamic>;
+
+      if (response.statusCode != 200) {
+        final errorMsg = (json['error'] as Map<String, dynamic>?)?['message']
+            ?? 'Bilinmeyen hata (${response.statusCode})';
+        throw Exception('Imagen API hatası: $errorMsg');
+      }
+
+      final predictions = json['predictions'] as List<dynamic>?;
+      if (predictions == null || predictions.isEmpty) {
+        throw Exception('Görsel üretilemedi — API boş yanıt döndü');
+      }
+
+      final base64Image = predictions[0]['bytesBase64Encoded'] as String?;
+      if (base64Image == null || base64Image.isEmpty) {
+        throw Exception('Görsel verisi alınamadı');
+      }
+
+      return base64Decode(base64Image);
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Gemini native image generation (fallback)
+  Future<Uint8List> _tryGeminiNativeImage(String prompt, String apiKey) async {
+    final uri = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/'
+      'gemini-2.5-flash-preview-05-20:generateContent',
+    );
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 90);
+
+    try {
+      final request = await client.postUrl(uri);
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('x-goog-api-key', apiKey);
+      request.write(jsonEncode({
+        'contents': [
+          {
+            'parts': [
+              {'text': 'Generate an image: $prompt'}
+            ]
+          }
+        ],
+        'generationConfig': {
+          'responseModalities': ['TEXT', 'IMAGE'],
+        },
+      }));
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 90),
+        onTimeout: () => throw Exception('Görsel oluşturma zaman aşımına uğradı'),
+      );
+
+      final responseBody = await response.transform(utf8.decoder).join();
+      final json = jsonDecode(responseBody) as Map<String, dynamic>;
+
+      if (response.statusCode != 200) {
+        final errorMsg = (json['error'] as Map<String, dynamic>?)?['message']
+            ?? 'Bilinmeyen hata (${response.statusCode})';
+        throw Exception('Gemini Image hatası: $errorMsg');
+      }
+
+      // Gemini native response: candidates[0].content.parts[] — look for inlineData
+      final candidates = json['candidates'] as List<dynamic>?;
+      if (candidates == null || candidates.isEmpty) {
+        throw Exception('Gemini görsel üretemedi — boş yanıt');
+      }
+
+      final parts = (candidates[0]['content'] as Map<String, dynamic>?)?['parts']
+          as List<dynamic>?;
+      if (parts == null) throw Exception('Yanıtta parts bulunamadı');
+
+      for (final part in parts) {
+        final inlineData = part['inlineData'] as Map<String, dynamic>?;
+        if (inlineData != null) {
+          final base64Data = inlineData['data'] as String?;
+          if (base64Data != null && base64Data.isNotEmpty) {
+            return base64Decode(base64Data);
+          }
+        }
+      }
+
+      throw Exception('Yanıtta görsel verisi bulunamadı');
+    } finally {
+      client.close();
     }
   }
 }

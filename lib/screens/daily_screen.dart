@@ -20,6 +20,14 @@ import '../services/usage_limit_service.dart';
 import '../services/activity_log_service.dart';
 import '../widgets/share_cards/daily_share_card.dart';
 import '../widgets/limit_reached_dialog.dart';
+import '../widgets/weekly_emoji_forecast.dart';
+import '../services/daily_discovery_service.dart';
+import '../config/fun_feature_config.dart';
+import '../widgets/time_based_background.dart';
+import 'fun_feature_screen.dart';
+import 'soulmate_sketch_screen.dart';
+import 'premium_screen.dart';
+import '../theme/cosmic_page_route.dart';
 
 class DailyScreen extends StatefulWidget {
   const DailyScreen({super.key});
@@ -42,6 +50,14 @@ class _DailyScreenState extends State<DailyScreen>
   DateTime? _sessionStartTime;
   bool _isLoadingTomorrow = false;
 
+  // Gunun Kesfi
+  final DailyDiscoveryService _dailyDiscovery = DailyDiscoveryService();
+  late final FunFeatureConfig _todaysFeature;
+  late final FunFeatureConfig _tomorrowsFeature;
+  late final int _discountedPrice;
+  late final int _originalPrice;
+  bool _discountUsed = false;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -56,6 +72,18 @@ class _DailyScreenState extends State<DailyScreen>
     )..repeat(reverse: true);
     _sessionStartTime = DateTime.now();
     _loadTomorrowPreviewFromCache();
+
+    // Gunun Kesfi
+    _todaysFeature = _dailyDiscovery.getTodaysFeature();
+    _tomorrowsFeature = _dailyDiscovery.getTomorrowsFeature();
+    _discountedPrice = _dailyDiscovery.getDiscountedPrice(_todaysFeature);
+    _originalPrice = _dailyDiscovery.getOriginalPrice(_todaysFeature);
+    _checkDiscountStatus();
+  }
+
+  Future<void> _checkDiscountStatus() async {
+    final used = await _dailyDiscovery.hasUsedTodaysDiscount();
+    if (mounted) setState(() => _discountUsed = used);
   }
 
   Future<void> _loadTomorrowPreviewFromCache() async {
@@ -125,6 +153,9 @@ class _DailyScreenState extends State<DailyScreen>
       await horoscopeProvider.fetchDailyHoroscope(authProvider.selectedZodiac!);
       await _activityLog.logDailyHoroscope(authProvider.selectedZodiac!.name);
       _confettiController.play();
+
+      // Trigger weekly emoji forecast
+      horoscopeProvider.fetchWeeklyEmojiForecast(authProvider.selectedZodiac!);
 
       // Premium değilse sayacı artır
       if (!authProvider.isPremium) {
@@ -287,23 +318,24 @@ class _DailyScreenState extends State<DailyScreen>
     final bgColor = const Color(0xFFF4F1F8);
 
     return Scaffold(
-      backgroundColor: bgColor,
-      body: Stack(
-        children: [
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              colors: const [
-                AppColors.accentPurple,
-                AppColors.accentBlue,
-                AppColors.accentPink,
-                AppColors.gold,
-              ],
+      backgroundColor: Colors.transparent,
+      body: TimeBasedBackground(
+        child: Stack(
+          children: [
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirectionality: BlastDirectionality.explosive,
+                colors: const [
+                  AppColors.accentPurple,
+                  AppColors.accentBlue,
+                  AppColors.accentPink,
+                  AppColors.gold,
+                ],
+              ),
             ),
-          ),
-          RefreshIndicator(
+            RefreshIndicator(
             onRefresh: _loadHoroscope,
             color: AppColors.accentPurple,
             child: SingleChildScrollView(
@@ -329,7 +361,8 @@ class _DailyScreenState extends State<DailyScreen>
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -529,6 +562,20 @@ class _DailyScreenState extends State<DailyScreen>
         // Motto Card
         _buildMottoCard(horoscope.motto),
         const SizedBox(height: 14),
+
+        // 7-day emoji forecast
+        Builder(
+          builder: (context) {
+            final forecasts = horoscopeProvider.weeklyEmojiForecast;
+            if (forecasts != null && forecasts.isNotEmpty) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: WeeklyEmojiForecast(forecasts: forecasts),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
 
         // Commentary
         AnimatedCard(
@@ -734,6 +781,14 @@ class _DailyScreenState extends State<DailyScreen>
           ),
         ),
 
+        // Gunun Kesfi Banner
+        if (_todaysFeature.coinCost > 0) ...[
+          const SizedBox(height: 16),
+          _buildDailyDiscoveryBanner(authProvider),
+          const SizedBox(height: 8),
+          _buildTomorrowTeaser(),
+        ],
+
         // Tomorrow Preview (non-premium)
         if (!authProvider.isPremium) ...[
           const SizedBox(height: 12),
@@ -779,6 +834,316 @@ class _DailyScreenState extends State<DailyScreen>
         ],
       ],
     );
+  }
+
+  Widget _buildDailyDiscoveryBanner(AuthProvider authProvider) {
+    final canAccess = _todaysFeature.canAccess(authProvider.membershipTier);
+
+    return GestureDetector(
+      onTap: () {
+        if (_discountUsed) return;
+        if (!canAccess) {
+          Navigator.push(context, CosmicPageRoute(page: const PremiumScreen()));
+          return;
+        }
+        Navigator.push(
+          context,
+          CosmicPageRoute(
+            page: _todaysFeature.isImageFeature
+                ? SoulmateSketchScreen(config: _todaysFeature)
+                : FunFeatureScreen(
+                    config: _todaysFeature,
+                    overrideCoinCost: _discountUsed ? null : _discountedPrice,
+                  ),
+          ),
+        ).then((_) => _checkDiscountStatus());
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF59E0B), Color(0xFFEA580C)],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF59E0B).withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Ust satir
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('🌟', style: TextStyle(fontSize: 12)),
+                      SizedBox(width: 4),
+                      Text(
+                        'Günün Keşfi',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  'Sadece bugün! ✨',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withOpacity(0.85),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Emoji + baslik
+            Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: Center(
+                    child: Text(_todaysFeature.emoji, style: const TextStyle(fontSize: 28)),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _todaysFeature.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _todaysFeature.subtitle,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Alt satir
+            if (_discountUsed)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle_rounded, size: 18, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Bugünkü keşfini yaptın!',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (!canAccess)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock_rounded, size: 16, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Altın üyelikte %50 indirimli!',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.white70),
+                  ],
+                ),
+              )
+            else
+              Row(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.monetization_on, size: 18, color: Colors.white70),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$_originalPrice',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.5),
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: Colors.white.withOpacity(0.5),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$_discountedPrice',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Yıldız Tozu',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Keşif Yap',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFEA580C),
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded, size: 16, color: Color(0xFFEA580C)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05);
+  }
+
+  Widget _buildTomorrowTeaser() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1B4B).withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF7C3AED).withOpacity(0.08),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.event_rounded,
+            size: 18,
+            color: const Color(0xFF7C3AED).withOpacity(0.5),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Yarın:',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF1E1B4B).withOpacity(0.45),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(_tomorrowsFeature.emoji, style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              _tomorrowsFeature.title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1E1B4B).withOpacity(0.6),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              '%50',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFFB45309),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms);
   }
 
   Widget _buildMottoCard(String motto) {

@@ -47,16 +47,16 @@ class DailyShareCard extends StatelessWidget {
               ),
               border: Border.all(
                 width: 2,
-                color: const Color(0xFFE879F9).withOpacity(0.3),
+                color: const Color(0xFFE879F9).withValues(alpha:0.3),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF7C3AED).withOpacity(0.30),
+                  color: const Color(0xFF7C3AED).withValues(alpha:0.30),
                   blurRadius: 40,
                   spreadRadius: 8,
                 ),
                 BoxShadow(
-                  color: const Color(0xFFA78BFA).withOpacity(0.15),
+                  color: const Color(0xFFA78BFA).withValues(alpha:0.15),
                   blurRadius: 80,
                   spreadRadius: 20,
                 ),
@@ -74,15 +74,15 @@ class DailyShareCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(30),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withValues(alpha:0.05),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withOpacity(0.12),
+                color: Colors.white.withValues(alpha:0.12),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF7C3AED).withOpacity(0.08),
+                  color: const Color(0xFF7C3AED).withValues(alpha:0.08),
                   blurRadius: 20,
                   spreadRadius: 2,
                 ),
@@ -110,7 +110,7 @@ class DailyShareCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 27,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.85),
+                    color: Colors.white.withValues(alpha:0.85),
                     fontStyle: FontStyle.italic,
                     height: 1.4,
                     letterSpacing: 0.3,
@@ -161,7 +161,7 @@ class DailyShareCard extends StatelessWidget {
                 : commentary,
             style: TextStyle(
               fontSize: 21,
-              color: Colors.white.withOpacity(0.4),
+              color: Colors.white.withValues(alpha:0.4),
               height: 1.5,
               fontWeight: FontWeight.w400,
             ),
@@ -178,15 +178,15 @@ class DailyShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
+        color: color.withValues(alpha:0.06),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: color.withOpacity(0.15),
+          color: color.withValues(alpha:0.15),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.06),
+            color: color.withValues(alpha:0.06),
             blurRadius: 12,
             spreadRadius: 1,
           ),
@@ -205,7 +205,7 @@ class DailyShareCard extends StatelessWidget {
                     label,
                     style: TextStyle(
                       fontSize: 19,
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha:0.6),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -228,8 +228,8 @@ class DailyShareCard extends StatelessWidget {
               height: 8,
               child: LinearProgressIndicator(
                 value: value / 100,
-                backgroundColor: Colors.white.withOpacity(0.06),
-                valueColor: AlwaysStoppedAnimation(color.withOpacity(0.7)),
+                backgroundColor: Colors.white.withValues(alpha:0.06),
+                valueColor: AlwaysStoppedAnimation(color.withValues(alpha:0.7)),
               ),
             ),
           ),
@@ -242,9 +242,9 @@ class DailyShareCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBBF24).withOpacity(0.08),
+        color: const Color(0xFFFBBF24).withValues(alpha:0.08),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFFFBBF24).withOpacity(0.15)),
+        border: Border.all(color: const Color(0xFFFBBF24).withValues(alpha:0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -255,7 +255,7 @@ class DailyShareCard extends StatelessWidget {
             text,
             style: TextStyle(
               fontSize: 20,
-              color: const Color(0xFFFBBF24).withOpacity(0.8),
+              color: const Color(0xFFFBBF24).withValues(alpha:0.8),
               fontWeight: FontWeight.w600,
             ),
           ),

@@ -13,10 +13,11 @@ service cloud.firestore {
       // Admin tüm kullanıcıları okuyabilir, kullanıcı sadece kendisini
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
 
-      // Yazma: Sadece kendi verisini, veri boyutu sınırıyla
+      // Yazma: Kendi verisini veya admin güncelleyebilir
       allow create: if request.auth != null && request.auth.uid == userId
                     && request.resource.data.keys().size() < 100;
-      allow update: if request.auth != null && request.auth.uid == userId
+      allow update: if request.auth != null
+                    && (request.auth.uid == userId || isAdmin())
                     && request.resource.data.keys().size() < 100;
       allow delete: if request.auth != null && request.auth.uid == userId;
 

@@ -215,12 +215,20 @@ class _CosmicCalendarScreenState extends State<CosmicCalendarScreen> {
                     )
                   : Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 0),
                         child: Column(
                           children: [
-                            _buildCalendarGrid(),
-                            const SizedBox(height: 16),
-                            if (_selectedDay != null) _buildDayDetail(),
+                            if (_selectedTab == 0) _buildMonthlySummary(),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Column(
+                                children: [
+                                  _buildCalendarGrid(),
+                                  const SizedBox(height: 16),
+                                  if (_selectedDay != null) _buildDayDetail(),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -262,6 +270,203 @@ class _CosmicCalendarScreenState extends State<CosmicCalendarScreen> {
         ),
       ),
     );
+  }
+
+  /// Ay icin onem sirasina gore olay onceliklendirmesi
+  int _eventPriority(AstroEvent event) {
+    switch (event.type) {
+      case AstroEventType.solarEclipse:
+      case AstroEventType.lunarEclipse:
+        return 0;
+      case AstroEventType.mercuryRetrograde:
+      case AstroEventType.venusRetrograde:
+      case AstroEventType.marsRetrograde:
+      case AstroEventType.jupiterRetrograde:
+      case AstroEventType.saturnRetrograde:
+        return 1;
+      case AstroEventType.fullMoon:
+      case AstroEventType.newMoon:
+        return 2;
+      case AstroEventType.zodiacSeasonChange:
+        return 3;
+    }
+  }
+
+  /// Ayin enerjisini belirle
+  String _getMonthEnergyLabel(List<AstroEvent> events) {
+    final hasEclipse = events.any((e) =>
+        e.type == AstroEventType.solarEclipse ||
+        e.type == AstroEventType.lunarEclipse);
+    final retroCount = events.where((e) =>
+        e.type == AstroEventType.mercuryRetrograde ||
+        e.type == AstroEventType.venusRetrograde ||
+        e.type == AstroEventType.marsRetrograde ||
+        e.type == AstroEventType.jupiterRetrograde ||
+        e.type == AstroEventType.saturnRetrograde).length;
+
+    if (hasEclipse && retroCount >= 2) return 'Yoğun Dönüşüm';
+    if (hasEclipse) return 'Güçlü Değişim';
+    if (retroCount >= 2) return 'İçsel Sorgulama';
+    if (retroCount == 1) return 'Yavaşlama & Gözden Geçirme';
+    return 'Akıcı & Dengeli';
+  }
+
+  /// Ayin enerjisine göre emoji
+  String _getMonthEnergyEmoji(String energyLabel) {
+    switch (energyLabel) {
+      case 'Yoğun Dönüşüm':
+        return '🔥';
+      case 'Güçlü Değişim':
+        return '⚡';
+      case 'İçsel Sorgulama':
+        return '🔮';
+      case 'Yavaşlama & Gözden Geçirme':
+        return '🌀';
+      default:
+        return '🌿';
+    }
+  }
+
+  Widget _buildMonthlySummary() {
+    final monthNameOnly = DateFormat('MMMM', 'tr_TR').format(_currentMonth);
+    final capitalizedMonth =
+        monthNameOnly.substring(0, 1).toUpperCase() + monthNameOnly.substring(1);
+
+    final eventCount = _monthEvents.length;
+
+    // En onemli 3 olayı sec (tutulma > retro > dolunay/yeniay > mevsim)
+    final sortedEvents = List<AstroEvent>.from(_monthEvents)
+      ..sort((a, b) {
+        final priorityCompare = _eventPriority(a).compareTo(_eventPriority(b));
+        if (priorityCompare != 0) return priorityCompare;
+        return a.date.compareTo(b.date);
+      });
+
+    // Ayni tür retrolari tekrarlamamak icin unique basliklar al
+    final seen = <String>{};
+    final keyEvents = <AstroEvent>[];
+    for (final event in sortedEvents) {
+      final key = '${event.title}_${event.date.day}';
+      if (!seen.contains(key) && keyEvents.length < 3) {
+        seen.add(key);
+        keyEvents.add(event);
+      }
+    }
+
+    final energyLabel = _getMonthEnergyLabel(_monthEvents);
+    final energyEmoji = _getMonthEnergyEmoji(energyLabel);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4C1D95), Color(0xFF7C3AED)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Baslik
+          Row(
+            children: [
+              const Text('📅', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 10),
+              Text(
+                '$capitalizedMonth Özeti',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Olay sayisi
+          Text(
+            '$eventCount astrolojik olay',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Onemli olaylar
+          ...keyEvents.map((event) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Text(event.emoji, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${event.title} - ${DateFormat('d MMM', 'tr_TR').format(event.date)}',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+
+          const SizedBox(height: 12),
+
+          // Ayin enerjisi
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Text(energyEmoji, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ayın Enerjisi',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      energyLabel,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05, end: 0);
   }
 
   Widget _buildCalendarGrid() {

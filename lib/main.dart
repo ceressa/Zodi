@@ -15,6 +15,7 @@ import 'constants/colors.dart';
 import 'services/ad_service.dart';
 import 'services/firebase_service.dart';
 import 'services/notification_service.dart';
+import 'services/storage_service.dart';
 import 'services/streak_service.dart';
 import 'services/astronomy_service.dart';
 import 'services/revenue_cat_service.dart';
@@ -57,7 +58,30 @@ void main() async {
   
   // Check if app was launched from a notification (cold start)
   await NotificationService().checkLaunchNotification();
-  
+
+  // Restore notifications if previously enabled
+  final storageService = StorageService();
+  final notificationsEnabled = await storageService.getNotificationsEnabled();
+  if (notificationsEnabled) {
+    final timeString = await storageService.getNotificationTime();
+    int hour = 9;
+    int minute = 0;
+    if (timeString != null) {
+      final parts = timeString.split(':');
+      if (parts.length == 2) {
+        hour = int.tryParse(parts[0]) ?? 9;
+        minute = int.tryParse(parts[1]) ?? 0;
+      }
+    }
+    final zodiac = await storageService.getSelectedZodiac();
+    await NotificationService().restoreNotifications(
+      enabled: true,
+      hour: hour,
+      minute: minute,
+      zodiacName: zodiac?.displayName ?? 'Koç',
+    );
+  }
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,

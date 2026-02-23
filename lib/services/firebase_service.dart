@@ -1070,6 +1070,41 @@ class FirebaseService {
     }
   }
 
+  // Tek bir kullanıcı alanını güncelle
+  Future<void> updateUserField(String field, dynamic value) async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
+    await _firestore.collection('users').doc(userId).update({field: value});
+  }
+
+  // ============ RUH EŞİ ÇİZİMİ — FREE-ONCE TAKİBİ ============
+
+  /// Platinyum kullanıcı ücretsiz hakkını kullanmış mı?
+  Future<bool> hasSoulmateSketchFreeUsed() async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return true;
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      return doc.data()?['soulmateSketchFreeUsed'] ?? false;
+    } catch (e) {
+      debugPrint('soulmateSketchFreeUsed okuma hatası: $e');
+      return true; // Hata durumunda güvenli taraf: ücretsiz hakkı yok say
+    }
+  }
+
+  /// Ücretsiz hakkı kullanıldı olarak işaretle
+  Future<void> markSoulmateSketchFreeUsed() async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'soulmateSketchFreeUsed': true,
+      });
+    } catch (e) {
+      debugPrint('soulmateSketchFreeUsed yazma hatası: $e');
+    }
+  }
+
   // ============ TAROT OKUMA YÖNETİMİ ============
 
   // Tarot okumasını kaydet

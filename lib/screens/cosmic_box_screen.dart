@@ -9,6 +9,7 @@ import '../providers/auth_provider.dart';
 import '../services/ad_service.dart';
 import '../services/share_service.dart';
 import '../widgets/share_cards/cosmic_box_share_card.dart';
+import '../widgets/sticky_bottom_actions.dart';
 
 class CosmicBoxScreen extends StatefulWidget {
   const CosmicBoxScreen({super.key});
@@ -233,6 +234,25 @@ class _CosmicBoxScreenState extends State<CosmicBoxScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F5FF),
+      bottomNavigationBar: (_isOpened && _reward != null)
+          ? StickyBottomActions(
+              children: [
+                StickyBottomActions.primaryButton(
+                  label: 'Paylaş',
+                  icon: Icons.share_rounded,
+                  gradient: [AppColors.accentPurple, const Color(0xFFA78BFA)],
+                  onTap: _shareReward,
+                ),
+                const SizedBox(width: 12),
+                StickyBottomActions.outlineButton(
+                  label: 'Bir Tane Daha!',
+                  icon: Icons.play_circle_outline,
+                  color: AppColors.accentPurple,
+                  onTap: _openBoxWithAd,
+                ),
+              ],
+            )
+          : null,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -590,90 +610,7 @@ class _CosmicBoxScreenState extends State<CosmicBoxScreen>
           ),
         ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.3),
 
-        const SizedBox(height: 32),
-
-        // Paylaş butonu
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: AppColors.cosmicGradient,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _shareReward(),
-              borderRadius: BorderRadius.circular(20),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.share, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text(
-                      'Paylaş',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ).animate().fadeIn(delay: 900.ms),
-
-        const SizedBox(height: 16),
-
-        // Ekstra kutu (reklam izle)
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: AppColors.purpleGradient,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _openBoxWithAd,
-              borderRadius: BorderRadius.circular(20),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.play_circle_outline, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text(
-                      'Reklam İzle + Bir Tane Daha!',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ).animate().fadeIn(delay: 1100.ms),
-
-        const SizedBox(height: 16),
-
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(
-            'Kapat',
-            style: TextStyle(
-              color: isDark ? Colors.white54 : AppColors.textMuted,
-              fontSize: 16,
-            ),
-          ),
-        ),
+        const SizedBox(height: 24),
       ],
     );
   }

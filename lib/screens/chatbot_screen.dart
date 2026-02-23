@@ -29,20 +29,62 @@ class _ChatbotScreenState extends State<ChatbotScreen>
   final List<_ChatMessage> _messages = [];
   bool _isTyping = false;
   int _freeQuestionsToday = 0;
-  static const int _maxFreeQuestions = 2;
+  static const int _maxFreeQuestions = 5;
 
   @override
   bool get wantKeepAlive => widget.embeddedMode; // Tab modunda state koru
 
-  // Önerilen sorular
-  static const List<String> _suggestedQuestions = [
-    'Bugün iş değiştirmeli miyim?',
-    'Aşk hayatım ne zaman düzelecek?',
-    'Bu hafta şansım nasıl?',
-    'Hangi renkler bana iyi gelir?',
-    'Kariyer değişikliği yapmalı mıyım?',
-    'Yeni bir ilişkiye başlamalı mıyım?',
-  ];
+  String _selectedCategory = 'Genel';
+
+  // Kategori emojileri
+  static const Map<String, String> _categoryEmojis = {
+    'Aşk': '💕',
+    'Kariyer': '💼',
+    'Finans': '💰',
+    'Sağlık': '🏥',
+    'İlişkiler': '👥',
+    'Genel': '🔮',
+  };
+
+  // Kategorilere göre önerilen sorular
+  static const Map<String, List<String>> _categoryQuestions = {
+    'Aşk': [
+      'Aşk hayatımda bu hafta ne olacak?',
+      'Beni seven biri var mı hayatımda?',
+      'Ruh eşimi ne zaman bulacağım?',
+      'İlişkimde ne yapmalıyım?',
+    ],
+    'Kariyer': [
+      'Kariyer değişikliği yapmalı mıyım?',
+      'Terfi alabilir miyim bu dönem?',
+      'İş kurmam için doğru zaman mı?',
+      'Hangi sektör bana uygun?',
+    ],
+    'Finans': [
+      'Finansal durumum ne zaman düzelecek?',
+      'Yatırım yapmalı mıyım?',
+      'Para kazanma şansım bu ay nasıl?',
+      'Tasarruf için ne önerirsin?',
+    ],
+    'Sağlık': [
+      'Sağlığıma dikkat etmem gereken konular?',
+      'Stresimi nasıl azaltabilirim?',
+      'Enerji seviyem neden düşük?',
+      'Hangi spor bana iyi gelir?',
+    ],
+    'İlişkiler': [
+      'Arkadaşlıklarımda dikkat etmem gereken ne?',
+      'Aile ilişkilerim nasıl olacak?',
+      'Yeni insanlarla tanışmam için ne yapmalıyım?',
+      'İlişkilerimde tekrar eden kalıplarım neler?',
+    ],
+    'Genel': [
+      'Bugün iş değiştirmeli miyim?',
+      'Bu hafta şansım nasıl?',
+      'Hangi renkler bana iyi gelir?',
+      'Hayatımda önemli bir değişiklik olacak mı?',
+    ],
+  };
 
   @override
   void initState() {
@@ -116,13 +158,26 @@ class _ChatbotScreenState extends State<ChatbotScreen>
     try {
       final zodiacName = authProvider.selectedZodiac?.displayName ?? 'Bilinmeyen';
 
+      // Build conversation context from last 4 messages
+      final recentMessages = _messages.where((m) => m != _messages.first).toList(); // skip welcome
+      final contextMessages = recentMessages.length > 4
+          ? recentMessages.sublist(recentMessages.length - 4)
+          : recentMessages;
+
+      final conversationContext = contextMessages.map((m) {
+        return '${m.isUser ? "Kullanıcı" : "Zodi"}: ${m.text}';
+      }).join('\n');
+
       final prompt = '''
 Sen Zodi'sin - Astroloji dünyasının en dürüst, en "cool" ve bazen en huysuz rehberi.
 Kullanıcının burcu: $zodiacName
 
-Kullanıcının sorusu: "$text"
+${conversationContext.isNotEmpty ? 'ÖNCEKİ KONUŞMA:\n$conversationContext\n' : ''}
+
+Kullanıcının yeni sorusu: "$text"
 
 Kısa ve öz cevap ver (max 3 paragraf). Astrolojik açıdan yorum yap. Samimi, dürüst ve eğlenceli ol.
+Önceki konuşma bağlamını dikkate al ve tutarlı ol.
 Gerekirse burç özelliklerini kullanarak kişiselleştir.
 Yanıtını düz metin olarak ver, JSON formatında değil.
 ''';
@@ -305,7 +360,7 @@ Yanıtını düz metin olarak ver, JSON formatında değil.
           // Mesajlar
           Expanded(child: _buildMessageList(isDark)),
           // Önerilen sorular
-          if (_messages.length <= 2) _buildSuggestions(isDark),
+          if (_messages.length <= 3) _buildSuggestions(isDark),
           // Input
           _buildInputBar(isDark),
         ],
@@ -544,41 +599,91 @@ Yanıtını düz metin olarak ver, JSON formatında değil.
   }
 
   Widget _buildSuggestions(bool isDark) {
-    return SizedBox(
-      height: 44,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _suggestedQuestions.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () => _sendMessage(_suggestedQuestions[index]),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.accentPurple.withOpacity(0.2)
-                      : AppColors.accentPurple.withOpacity(0.1),
+    final questions = _categoryQuestions[_selectedCategory] ?? [];
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Kategori chips
+        SizedBox(
+          height: 40,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _categoryQuestions.keys.length,
+            itemBuilder: (context, index) {
+              final category = _categoryQuestions.keys.elementAt(index);
+              final emoji = _categoryEmojis[category] ?? '';
+              final isSelected = _selectedCategory == category;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: InkWell(
+                  onTap: () => setState(() => _selectedCategory = category),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.accentPurple.withOpacity(0.3),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.accentPurple
+                          : AppColors.accentPurple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.accentPurple
+                            : AppColors.accentPurple.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      '$emoji $category',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        color: isSelected ? Colors.white : AppColors.accentPurple,
+                      ),
+                    ),
                   ),
                 ),
-                child: Text(
-                  _suggestedQuestions[index],
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.white : AppColors.accentPurple,
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Kategori sorular
+        SizedBox(
+          height: 44,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: questions.length,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: InkWell(
+                  onTap: () => _sendMessage(questions[index]),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentPurple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.accentPurple.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      questions[index],
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.accentPurple,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 4),
+      ],
     );
   }
 

@@ -8,7 +8,9 @@ import '../constants/colors.dart';
 import '../constants/strings.dart';
 import '../services/firebase_service.dart';
 import '../services/ad_service.dart';
+import '../services/share_service.dart';
 import '../config/membership_config.dart';
+import '../widgets/share_cards/compatibility_share_card.dart';
 import 'compatibility_report_screen.dart';
 import 'premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
@@ -130,6 +132,55 @@ class _MatchScreenState extends State<MatchScreen> {
       );
     } else {
       _showReportGateDialog();
+    }
+  }
+
+  Future<void> _shareCompatibility() async {
+    final authProvider = context.read<AuthProvider>();
+    final horoscopeProvider = context.read<HoroscopeProvider>();
+    final result = horoscopeProvider.compatibilityResult;
+    if (result == null || authProvider.selectedZodiac == null || _selectedPartner == null) return;
+
+    try {
+      final card = CompatibilityShareCard(
+        sign1Symbol: authProvider.selectedZodiac!.symbol,
+        sign1Name: authProvider.selectedZodiac!.displayName,
+        sign2Symbol: _selectedPartner!.symbol,
+        sign2Name: _selectedPartner!.displayName,
+        overallScore: result.score,
+        loveScore: result.aspects.love,
+        communicationScore: result.aspects.communication,
+        trustScore: result.aspects.trust,
+        summary: result.summary,
+      );
+
+      await ShareService().shareCardWidget(
+        context,
+        card,
+        text: '${authProvider.selectedZodiac!.symbol} ${authProvider.selectedZodiac!.displayName} & '
+            '${_selectedPartner!.symbol} ${_selectedPartner!.displayName} Uyumu '
+            '- %${result.score} \u{1F495}\n#AstroDozi #BurcUyumu',
+      );
+
+      // Analytics
+      _firebaseService.analytics.logEvent(
+        name: 'compatibility_shared',
+        parameters: {
+          'sign1': authProvider.selectedZodiac!.name,
+          'sign2': _selectedPartner!.name,
+          'score': result.score,
+          'share_type': 'visual_card',
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Paylasim basarisiz: $e'),
+            backgroundColor: AppColors.negative,
+          ),
+        );
+      }
     }
   }
 
@@ -770,7 +821,55 @@ class _MatchScreenState extends State<MatchScreen> {
                             ),
                           )
                         else
-                          const Text(' ✨', style: TextStyle(fontSize: 16)),
+                          const Text(' \u{2728}', style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // === Paylasim Butonu ===
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFFA78BFA).withValues(alpha: 0.25)
+                      : const Color(0xFF7C3AED).withValues(alpha: 0.15),
+                  width: 1.5,
+                ),
+                color: isDark
+                    ? const Color(0xFF1E1B4B).withValues(alpha: 0.3)
+                    : const Color(0xFFF8F5FF),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _shareCompatibility,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.share_rounded,
+                          size: 20,
+                          color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Uyum Sonucunu Paylas',
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ],
                     ),
                   ),

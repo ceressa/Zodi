@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/gemini_service.dart';
 import '../services/storage_service.dart';
 import '../services/firebase_service.dart';
@@ -12,6 +13,7 @@ import '../models/weekly_horoscope.dart';
 import '../models/monthly_horoscope.dart';
 import '../models/rising_sign.dart';
 import '../models/dream_interpretation.dart';
+import '../models/emoji_forecast.dart';
 
 class HoroscopeProvider with ChangeNotifier {
   final GeminiService _geminiService = GeminiService();
@@ -25,6 +27,7 @@ class HoroscopeProvider with ChangeNotifier {
   MonthlyHoroscope? _monthlyHoroscope;
   RisingSignResult? _risingSignResult;
   DreamInterpretation? _dreamInterpretation;
+  List<EmojiForecast>? _weeklyEmojiForecast;
 
   bool _isLoadingDaily = false;
   bool _isLoadingAnalysis = false;
@@ -33,6 +36,7 @@ class HoroscopeProvider with ChangeNotifier {
   bool _isLoadingMonthly = false;
   bool _isLoadingRisingSign = false;
   bool _isLoadingDream = false;
+  bool _isLoadingWeeklyEmoji = false;
 
   String? _error;
 
@@ -43,6 +47,7 @@ class HoroscopeProvider with ChangeNotifier {
   MonthlyHoroscope? get monthlyHoroscope => _monthlyHoroscope;
   RisingSignResult? get risingSignResult => _risingSignResult;
   DreamInterpretation? get dreamInterpretation => _dreamInterpretation;
+  List<EmojiForecast>? get weeklyEmojiForecast => _weeklyEmojiForecast;
 
   bool get isLoadingDaily => _isLoadingDaily;
   bool get isLoadingAnalysis => _isLoadingAnalysis;
@@ -136,6 +141,9 @@ class HoroscopeProvider with ChangeNotifier {
           // Firebase'e de kaydet
           await _setFirebaseCache(sign, _dailyHoroscope!);
 
+          // Ana ekran widget'ini guncelle
+          await _updateWidgetData(sign, _dailyHoroscope!);
+
           notifyListeners();
           return;
         } catch (e) {
@@ -159,6 +167,8 @@ class HoroscopeProvider with ChangeNotifier {
           try {
             _dailyHoroscope = DailyHoroscope.fromJson(jsonDecode(cachedJson));
             debugPrint('✅ Using local cached daily horoscope for ${sign.displayName}');
+            // Ana ekran widget'ini guncelle
+            await _updateWidgetData(sign, _dailyHoroscope!);
             notifyListeners();
             return;
           } catch (e) {
@@ -177,6 +187,8 @@ class HoroscopeProvider with ChangeNotifier {
       await _storageService.saveCachedDailyHoroscope(
         jsonEncode(firebaseCached.toJson()),
       );
+      // Ana ekran widget'ini guncelle
+      await _updateWidgetData(sign, firebaseCached);
       notifyListeners();
       return;
     }
@@ -199,6 +211,9 @@ class HoroscopeProvider with ChangeNotifier {
       // Firebase cache'e de kaydet
       await _setFirebaseCache(sign, _dailyHoroscope!);
 
+      // Ana ekran widget'ini guncelle
+      await _updateWidgetData(sign, _dailyHoroscope!);
+
       debugPrint('💾 Saved daily horoscope to local + Firebase cache');
     } catch (e) {
       _error = e.toString();
@@ -206,6 +221,33 @@ class HoroscopeProvider with ChangeNotifier {
     } finally {
       _isLoadingDaily = false;
       notifyListeners();
+    }
+  }
+
+  /// Ana ekran widget'i icin SharedPreferences'a veri yaz
+  Future<void> _updateWidgetData(ZodiacSign sign, DailyHoroscope horoscope) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('widget_zodiac_symbol', sign.symbol);
+      await prefs.setString('widget_zodiac_name', sign.displayName);
+      await prefs.setString('widget_motto', horoscope.motto);
+
+      // Ortalama skordan mood emoji belirle
+      final avgScore = ((horoscope.love + horoscope.money + horoscope.health + horoscope.career) / 4).round();
+      String moodEmoji;
+      if (avgScore >= 80) {
+        moodEmoji = '\u{1F525}'; // fire
+      } else if (avgScore >= 60) {
+        moodEmoji = '\u2728'; // sparkles
+      } else if (avgScore >= 40) {
+        moodEmoji = '\u{1F324}\uFE0F'; // sun behind small cloud
+      } else {
+        moodEmoji = '\u{1F325}\uFE0F'; // sun behind large cloud
+      }
+      await prefs.setString('widget_mood_emoji', moodEmoji);
+    } catch (e) {
+      // Widget guncelleme hatasi sessizce gecilir
+      debugPrint('\u26A0\uFE0F Widget data update error: $e');
     }
   }
 
@@ -358,6 +400,40 @@ class HoroscopeProvider with ChangeNotifier {
       debugPrint('Error calculating rising sign: $e');
     } finally {
       _isLoadingRisingSign = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchWeeklyEmojiForecast(ZodiacSign sign) async {
+    if (_isLoadingWeeklyEmoji) return;
+    _isLoadingWeeklyEmoji = true;
+    notifyListeners();
+
+    try {
+      final now = DateTime.now();
+      final jsonList = await _geminiService.fetchWeeklyEmojiForecast(sign);
+      final forecasts = <EmojiForecast>[];
+      for (int i = 0; i < jsonList.length && i < 7; i++) {
+        final date = now.add(Duration(days: i));
+        forecasts.add(EmojiForecast.fromJson(jsonList[i], date));
+      }
+      _weeklyEmojiForecast = forecasts;
+    } catch (e) {
+      debugPrint('Error fetching weekly emoji forecast: $e');
+      // Generate fallback data so the widget still shows something
+      final now = DateTime.now();
+      _weeklyEmojiForecast = List.generate(7, (i) {
+        final date = now.add(Duration(days: i));
+        final score = 40 + (i * 7) % 50;
+        return EmojiForecast(
+          date: date,
+          emoji: EmojiForecast.fromJson({'moodScore': score}, date).emoji,
+          moodScore: score,
+          keyword: 'Notr',
+        );
+      });
+    } finally {
+      _isLoadingWeeklyEmoji = false;
       notifyListeners();
     }
   }

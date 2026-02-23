@@ -110,20 +110,6 @@ class AccountManagementScreen extends StatelessWidget {
               title: 'Hesap İşlemleri',
               items: [
                 _AccountItem(
-                  icon: Icons.logout,
-                  title: 'Çıkış Yap',
-                  subtitle: 'Hesaptan çıkış yap',
-                  isDestructive: false,
-                  onTap: () async {
-                    await authProvider.logout();
-                    if (context.mounted) {
-                      Navigator.of(context).pushReplacement(
-                        CosmicFadeRoute(page: const OnboardingScreen()),
-                      );
-                    }
-                  },
-                ),
-                _AccountItem(
                   icon: Icons.delete_forever_outlined,
                   title: 'Hesabı Sil',
                   subtitle: 'Tüm verilerini kalıcı sil',

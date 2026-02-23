@@ -11,6 +11,7 @@ import '../services/share_service.dart';
 import '../screens/premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
 import '../widgets/share_cards/dream_share_card.dart';
+import '../widgets/sticky_bottom_actions.dart';
 
 class DreamScreen extends StatefulWidget {
   const DreamScreen({super.key});
@@ -174,6 +175,18 @@ class _DreamScreenState extends State<DreamScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.purple50,
+      bottomNavigationBar: (!isLoading && dream != null)
+          ? StickyBottomActions(
+              children: [
+                StickyBottomActions.primaryButton(
+                  label: 'Rüya Yorumunu Paylaş',
+                  icon: Icons.share_rounded,
+                  gradient: const [Color(0xFF6366F1), Color(0xFF818CF8)],
+                  onTap: () => _shareDream(dream),
+                ),
+              ],
+            )
+          : null,
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
@@ -290,10 +303,7 @@ class _DreamScreenState extends State<DreamScreen> {
                   ),
                   const SizedBox(height: 14),
                   _buildAdviceCard(dream.advice),
-                  const SizedBox(height: 20),
-                  // ─── Paylaş Butonu ───
-                  _buildShareButton(dream),
-                  const SizedBox(height: 100),
+                  const SizedBox(height: 24),
                 ],
               ]),
             ),

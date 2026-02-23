@@ -5,6 +5,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter/material.dart';
 import 'gemini_service.dart';
 import '../models/zodiac_sign.dart';
+import '../constants/astro_data.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -164,8 +165,11 @@ class NotificationService {
     required int minute,
     required String zodiacName,
   }) async {
+    // Önce mevcut sabah bildirimini iptal et
+    await _notifications.cancel(1);
+
     await _notifications.zonedSchedule(
-      0, // notification id
+      1, // daily horoscope notification id
       '🌟 Günlük Falın Hazır!',
       '$zodiacName burcu için bugünün falı seni bekliyor. Astro Dozi ne diyor bakalım?',
       _nextInstanceOfTime(hour, minute),
@@ -177,6 +181,7 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
+          fullScreenIntent: true,
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
@@ -184,7 +189,7 @@ class NotificationService {
           presentSound: true,
         ),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
@@ -193,7 +198,7 @@ class NotificationService {
   }
 
   Future<void> cancelDailyHoroscope() async {
-    await _notifications.cancel(0);
+    await _notifications.cancel(1);
   }
 
   Future<void> showInstantNotification({
@@ -257,9 +262,8 @@ class NotificationService {
   }
 
   /// Cancel all scheduled notifications
-  /// Wrapper for cancelDailyHoroscope
   Future<void> cancelAll() async {
-    await cancelDailyHoroscope();
+    await _notifications.cancelAll();
   }
 
   /// Update notification content when user changes zodiac sign
@@ -315,7 +319,7 @@ class NotificationService {
       final preview = await generateNotificationPreview(zodiacName);
 
       await _notifications.zonedSchedule(
-        0, // notification id
+        1, // daily horoscope notification id
         '🌟 Günlük Falın Hazır!',
         preview,
         _nextInstanceOfTime(hour, minute),
@@ -382,7 +386,7 @@ class NotificationService {
           presentSound: true,
         ),
       ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
@@ -652,5 +656,118 @@ class NotificationService {
       ),
       payload: 'retro_alert',
     );
+  }
+
+  /// Tek bir bildirimi ID ile iptal et
+  Future<void> cancelNotification(int id) async {
+    await _notifications.cancel(id);
+  }
+
+  /// Gezegen transit bildirimlerini planla
+  Future<void> scheduleTransitNotifications() async {
+    // İlk olarak eski transit bildirimlerini iptal et (ID range: 100-199)
+    for (int i = 100; i < 200; i++) {
+      await _notifications.cancel(i);
+    }
+
+    final now = DateTime.now();
+    final events = AstroData.getAllEvents();
+
+    // Gelecek 30 gün içindeki olayları filtrele
+    final upcomingEvents = events.where((event) {
+      final diff = event.date.difference(now).inDays;
+      return diff >= 0 && diff <= 30;
+    }).toList();
+
+    int notificationId = 100;
+    for (final event in upcomingEvents) {
+      if (notificationId >= 200) break; // Max 100 transit notifications
+
+      // Olaydan 1 gün önce bildirim gönder
+      final notifyDate = event.date.subtract(const Duration(days: 1));
+      if (notifyDate.isBefore(now)) continue;
+
+      final scheduledDate = tz.TZDateTime(
+        tz.local,
+        notifyDate.year,
+        notifyDate.month,
+        notifyDate.day,
+        10, // Sabah 10:00
+        0,
+      );
+
+      if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) continue;
+
+      await _notifications.zonedSchedule(
+        notificationId,
+        '${event.emoji} ${event.title} Yarın!',
+        event.description,
+        scheduledDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'transit_channel',
+            'Gezegen Transitleri',
+            channelDescription: 'Önemli astrolojik olay bildirimleri',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            color: Color(0xFF7C3AED),
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'transit_event',
+      );
+
+      notificationId++;
+    }
+  }
+
+  /// Restore notifications on app startup if they were previously enabled
+  Future<void> restoreNotifications({
+    required bool enabled,
+    required int hour,
+    required int minute,
+    required String zodiacName,
+  }) async {
+    if (!enabled) return;
+
+    try {
+      // Check and request permission on Android 13+
+      final granted = await requestPermissions();
+      if (!granted) return;
+
+      // Schedule the daily horoscope notification
+      await scheduleDailyHoroscope(
+        hour: hour,
+        minute: minute,
+        zodiacName: zodiacName,
+      );
+
+      // Also schedule hook notifications
+      await scheduleHookNotifications(
+        morningHour: hour,
+        morningMinute: minute,
+        zodiacName: zodiacName,
+      );
+
+      // Schedule streak reminder
+      await scheduleStreakReminder(zodiacName: zodiacName);
+
+      // Schedule cosmic box reminder
+      await scheduleCosmicBoxReminder(zodiacName: zodiacName);
+
+      // Schedule re-engagement (will be cancelled when user opens app)
+      await scheduleReEngagement(zodiacName: zodiacName);
+    } catch (e) {
+      // Silently fail — notifications are not critical
+      debugPrint('⚠️ Notification restore failed: $e');
+    }
   }
 }
