@@ -3,6 +3,58 @@
 
 workflows:
   # ============================================================
+  # iOS Test Build (code signing yok, sadece derleme testi)
+  # ============================================================
+  ios-test:
+    name: iOS Test Build (No Signing)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - ios_credentials      # GOOGLE_SERVICE_INFO_PLIST (base64), GEMINI_API_KEY
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+
+    scripts:
+      - name: Create .env file
+        script: |
+          echo "GEMINI_API_KEY=$GEMINI_API_KEY" > $CM_BUILD_DIR/.env
+
+      - name: Set up Firebase iOS config
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd $CM_BUILD_DIR/ios && pod install --repo-update
+
+      - name: Build iOS (no code signing)
+        script: |
+          flutter build ios --release --no-codesign
+
+    artifacts:
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      email:
+        recipients:
+          - info@dozi.app
+        notify:
+          success: true
+          failure: true
+
+  # ============================================================
   # iOS Release → TestFlight
   # ============================================================
   ios-release:
@@ -21,7 +73,7 @@ workflows:
       xcode: latest
       cocoapods: default
       groups:
-        - ios_credentials      # GOOGLE_SERVICE_INFO_PLIST (base64), GEMINI_API_KEY
+        - ios_credentials
       vars:
         BUNDLE_ID: "com.bardino.zodi"
 
@@ -40,39 +92,32 @@ workflows:
           include: true
 
     scripts:
-      # 1. Set up code signing (automatic via App Store Connect integration)
       - name: Set up code signing
         script: |
           xcode-project use-profiles
 
-      # 2. Create .env file with secrets
       - name: Create .env file
         script: |
           echo "GEMINI_API_KEY=$GEMINI_API_KEY" > $CM_BUILD_DIR/.env
 
-      # 3. Set up GoogleService-Info.plist from encrypted env variable
       - name: Set up Firebase iOS config
         script: |
           echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
 
-      # 4. Get Flutter packages
       - name: Get Flutter packages
         script: |
           flutter pub get
 
-      # 5. Install CocoaPods
       - name: Install CocoaPods dependencies
         script: |
           cd $CM_BUILD_DIR/ios && pod install --repo-update
 
-      # 6. Set build number from App Store Connect (auto-increment)
       - name: Set build number
         script: |
           LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_ID" || echo 0)
           BUILD_NUMBER=$((LATEST_BUILD + 1))
           echo "Building version 1.0.0+$BUILD_NUMBER"
 
-      # 7. Build the IPA
       - name: Build IPA
         script: |
           LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_ID" || echo 0)
@@ -85,13 +130,12 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-      - flutter_drive.log
 
     publishing:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        submit_to_app_store: false   # Manual submission after TestFlight testing
+        submit_to_app_store: false
       email:
         recipients:
           - info@dozi.app
@@ -110,7 +154,7 @@ workflows:
     environment:
       flutter: stable
       groups:
-        - android_credentials   # KEYSTORE (base64), KEY_ALIAS, KEY_PASSWORD, STORE_PASSWORD, GEMINI_API_KEY
+        - android_credentials
       android_signing:
         - astro_dozi_keystore
 
@@ -129,17 +173,14 @@ workflows:
           include: true
 
     scripts:
-      # 1. Create .env file
       - name: Create .env file
         script: |
           echo "GEMINI_API_KEY=$GEMINI_API_KEY" > $CM_BUILD_DIR/.env
 
-      # 2. Get Flutter packages
       - name: Get Flutter packages
         script: |
           flutter pub get
 
-      # 3. Build AAB
       - name: Build Android App Bundle
         script: |
           flutter build appbundle --release
@@ -147,7 +188,6 @@ workflows:
     artifacts:
       - build/app/outputs/**/*.aab
       - build/app/outputs/**/*.apk
-      - flutter_drive.log
 
     publishing:
       google_play:
