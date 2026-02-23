@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<string>tr</string>
 	<key>CFBundleDisplayName</key>
-	<string>Zodi Flutter</string>
+	<string>Astro Dozi</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>zodi_flutter</string>
+	<string>Astro Dozi</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -28,31 +28,70 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+
+	<!-- Portrait only (matches Android) -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- Background modes: push notifications -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
+
+	<!-- Google Sign-In URL scheme -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.810852009885-afjbdh25lncigcc14supeinf30gu3206</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- AdMob App ID -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-1767292468741192~8684353229</string>
+
+	<!-- App Tracking Transparency (REQUIRED for AdMob + Analytics) -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Astro Dozi, size daha iyi ve kisisellestirilmis bir deneyim sunmak icin reklam takibini kullanmak istiyor.</string>
+
+	<!-- Notification permission -->
 	<key>NSUserNotificationsUsageDescription</key>
-	<string>Zodi günlük burç yorumlarını ve kişiselleştirilmiş astroloji bildirimlerini göndermek için bildirim izni istiyor.</string>
+	<string>Astro Dozi gunluk burc yorumlarinizi ve kisisellestirilmis astroloji bildirimlerini gondermek icin bildirim izni istiyor.</string>
+
+	<!-- Camera & Photo Library (image_picker) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Astro Dozi profil fotografinizi cekmek icin kameraya erisim istiyor.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Astro Dozi profil fotografinizi secmek icin galeri erisimi istiyor.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Astro Dozi olusturulan gorselleri galerinize kaydetmek istiyor.</string>
+
+	<!-- Local Network (Flutter debugging) -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Zodi yerel ağ erişimi kullanarak bildirim hizmetlerini optimize eder.</string>
+	<string>Astro Dozi yerel ag erisimi kullanarak bildirim hizmetlerini optimize eder.</string>
+
+	<!-- Status bar style -->
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDefault</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
 </dict>
 </plist>

@@ -142,15 +142,15 @@ class AdService {
   // Production Ad Unit IDs
   static String get bannerAdUnitId => Platform.isAndroid
       ? 'ca-app-pub-1767292468741192/9184613341'
-      : 'ca-app-pub-3940256099942544/2934735716'; // iOS: test ID (henüz yok)
+      : 'ca-app-pub-1767292468741192/4557405954';
 
   static String get rewardedAdUnitId => Platform.isAndroid
       ? 'ca-app-pub-1767292468741192/3598503926'
-      : 'ca-app-pub-3940256099942544/1712485313'; // iOS: test ID (henüz yok)
+      : 'ca-app-pub-1767292468741192/7842733203';
 
   static String get interstitialAdUnitId => Platform.isAndroid
       ? 'ca-app-pub-1767292468741192/4548188740'
-      : 'ca-app-pub-3940256099942544/4411468910'; // iOS: test ID (henüz yok)
+      : 'ca-app-pub-1767292468741192/6058189886';
 
   BannerAd? _bannerAd;
   RewardedAd? _rewardedAd;

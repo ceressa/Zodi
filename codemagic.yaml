@@ -1,0 +1,162 @@
+# Astro Dozi — Codemagic CI/CD Configuration
+# Docs: https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
+
+workflows:
+  # ============================================================
+  # iOS Release → TestFlight
+  # ============================================================
+  ios-release:
+    name: iOS Release (TestFlight)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: Astro Dozi ASC Key
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.bardino.zodi
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - ios_credentials      # GOOGLE_SERVICE_INFO_PLIST (base64), GEMINI_API_KEY
+      vars:
+        BUNDLE_ID: "com.bardino.zodi"
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'v*-ios'
+          include: true
+        - pattern: 'v*'
+          include: true
+
+    scripts:
+      # 1. Set up code signing (automatic via App Store Connect integration)
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      # 2. Create .env file with secrets
+      - name: Create .env file
+        script: |
+          echo "GEMINI_API_KEY=$GEMINI_API_KEY" > $CM_BUILD_DIR/.env
+
+      # 3. Set up GoogleService-Info.plist from encrypted env variable
+      - name: Set up Firebase iOS config
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      # 4. Get Flutter packages
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      # 5. Install CocoaPods
+      - name: Install CocoaPods dependencies
+        script: |
+          cd $CM_BUILD_DIR/ios && pod install --repo-update
+
+      # 6. Set build number from App Store Connect (auto-increment)
+      - name: Set build number
+        script: |
+          LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_ID" || echo 0)
+          BUILD_NUMBER=$((LATEST_BUILD + 1))
+          echo "Building version 1.0.0+$BUILD_NUMBER"
+
+      # 7. Build the IPA
+      - name: Build IPA
+        script: |
+          LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_ID" || echo 0)
+          BUILD_NUMBER=$((LATEST_BUILD + 1))
+          flutter build ipa --release \
+            --build-name=1.0.0 \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false   # Manual submission after TestFlight testing
+      email:
+        recipients:
+          - info@dozi.app
+        notify:
+          success: true
+          failure: true
+
+  # ============================================================
+  # Android Release → Play Store (Internal Testing)
+  # ============================================================
+  android-release:
+    name: Android Release (Play Store)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      groups:
+        - android_credentials   # KEYSTORE (base64), KEY_ALIAS, KEY_PASSWORD, STORE_PASSWORD, GEMINI_API_KEY
+      android_signing:
+        - astro_dozi_keystore
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/.gradle/caches
+
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'v*-android'
+          include: true
+        - pattern: 'v*'
+          include: true
+
+    scripts:
+      # 1. Create .env file
+      - name: Create .env file
+        script: |
+          echo "GEMINI_API_KEY=$GEMINI_API_KEY" > $CM_BUILD_DIR/.env
+
+      # 2. Get Flutter packages
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      # 3. Build AAB
+      - name: Build Android App Bundle
+        script: |
+          flutter build appbundle --release
+
+    artifacts:
+      - build/app/outputs/**/*.aab
+      - build/app/outputs/**/*.apk
+      - flutter_drive.log
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+      email:
+        recipients:
+          - info@dozi.app
+        notify:
+          success: true
+          failure: true
