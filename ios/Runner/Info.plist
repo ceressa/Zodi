@@ -93,6 +93,10 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Astro Dozi yerel ag erisimi kullanarak bildirim hizmetlerini optimize eder.</string>
 
+	<!-- App does not use non-standard encryption (skip export compliance prompt) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
 	<!-- Status bar style -->
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleDefault</string>
