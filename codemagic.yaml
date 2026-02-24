@@ -135,6 +135,14 @@ workflows:
     scripts:
       - name: Set up code signing
         script: |
+          # Fetch or create signing files from Apple Developer Portal
+          app-store-connect fetch-signing-files "com.bardino.zodi" \
+            --type IOS_APP_STORE \
+            --create
+          # Initialize keychain and add certificates
+          keychain initialize
+          keychain add-certificates
+          # Apply profiles to Xcode project
           xcode-project use-profiles
 
       - name: Create .env file
