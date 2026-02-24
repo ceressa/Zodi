@@ -18,7 +18,7 @@ class RevenueCatService {
   RevenueCatService._internal();
 
   static const String _googleApiKey = 'goog_lqGgYaZSYFbfjsrSMIKjqqHMifC';
-  static const String _appleApiKey = ''; // TODO: RevenueCat Dashboard'dan Apple API key al
+  static const String _appleApiKey = 'appl_KKyQlEFlGXvSuJDBEfjvHejpzPN';
   static const String entitlementId = 'Astro Dozi Premium';
 
   /// Ürün tanımlayıcıları — Google Play Console'daki subscription/product IDs
