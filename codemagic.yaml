@@ -31,6 +31,49 @@ workflows:
         script: |
           echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
 
+      - name: Generate firebase_options.dart
+        script: |
+          cat > $CM_BUILD_DIR/lib/firebase_options.dart << 'DART'
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+          import 'package:flutter/foundation.dart'
+              show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+          class DefaultFirebaseOptions {
+            static FirebaseOptions get currentPlatform {
+              if (kIsWeb) {
+                throw UnsupportedError('Web is not supported.');
+              }
+              switch (defaultTargetPlatform) {
+                case TargetPlatform.android:
+                  return android;
+                case TargetPlatform.iOS:
+                  return ios;
+                default:
+                  throw UnsupportedError(
+                    'DefaultFirebaseOptions are not supported for this platform.',
+                  );
+              }
+            }
+
+            static const FirebaseOptions android = FirebaseOptions(
+              apiKey: 'AIzaSyBzRqWacN-ba8IouBuomcMg5Ubf7XObrn8',
+              appId: '1:810852009885:android:368a6700c9860bb784d174',
+              messagingSenderId: '810852009885',
+              projectId: 'zodi-cf6b7',
+              storageBucket: 'zodi-cf6b7.firebasestorage.app',
+            );
+
+            static const FirebaseOptions ios = FirebaseOptions(
+              apiKey: 'AIzaSyByqtbMonl7tGCZTzVU3GLrH8nSXucSm4A',
+              appId: '1:810852009885:ios:c7cc2c915ed2a92184d174',
+              messagingSenderId: '810852009885',
+              projectId: 'zodi-cf6b7',
+              storageBucket: 'zodi-cf6b7.firebasestorage.app',
+              iosBundleId: 'com.bardino.zodi',
+            );
+          }
+          DART
+
       - name: Get Flutter packages
         script: |
           flutter pub get
@@ -49,7 +92,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - info@dozi.app
+          - astrodozi@dozi.app
         notify:
           success: true
           failure: true
@@ -74,8 +117,6 @@ workflows:
       cocoapods: default
       groups:
         - ios_credentials
-      vars:
-        BUNDLE_ID: "com.bardino.zodi"
 
     cache:
       cache_paths:
@@ -104,6 +145,49 @@ workflows:
         script: |
           echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
 
+      - name: Generate firebase_options.dart
+        script: |
+          cat > $CM_BUILD_DIR/lib/firebase_options.dart << 'DART'
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+          import 'package:flutter/foundation.dart'
+              show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+          class DefaultFirebaseOptions {
+            static FirebaseOptions get currentPlatform {
+              if (kIsWeb) {
+                throw UnsupportedError('Web is not supported.');
+              }
+              switch (defaultTargetPlatform) {
+                case TargetPlatform.android:
+                  return android;
+                case TargetPlatform.iOS:
+                  return ios;
+                default:
+                  throw UnsupportedError(
+                    'DefaultFirebaseOptions are not supported for this platform.',
+                  );
+              }
+            }
+
+            static const FirebaseOptions android = FirebaseOptions(
+              apiKey: 'AIzaSyBzRqWacN-ba8IouBuomcMg5Ubf7XObrn8',
+              appId: '1:810852009885:android:368a6700c9860bb784d174',
+              messagingSenderId: '810852009885',
+              projectId: 'zodi-cf6b7',
+              storageBucket: 'zodi-cf6b7.firebasestorage.app',
+            );
+
+            static const FirebaseOptions ios = FirebaseOptions(
+              apiKey: 'AIzaSyByqtbMonl7tGCZTzVU3GLrH8nSXucSm4A',
+              appId: '1:810852009885:ios:c7cc2c915ed2a92184d174',
+              messagingSenderId: '810852009885',
+              projectId: 'zodi-cf6b7',
+              storageBucket: 'zodi-cf6b7.firebasestorage.app',
+              iosBundleId: 'com.bardino.zodi',
+            );
+          }
+          DART
+
       - name: Get Flutter packages
         script: |
           flutter pub get
@@ -112,19 +196,11 @@ workflows:
         script: |
           cd $CM_BUILD_DIR/ios && pod install --repo-update
 
-      - name: Set build number
-        script: |
-          LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_ID" || echo 0)
-          BUILD_NUMBER=$((LATEST_BUILD + 1))
-          echo "Building version 1.0.0+$BUILD_NUMBER"
-
       - name: Build IPA
         script: |
-          LATEST_BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_ID" || echo 0)
-          BUILD_NUMBER=$((LATEST_BUILD + 1))
           flutter build ipa --release \
             --build-name=1.0.0 \
-            --build-number=$BUILD_NUMBER \
+            --build-number=$(($(app-store-connect get-latest-testflight-build-number "com.bardino.zodi" || echo 0) + 1)) \
             --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
@@ -138,7 +214,7 @@ workflows:
         submit_to_app_store: false
       email:
         recipients:
-          - info@dozi.app
+          - astrodozi@dozi.app
         notify:
           success: true
           failure: true
@@ -177,6 +253,49 @@ workflows:
         script: |
           echo "GEMINI_API_KEY=$GEMINI_API_KEY" > $CM_BUILD_DIR/.env
 
+      - name: Generate firebase_options.dart
+        script: |
+          cat > $CM_BUILD_DIR/lib/firebase_options.dart << 'DART'
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+          import 'package:flutter/foundation.dart'
+              show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+          class DefaultFirebaseOptions {
+            static FirebaseOptions get currentPlatform {
+              if (kIsWeb) {
+                throw UnsupportedError('Web is not supported.');
+              }
+              switch (defaultTargetPlatform) {
+                case TargetPlatform.android:
+                  return android;
+                case TargetPlatform.iOS:
+                  return ios;
+                default:
+                  throw UnsupportedError(
+                    'DefaultFirebaseOptions are not supported for this platform.',
+                  );
+              }
+            }
+
+            static const FirebaseOptions android = FirebaseOptions(
+              apiKey: 'AIzaSyBzRqWacN-ba8IouBuomcMg5Ubf7XObrn8',
+              appId: '1:810852009885:android:368a6700c9860bb784d174',
+              messagingSenderId: '810852009885',
+              projectId: 'zodi-cf6b7',
+              storageBucket: 'zodi-cf6b7.firebasestorage.app',
+            );
+
+            static const FirebaseOptions ios = FirebaseOptions(
+              apiKey: 'AIzaSyByqtbMonl7tGCZTzVU3GLrH8nSXucSm4A',
+              appId: '1:810852009885:ios:c7cc2c915ed2a92184d174',
+              messagingSenderId: '810852009885',
+              projectId: 'zodi-cf6b7',
+              storageBucket: 'zodi-cf6b7.firebasestorage.app',
+              iosBundleId: 'com.bardino.zodi',
+            );
+          }
+          DART
+
       - name: Get Flutter packages
         script: |
           flutter pub get
@@ -196,7 +315,7 @@ workflows:
         submit_as_draft: true
       email:
         recipients:
-          - info@dozi.app
+          - astrodozi@dozi.app
         notify:
           success: true
           failure: true
