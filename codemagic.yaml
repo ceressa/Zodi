@@ -30,10 +30,12 @@ workflows:
       - name: Set up Firebase iOS config
         script: |
           echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+          echo "GoogleService-Info.plist size: $(wc -c < $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist) bytes"
+          grep GOOGLE_APP_ID $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist || echo "WARNING: GOOGLE_APP_ID not found in plist!"
 
       - name: Generate firebase_options.dart
         script: |
-          cat > $CM_BUILD_DIR/lib/firebase_options.dart << 'DART'
+          cat > $CM_BUILD_DIR/lib/firebase_options.dart << 'EOF'
           import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
           import 'package:flutter/foundation.dart'
               show defaultTargetPlatform, kIsWeb, TargetPlatform;
@@ -72,7 +74,9 @@ workflows:
               iosBundleId: 'com.bardino.zodi',
             );
           }
-          DART
+          EOF
+          echo "firebase_options.dart generated:"
+          cat $CM_BUILD_DIR/lib/firebase_options.dart
 
       - name: Get Flutter packages
         script: |
@@ -149,10 +153,12 @@ workflows:
       - name: Set up Firebase iOS config
         script: |
           echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+          echo "GoogleService-Info.plist size: $(wc -c < $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist) bytes"
+          grep GOOGLE_APP_ID $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist || echo "WARNING: GOOGLE_APP_ID not found in plist!"
 
       - name: Generate firebase_options.dart
         script: |
-          cat > $CM_BUILD_DIR/lib/firebase_options.dart << 'DART'
+          cat > $CM_BUILD_DIR/lib/firebase_options.dart << 'EOF'
           import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
           import 'package:flutter/foundation.dart'
               show defaultTargetPlatform, kIsWeb, TargetPlatform;
@@ -191,7 +197,9 @@ workflows:
               iosBundleId: 'com.bardino.zodi',
             );
           }
-          DART
+          EOF
+          echo "firebase_options.dart generated:"
+          cat $CM_BUILD_DIR/lib/firebase_options.dart
 
       - name: Get Flutter packages
         script: |
@@ -266,7 +274,7 @@ workflows:
 
       - name: Generate firebase_options.dart
         script: |
-          cat > $CM_BUILD_DIR/lib/firebase_options.dart << 'DART'
+          cat > $CM_BUILD_DIR/lib/firebase_options.dart << 'EOF'
           import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
           import 'package:flutter/foundation.dart'
               show defaultTargetPlatform, kIsWeb, TargetPlatform;
@@ -305,7 +313,7 @@ workflows:
               iosBundleId: 'com.bardino.zodi',
             );
           }
-          DART
+          EOF
 
       - name: Get Flutter packages
         script: |

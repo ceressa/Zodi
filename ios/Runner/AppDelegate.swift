@@ -12,8 +12,9 @@ import AppTrackingTransparency
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Initialize Firebase
-    FirebaseApp.configure()
+    // NOTE: Firebase is initialized by Flutter's firebase_core plugin via
+    // Firebase.initializeApp() in main.dart. Do NOT call FirebaseApp.configure()
+    // here — double initialization causes iOS crashes.
 
     // Register for remote notifications
     UNUserNotificationCenter.current().delegate = self
