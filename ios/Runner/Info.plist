@@ -29,7 +29,9 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 
-	<!-- Portrait only (matches Android) -->
+	<!-- Portrait only at runtime (enforced by main.dart SystemChrome lock).
+	     iPad requires all 4 orientations declared for multitasking support,
+	     but the app still runs portrait-only thanks to the runtime lock. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -37,6 +39,9 @@
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 
 	<key>CADisableMinimumFrameDurationOnPhone</key>
