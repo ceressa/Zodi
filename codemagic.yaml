@@ -205,7 +205,7 @@ workflows:
         script: |
           LATEST=$(app-store-connect get-latest-testflight-build-number "com.bardino.zodi" 2>/dev/null || true)
           if [ -z "$LATEST" ] || [ "$LATEST" = "0" ]; then
-            LATEST=1
+            LATEST=10
           fi
           BUILD_NUMBER=$((LATEST + 1))
           echo "Latest TestFlight build: $LATEST → Using build number: $BUILD_NUMBER"
