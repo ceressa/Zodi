@@ -203,14 +203,14 @@ workflows:
 
       - name: Build IPA
         script: |
-          LATEST=$(app-store-connect get-latest-testflight-build-number "com.bardino.zodi" 2>/dev/null || true)
-          if [ -z "$LATEST" ] || [ "$LATEST" = "0" ]; then
-            LATEST=10
+          LATEST=$(app-store-connect get-latest-testflight-build-number "com.bardino.zodi" 2>/dev/null || echo "0")
+          if [ -z "$LATEST" ] || [ "$LATEST" -lt 11 ]; then
+            LATEST=11
           fi
           BUILD_NUMBER=$((LATEST + 1))
           echo "Latest TestFlight build: $LATEST → Using build number: $BUILD_NUMBER"
           flutter build ipa --release \
-            --build-name=1.0.0 \
+            --build-name=1.0.1 \
             --build-number=$BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
 
