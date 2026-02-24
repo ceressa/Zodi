@@ -65,7 +65,7 @@ workflows:
 
             static const FirebaseOptions ios = FirebaseOptions(
               apiKey: 'AIzaSyByqtbMonl7tGCZTzVU3GLrH8nSXucSm4A',
-              appId: '1:810852009885:ios:c7cc2c915ed2a92184d174',
+              appId: '1:810852009885:ios:f78b53ca5ce6354584d174',
               messagingSenderId: '810852009885',
               projectId: 'zodi-cf6b7',
               storageBucket: 'zodi-cf6b7.firebasestorage.app',
@@ -184,7 +184,7 @@ workflows:
 
             static const FirebaseOptions ios = FirebaseOptions(
               apiKey: 'AIzaSyByqtbMonl7tGCZTzVU3GLrH8nSXucSm4A',
-              appId: '1:810852009885:ios:c7cc2c915ed2a92184d174',
+              appId: '1:810852009885:ios:f78b53ca5ce6354584d174',
               messagingSenderId: '810852009885',
               projectId: 'zodi-cf6b7',
               storageBucket: 'zodi-cf6b7.firebasestorage.app',
@@ -298,7 +298,7 @@ workflows:
 
             static const FirebaseOptions ios = FirebaseOptions(
               apiKey: 'AIzaSyByqtbMonl7tGCZTzVU3GLrH8nSXucSm4A',
-              appId: '1:810852009885:ios:c7cc2c915ed2a92184d174',
+              appId: '1:810852009885:ios:f78b53ca5ce6354584d174',
               messagingSenderId: '810852009885',
               projectId: 'zodi-cf6b7',
               storageBucket: 'zodi-cf6b7.firebasestorage.app',
