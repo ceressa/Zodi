@@ -114,9 +114,6 @@ workflows:
       cocoapods: default
       groups:
         - ios_credentials      # GOOGLE_SERVICE_INFO_PLIST (base64), GEMINI_API_KEY, CERTIFICATE_PRIVATE_KEY
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.bardino.zodi
 
     cache:
       cache_paths:
