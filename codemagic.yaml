@@ -212,8 +212,8 @@ workflows:
       - name: Build IPA
         script: |
           LATEST=$(app-store-connect get-latest-testflight-build-number "com.bardino.zodi" 2>/dev/null || echo "0")
-          if [ -z "$LATEST" ] || [ "$LATEST" -lt 11 ]; then
-            LATEST=11
+          if [ -z "$LATEST" ] || [ "$LATEST" -lt 14 ]; then
+            LATEST=14
           fi
           BUILD_NUMBER=$((LATEST + 1))
           echo "Latest TestFlight build: $LATEST → Using build number: $BUILD_NUMBER"
