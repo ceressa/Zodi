@@ -109,9 +109,6 @@ workflows:
       app_store_connect: Astro Dozi ASC Key
 
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.bardino.zodi
       flutter: stable
       xcode: latest
       cocoapods: default
