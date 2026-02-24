@@ -24,69 +24,91 @@ import 'theme/app_theme.dart'; // Yeni tema
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Firebase
+
+  // Initialize Firebase (critical — must not fail)
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   // Initialize Firebase Service
   await FirebaseService.initialize();
-  
-  // Initialize Swiss Ephemeris for astronomical calculations
-  await AstronomyService.initialize();
-  
-  await dotenv.load(fileName: '.env');
-  await initializeDateFormatting('tr_TR', null);
-  
-  // Initialize RevenueCat
-  await RevenueCatService().initialize();
 
-  // Initialize Ad Service
-  final adService = AdService();
-  await adService.initialize();
-  
-  // Preload ads for better UX
-  adService.loadInterstitialAd();
-  adService.loadRewardedAd();
-  adService.loadBannerAd();
-  
-  // Initialize Notification Service with navigation callback
-  await NotificationService().initialize(
-    onNotificationTap: NavigationHelper.handleNotificationPayload,
-  );
-  
-  // Check if app was launched from a notification (cold start)
-  await NotificationService().checkLaunchNotification();
+  // Load .env file (critical — contains GEMINI_API_KEY)
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (e) {
+    debugPrint('⚠️ .env load failed: $e');
+  }
+
+  await initializeDateFormatting('tr_TR', null);
+
+  // Initialize Swiss Ephemeris (non-critical for app launch)
+  try {
+    await AstronomyService.initialize();
+  } catch (e) {
+    debugPrint('⚠️ AstronomyService init failed: $e');
+  }
+
+  // Initialize RevenueCat (non-critical for app launch)
+  try {
+    await RevenueCatService().initialize();
+  } catch (e) {
+    debugPrint('⚠️ RevenueCat init failed: $e');
+  }
+
+  // Initialize Ad Service (non-critical for app launch)
+  try {
+    final adService = AdService();
+    await adService.initialize();
+    adService.loadInterstitialAd();
+    adService.loadRewardedAd();
+    adService.loadBannerAd();
+  } catch (e) {
+    debugPrint('⚠️ AdService init failed: $e');
+  }
+
+  // Initialize Notification Service
+  try {
+    await NotificationService().initialize(
+      onNotificationTap: NavigationHelper.handleNotificationPayload,
+    );
+    await NotificationService().checkLaunchNotification();
+  } catch (e) {
+    debugPrint('⚠️ NotificationService init failed: $e');
+  }
 
   // Restore notifications if previously enabled
-  final storageService = StorageService();
-  final notificationsEnabled = await storageService.getNotificationsEnabled();
-  if (notificationsEnabled) {
-    final timeString = await storageService.getNotificationTime();
-    int hour = 9;
-    int minute = 0;
-    if (timeString != null) {
-      final parts = timeString.split(':');
-      if (parts.length == 2) {
-        hour = int.tryParse(parts[0]) ?? 9;
-        minute = int.tryParse(parts[1]) ?? 0;
+  try {
+    final storageService = StorageService();
+    final notificationsEnabled = await storageService.getNotificationsEnabled();
+    if (notificationsEnabled) {
+      final timeString = await storageService.getNotificationTime();
+      int hour = 9;
+      int minute = 0;
+      if (timeString != null) {
+        final parts = timeString.split(':');
+        if (parts.length == 2) {
+          hour = int.tryParse(parts[0]) ?? 9;
+          minute = int.tryParse(parts[1]) ?? 0;
+        }
       }
+      final zodiac = await storageService.getSelectedZodiac();
+      await NotificationService().restoreNotifications(
+        enabled: true,
+        hour: hour,
+        minute: minute,
+        zodiacName: zodiac?.displayName ?? 'Koç',
+      );
     }
-    final zodiac = await storageService.getSelectedZodiac();
-    await NotificationService().restoreNotifications(
-      enabled: true,
-      hour: hour,
-      minute: minute,
-      zodiacName: zodiac?.displayName ?? 'Koç',
-    );
+  } catch (e) {
+    debugPrint('⚠️ Notification restore failed: $e');
   }
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
+
   runApp(const ZodiApp());
 }
 
