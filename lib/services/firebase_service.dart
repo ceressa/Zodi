@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -21,7 +22,14 @@ class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   final FirebaseCrashlytics _crashlytics = FirebaseCrashlytics.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  // iOS requires explicit clientId from GoogleService-Info.plist for Google Sign-In.
+  // Android reads it from google-services.json automatically.
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: Platform.isIOS
+        ? '810852009885-afjbdh25lncigcc14supeinf30gu3206.apps.googleusercontent.com'
+        : null,
+  );
 
   // Getters
   FirebaseAuth get auth => _auth;
@@ -31,13 +39,16 @@ class FirebaseService {
   User? get currentUser => _auth.currentUser;
   bool get isAuthenticated => _auth.currentUser != null;
 
-  // Initialize Firebase
+  // Initialize Firebase Service (Firebase.initializeApp() is called in main.dart)
   static Future<void> initialize() async {
-    await Firebase.initializeApp();
-    
-    // Enable Crashlytics
+    // NOTE: Do NOT call Firebase.initializeApp() here — it's already
+    // called in main.dart. Double initialization causes iOS crashes.
+
+    // Enable Crashlytics — chain with existing FlutterError handler
+    final existingHandler = FlutterError.onError;
     FlutterError.onError = (errorDetails) {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+      existingHandler?.call(errorDetails);
     };
   }
 
