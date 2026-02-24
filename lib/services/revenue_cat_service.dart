@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
@@ -10,13 +11,14 @@ import '../config/membership_config.dart';
 ///
 /// Entitlement: "Astro Dozi Premium"
 /// Ürünler: altin_monthly, elmas_monthly, platinyum_monthly, lifetime
-/// API Key: RevenueCat Dashboard'dan alınır
+/// API Key: RevenueCat Dashboard'dan alınır (platform-specific)
 class RevenueCatService {
   static final RevenueCatService _instance = RevenueCatService._internal();
   factory RevenueCatService() => _instance;
   RevenueCatService._internal();
 
-  static const String _apiKey = 'goog_lqGgYaZSYFbfjsrSMIKjqqHMifC';
+  static const String _googleApiKey = 'goog_lqGgYaZSYFbfjsrSMIKjqqHMifC';
+  static const String _appleApiKey = ''; // TODO: RevenueCat Dashboard'dan Apple API key al
   static const String entitlementId = 'Astro Dozi Premium';
 
   /// Ürün tanımlayıcıları — Google Play Console'daki subscription/product IDs
@@ -35,13 +37,21 @@ class RevenueCatService {
     if (_isInitialized) return;
 
     try {
+      final apiKey = Platform.isIOS ? _appleApiKey : _googleApiKey;
+
+      // iOS'ta Apple API key henüz ayarlanmadıysa skip et
+      if (apiKey.isEmpty) {
+        debugPrint('⚠️ RevenueCat: No API key for ${Platform.operatingSystem}, skipping init');
+        return;
+      }
+
       await Purchases.setLogLevel(LogLevel.debug);
 
-      final configuration = PurchasesConfiguration(_apiKey);
+      final configuration = PurchasesConfiguration(apiKey);
       await Purchases.configure(configuration);
 
       _isInitialized = true;
-      debugPrint('✅ RevenueCat initialized');
+      debugPrint('✅ RevenueCat initialized (${Platform.operatingSystem})');
     } catch (e) {
       debugPrint('❌ RevenueCat init error: $e');
     }
