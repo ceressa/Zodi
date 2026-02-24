@@ -20,7 +20,6 @@ import 'personality_quiz_screen.dart';
 import 'premium_screen.dart';
 import '../theme/cosmic_page_route.dart';
 import '../widgets/starter_pack_banner.dart';
-import '../widgets/time_based_background.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -69,10 +68,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
             e.type.name.contains('retrograde'))
         .toList();
 
-    return TimeBasedBackground(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 8, bottom: 120),
-        child: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 8, bottom: 120),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ─── WELCOME HEADER ───
@@ -193,7 +191,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
             const SizedBox(height: 20),
           ],
         ),
-      ),
     );
   }
 

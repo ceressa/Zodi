@@ -129,26 +129,25 @@ class AccountManagementScreen extends StatelessWidget {
                           ),
                           TextButton(
                             onPressed: () async {
+                              // Navigator referansını ÖNCE al — deleteAccount() context'i geçersiz kılabilir
+                              final navigator = Navigator.of(context, rootNavigator: true);
+                              final messenger = ScaffoldMessenger.of(context);
                               Navigator.pop(dialogContext);
                               try {
                                 await authProvider.deleteAccount();
-                                if (context.mounted) {
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    CosmicFadeRoute(page: const OnboardingScreen()),
-                                    (route) => false,
-                                  );
-                                }
+                                navigator.pushAndRemoveUntil(
+                                  CosmicFadeRoute(page: const OnboardingScreen()),
+                                  (route) => false,
+                                );
                               } catch (e) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Hesap silinemedi: $e'),
-                                      backgroundColor: Colors.red,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                  );
-                                }
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('Hesap silinemedi: $e'),
+                                    backgroundColor: Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                );
                               }
                             },
                             child: const Text(

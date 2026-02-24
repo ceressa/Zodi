@@ -16,6 +16,6 @@
 
 	<!-- Push Notifications -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>production</string>
 </dict>
 </plist>

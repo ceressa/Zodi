@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/fun_feature_config.dart';
 import '../theme/cosmic_page_route.dart';
-import '../widgets/time_based_background.dart';
 import 'tarot_screen.dart';
 import 'coffee_fortune_screen.dart';
 import 'dream_screen.dart';
@@ -17,10 +16,9 @@ class FallarTabScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TimeBasedBackground(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-        child: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 8),
@@ -44,7 +42,6 @@ class FallarTabScreen extends StatelessWidget {
           const SizedBox(height: 12),
           _buildAnalysisCards(context),
         ],
-        ),
       ),
     );
   }

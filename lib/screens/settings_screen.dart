@@ -499,14 +499,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.logout,
             title: AppStrings.settingsLogout,
             subtitle: 'Hesaptan çıkış yap',
-            onTap: () async {
-              await authProvider.logout();
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  CosmicFadeRoute(page: const OnboardingScreen()),
-                  (route) => false,
-                );
-              }
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  title: const Text('Çıkış Yap'),
+                  content: const Text('Hesabından çıkış yapmak istediğine emin misin?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(
+                        'İptal',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        // Navigator referansını logout'tan ÖNCE al —
+                        // logout() -> notifyListeners() widget'ı rebuild eder, context geçersiz kalabilir
+                        final navigator = Navigator.of(context, rootNavigator: true);
+                        Navigator.pop(dialogContext);
+                        await authProvider.logout();
+                        navigator.pushAndRemoveUntil(
+                          CosmicFadeRoute(page: const OnboardingScreen()),
+                          (route) => false,
+                        );
+                      },
+                      child: const Text(
+                        'Çıkış Yap',
+                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],

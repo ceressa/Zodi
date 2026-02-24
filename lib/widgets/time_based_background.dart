@@ -160,49 +160,50 @@ class _TimeBasedBackgroundState extends State<TimeBasedBackground>
   }
 
   /// Zaman dilimine gore arka plan renk seti
+  /// Alpha degerleri belirgin tutulur — fark hissedilmeli
   List<Color> _getBackgroundColors() {
     switch (_gradient.period) {
       case DayPeriod.earlyMorning:
         return [
-          const Color(0xFFFFF8F0),  // Sicak krem
-          _gradient.mid.withValues(alpha: 0.12),
-          _gradient.start.withValues(alpha: 0.08),
-          const Color(0xFFF5F0FF),
+          const Color(0xFFFFF3E0),  // Sicak turuncu krem
+          const Color(0xFFFFF0D6),  // Altin sarisi ton
+          const Color(0xFFF5ECFF),  // Hafif lavanta gecis
+          const Color(0xFFF8F5FF),
         ];
       case DayPeriod.lateMorning:
         return [
-          const Color(0xFFF8F5FF),  // Lavanta
-          _gradient.start.withValues(alpha: 0.10),
-          _gradient.end.withValues(alpha: 0.06),
-          const Color(0xFFFFF5FB),  // Pembe ton
+          const Color(0xFFF3EDFF),  // Lavanta
+          const Color(0xFFEDE5FF),  // Orta lavanta
+          const Color(0xFFFCF0FF),  // Pembe ton
+          const Color(0xFFFFF5FB),
         ];
       case DayPeriod.midday:
         return [
-          const Color(0xFFF5F3FF),  // Acik mor
-          _gradient.start.withValues(alpha: 0.12),
-          _gradient.mid.withValues(alpha: 0.08),
-          const Color(0xFFF0EDFF),
+          const Color(0xFFF0ECFF),  // Parlak mor ton
+          const Color(0xFFEBE4FF),  // Canlı mor
+          const Color(0xFFF5F0FF),  // Orta
+          const Color(0xFFFFF8E1),  // Sıcak sarı alt
         ];
       case DayPeriod.afternoon:
         return [
-          const Color(0xFFF5F9F7),  // Yesil-beyaz
-          _gradient.end.withValues(alpha: 0.10),
-          _gradient.mid.withValues(alpha: 0.06),
-          const Color(0xFFF3F0FF),
+          const Color(0xFFECF8F3),  // Yesil-beyaz
+          const Color(0xFFE3F5ED),  // Belirgin yesil ton
+          const Color(0xFFF0ECFF),  // Lavanta gecis
+          const Color(0xFFF5F3FF),
         ];
       case DayPeriod.evening:
         return [
-          const Color(0xFFFFF5EC),  // Sicak turuncu krem
-          _gradient.end.withValues(alpha: 0.14),
-          _gradient.mid.withValues(alpha: 0.08),
-          const Color(0xFFF5F0FF),
+          const Color(0xFFFFF0E0),  // Sicak turuncu
+          const Color(0xFFFFE4CC),  // Belirgin sunset
+          const Color(0xFFF5E6D0),  // Krem-turuncu
+          const Color(0xFFF5F0FF),  // Lavanta alt
         ];
       case DayPeriod.night:
         return [
-          const Color(0xFFF0EDFF),  // Koyu lavanta
-          _gradient.start.withValues(alpha: 0.15),
-          _gradient.mid.withValues(alpha: 0.10),
-          const Color(0xFFEBE8FF),
+          const Color(0xFFEBE5FF),  // Koyu lavanta
+          const Color(0xFFE0D8FF),  // Derin mor-lavanta
+          const Color(0xFFE8E0FF),  // Orta
+          const Color(0xFFEDE8FF),
         ];
     }
   }
@@ -305,26 +306,26 @@ class _TimeAnimationPainter extends CustomPainter {
     // Genis ay halesi
     canvas.drawCircle(
       center,
-      60 + pulse * 15,
+      80 + pulse * 20,
       Paint()
-        ..color = gradient.accent.withValues(alpha: 0.10 + pulse * 0.05)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40),
+        ..color = gradient.accent.withValues(alpha: 0.18 + pulse * 0.08)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 45),
     );
 
     // Ay halesi ic
     canvas.drawCircle(
       center,
-      35 + pulse * 8,
+      45 + pulse * 10,
       Paint()
-        ..color = gradient.accent.withValues(alpha: 0.12 + pulse * 0.04)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20),
+        ..color = gradient.accent.withValues(alpha: 0.22 + pulse * 0.06)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22),
     );
 
     // Ay
     canvas.drawCircle(
       center,
-      18,
-      Paint()..color = gradient.accent.withValues(alpha: 0.22),
+      20,
+      Paint()..color = gradient.accent.withValues(alpha: 0.35),
     );
   }
 
@@ -345,7 +346,7 @@ class _TimeAnimationPainter extends CustomPainter {
       canvas.drawCircle(
         Offset(x, y),
         starSize,
-        Paint()..color = gradient.accent.withValues(alpha: twinkle * 0.25),
+        Paint()..color = gradient.accent.withValues(alpha: twinkle * 0.40),
       );
 
       // Isik halesi (buyuk yildizlar icin)
@@ -354,7 +355,7 @@ class _TimeAnimationPainter extends CustomPainter {
           Offset(x, y),
           starSize * 3,
           Paint()
-            ..color = gradient.accent.withValues(alpha: twinkle * 0.08)
+            ..color = gradient.accent.withValues(alpha: twinkle * 0.14)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
         );
       }
@@ -377,8 +378,8 @@ class _TimeAnimationPainter extends CustomPainter {
 
     // Kayan yildiz izi
     final trailPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.18 * (1 - t))
-      ..strokeWidth = 2.0
+      ..color = Colors.white.withValues(alpha: 0.30 * (1 - t))
+      ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
     final trailLength = 50.0 * (1 - t * 0.5);
@@ -395,8 +396,8 @@ class _TimeAnimationPainter extends CustomPainter {
     // Parlak bas
     canvas.drawCircle(
       Offset(currentX, currentY),
-      3,
-      Paint()..color = Colors.white.withValues(alpha: 0.28 * (1 - t)),
+      3.5,
+      Paint()..color = Colors.white.withValues(alpha: 0.40 * (1 - t)),
     );
   }
 
@@ -412,26 +413,26 @@ class _TimeAnimationPainter extends CustomPainter {
 
     canvas.drawCircle(
       center,
-      size.width * 0.5 + pulse * 30,
+      size.width * 0.55 + pulse * 35,
       Paint()
         ..shader = RadialGradient(
           colors: [
-            gradient.end.withValues(alpha: 0.18 + pulse * 0.06),
-            gradient.mid.withValues(alpha: 0.08),
+            gradient.end.withValues(alpha: 0.28 + pulse * 0.08),
+            gradient.mid.withValues(alpha: 0.14),
             Colors.transparent,
           ],
         ).createShader(
-          Rect.fromCircle(center: center, radius: size.width * 0.6),
+          Rect.fromCircle(center: center, radius: size.width * 0.65),
         ),
     );
 
     // Ufuk cizgisi parlama
     canvas.drawCircle(
       Offset(size.width * 0.5, 0),
-      size.width * 0.3,
+      size.width * 0.35,
       Paint()
-        ..color = gradient.accent.withValues(alpha: 0.10 + pulse * 0.05)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30),
+        ..color = gradient.accent.withValues(alpha: 0.18 + pulse * 0.08)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 35),
     );
   }
 
@@ -448,8 +449,8 @@ class _TimeAnimationPainter extends CustomPainter {
       final yOffset = math.sin(slowProgress * speed * 2 * math.pi + phase) * 20;
       final y = baseY + yOffset;
 
-      final dropSize = 2.5 + rng.nextDouble() * 3.5;
-      final alpha = 0.08 + 0.06 * math.sin(fastProgress * 2 * math.pi + phase);
+      final dropSize = 3.0 + rng.nextDouble() * 4.0;
+      final alpha = 0.14 + 0.08 * math.sin(fastProgress * 2 * math.pi + phase);
 
       canvas.drawCircle(
         Offset(x, y),
@@ -463,8 +464,8 @@ class _TimeAnimationPainter extends CustomPainter {
           Offset(x, y),
           dropSize * 2.5,
           Paint()
-            ..color = gradient.accent.withValues(alpha: alpha * 0.3)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+            ..color = gradient.accent.withValues(alpha: alpha * 0.4)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
         );
       }
     }
@@ -482,16 +483,16 @@ class _TimeAnimationPainter extends CustomPainter {
     // Gunes parlakligi
     canvas.drawCircle(
       center,
-      45 + pulse * 12,
+      55 + pulse * 15,
       Paint()
-        ..color = gradient.accent.withValues(alpha: 0.14 + pulse * 0.06)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30),
+        ..color = gradient.accent.withValues(alpha: 0.22 + pulse * 0.08)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 35),
     );
 
     // Isinlar
     for (int i = 0; i < 8; i++) {
       final angle = rotation + (i * math.pi / 4);
-      final length = 80.0 + pulse * 20;
+      final length = 90.0 + pulse * 25;
       final endPoint = Offset(
         center.dx + length * math.cos(angle),
         center.dy + length * math.sin(angle),
@@ -501,8 +502,8 @@ class _TimeAnimationPainter extends CustomPainter {
         center,
         endPoint,
         Paint()
-          ..color = gradient.accent.withValues(alpha: 0.08 + pulse * 0.04)
-          ..strokeWidth = 2.0
+          ..color = gradient.accent.withValues(alpha: 0.14 + pulse * 0.06)
+          ..strokeWidth = 2.5
           ..style = PaintingStyle.stroke,
       );
     }
@@ -511,9 +512,9 @@ class _TimeAnimationPainter extends CustomPainter {
   void _drawSoftClouds(Canvas canvas, Size size) {
     final drift = slowProgress * size.width * 0.4;
 
-    _drawCloud(canvas, Offset(-30 + drift, size.height * 0.10), 0.10);
-    _drawCloud(canvas, Offset(size.width * 0.5 + drift * 0.5, size.height * 0.20), 0.08);
-    _drawCloud(canvas, Offset(size.width * 0.2 + drift * 0.7, size.height * 0.30), 0.06);
+    _drawCloud(canvas, Offset(-30 + drift, size.height * 0.10), 0.18);
+    _drawCloud(canvas, Offset(size.width * 0.5 + drift * 0.5, size.height * 0.20), 0.14);
+    _drawCloud(canvas, Offset(size.width * 0.2 + drift * 0.7, size.height * 0.30), 0.10);
   }
 
   void _drawCloud(Canvas canvas, Offset position, double alpha) {
@@ -554,16 +555,16 @@ class _TimeAnimationPainter extends CustomPainter {
     // Buyuk gunes efekti
     canvas.drawCircle(
       center,
-      size.width * 0.55 + pulse * 40,
+      size.width * 0.6 + pulse * 45,
       Paint()
         ..shader = RadialGradient(
           colors: [
-            gradient.accent.withValues(alpha: 0.16 + pulse * 0.06),
-            gradient.mid.withValues(alpha: 0.06),
+            gradient.accent.withValues(alpha: 0.26 + pulse * 0.08),
+            gradient.mid.withValues(alpha: 0.12),
             Colors.transparent,
           ],
         ).createShader(
-          Rect.fromCircle(center: center, radius: size.width * 0.7),
+          Rect.fromCircle(center: center, radius: size.width * 0.75),
         ),
     );
   }
@@ -584,8 +585,8 @@ class _TimeAnimationPainter extends CustomPainter {
       canvas.drawPath(
         path,
         Paint()
-          ..color = gradient.accent.withValues(alpha: 0.06 + 0.02 * math.sin(fastProgress * 2 * math.pi + i))
-          ..strokeWidth = 1.5
+          ..color = gradient.accent.withValues(alpha: 0.10 + 0.04 * math.sin(fastProgress * 2 * math.pi + i))
+          ..strokeWidth = 1.8
           ..style = PaintingStyle.stroke,
       );
     }
@@ -604,15 +605,15 @@ class _TimeAnimationPainter extends CustomPainter {
       final phase = rng.nextDouble() * 2 * math.pi;
 
       final x = (baseX + fastProgress * size.width * 0.4 + math.sin(phase) * 30) % (size.width + 100) - 50;
-      final alpha = 0.06 + 0.04 * math.sin(slowProgress * 2 * math.pi + phase);
+      final alpha = 0.12 + 0.06 * math.sin(slowProgress * 2 * math.pi + phase);
 
       // Uzun ince cizgi (ruzgar)
       canvas.drawLine(
         Offset(x, y),
-        Offset(x + 35, y + 2),
+        Offset(x + 40, y + 2),
         Paint()
           ..color = gradient.accent.withValues(alpha: alpha)
-          ..strokeWidth = 1.5
+          ..strokeWidth = 1.8
           ..strokeCap = StrokeCap.round,
       );
     }
@@ -630,14 +631,14 @@ class _TimeAnimationPainter extends CustomPainter {
       final x = (baseX + fastProgress * 80 + math.sin(slowProgress * 2 * math.pi + phase) * 25) % (size.width + 50);
       final y = (baseY + fastProgress * 40 + math.cos(slowProgress * 2 * math.pi + phase) * 15) % (size.height + 50);
 
-      final leafAlpha = 0.10 + 0.05 * math.sin(fastProgress * 2 * math.pi + phase);
+      final leafAlpha = 0.18 + 0.08 * math.sin(fastProgress * 2 * math.pi + phase);
 
       // Basit yaprak sekli (oval)
       canvas.save();
       canvas.translate(x, y);
       canvas.rotate(fastProgress * math.pi + phase);
       canvas.drawOval(
-        Rect.fromCenter(center: Offset.zero, width: 10, height: 5),
+        Rect.fromCenter(center: Offset.zero, width: 12, height: 6),
         Paint()..color = gradient.accent.withValues(alpha: leafAlpha),
       );
       canvas.restore();
@@ -655,26 +656,26 @@ class _TimeAnimationPainter extends CustomPainter {
     final center = Offset(size.width * 0.3, size.height * 0.02);
     canvas.drawCircle(
       center,
-      size.width * 0.55 + pulse * 25,
+      size.width * 0.6 + pulse * 30,
       Paint()
         ..shader = RadialGradient(
           colors: [
-            gradient.end.withValues(alpha: 0.16 + pulse * 0.06),
-            gradient.mid.withValues(alpha: 0.06),
+            gradient.end.withValues(alpha: 0.28 + pulse * 0.08),
+            gradient.mid.withValues(alpha: 0.12),
             Colors.transparent,
           ],
         ).createShader(
-          Rect.fromCircle(center: center, radius: size.width * 0.7),
+          Rect.fromCircle(center: center, radius: size.width * 0.75),
         ),
     );
 
     // Ikinci sicak isik (sag ust)
     canvas.drawCircle(
       Offset(size.width * 0.8, size.height * 0.05),
-      40 + pulse * 10,
+      50 + pulse * 12,
       Paint()
-        ..color = gradient.end.withValues(alpha: 0.08 + pulse * 0.04)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 25),
+        ..color = gradient.end.withValues(alpha: 0.16 + pulse * 0.06)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30),
     );
   }
 
@@ -690,13 +691,13 @@ class _TimeAnimationPainter extends CustomPainter {
       final x = baseX + math.sin(progress * 4 * math.pi) * 35;
       final y = -20 + progress * (size.height + 40);
 
-      final alpha = 0.12 + 0.06 * math.sin(progress * 2 * math.pi);
+      final alpha = 0.20 + 0.08 * math.sin(progress * 2 * math.pi);
 
       canvas.save();
       canvas.translate(x, y);
       canvas.rotate(progress * 3 * math.pi + phase);
       canvas.drawOval(
-        Rect.fromCenter(center: Offset.zero, width: 9, height: 4.5),
+        Rect.fromCenter(center: Offset.zero, width: 11, height: 5.5),
         Paint()..color = gradient.end.withValues(alpha: alpha),
       );
       canvas.restore();

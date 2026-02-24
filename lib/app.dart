@@ -20,6 +20,7 @@ import 'services/activity_log_service.dart';
 import 'models/streak_data.dart';
 import 'screens/premium_screen.dart';
 import 'theme/cosmic_page_route.dart';
+import 'widgets/time_based_background.dart';
 
 class ZodiApp extends StatelessWidget {
   const ZodiApp({super.key});
@@ -361,63 +362,73 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  /// TimeBasedBackground sadece ilk 3 tab icin (Gunluk, Fallar, Kesfet)
+  bool get _useTimeBackground => _currentIndex <= 2;
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.backgroundGradient,
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: [
-            // === Ana içerik ===
-            Column(
-              children: [
-                Consumer2<CoinProvider, AuthProvider>(
-                  builder: (context, coinProvider, authProvider, _) => AppHeader(
-                    streakCount: _streakData?.currentStreak ?? 0,
-                    coinCount: coinProvider.balance,
-                    zodiacSymbol: authProvider.selectedZodiac?.symbol,
-                    userName: authProvider.userName,
-                    onCoinTap: () => _showCoinSummarySheet(coinProvider, authProvider),
-                  ),
-                ),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      );
-                    },
-                    child: KeyedSubtree(
-                      key: ValueKey<int>(_currentIndex),
-                      child: _pages[_currentIndex],
-                    ),
-                  ),
-                ),
-              ],
+    final bodyContent = Column(
+      children: [
+        Consumer2<CoinProvider, AuthProvider>(
+          builder: (context, coinProvider, authProvider, _) => AppHeader(
+            streakCount: _streakData?.currentStreak ?? 0,
+            coinCount: coinProvider.balance,
+            zodiacSymbol: authProvider.selectedZodiac?.symbol,
+            userName: authProvider.userName,
+            onCoinTap: () => _showCoinSummarySheet(coinProvider, authProvider),
+          ),
+        ),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey<int>(_currentIndex),
+              child: _pages[_currentIndex],
             ),
+          ),
+        ),
+      ],
+    );
 
-            // === FAB — Yıldız Tozu kazan (Settings hariç) ===
-            if (_currentIndex != 4 && _buildEarnGoldFab(authProvider) != null)
-              Positioned(
-                right: 16,
-                bottom: 90,
-                child: _buildEarnGoldFab(authProvider)!,
-              ),
-          ],
-        ),
-        bottomNavigationBar: BottomNav(
-          currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
-        ),
+    // TimeBasedBackground ilk 3 tab icin, diger tablar icin normal gradient
+    final background = _useTimeBackground
+        ? TimeBasedBackground(child: bodyContent)
+        : Container(
+            decoration: const BoxDecoration(
+              gradient: AppColors.backgroundGradient,
+            ),
+            child: bodyContent,
+          );
+
+    return Scaffold(
+      backgroundColor: _useTimeBackground ? Colors.transparent : Colors.transparent,
+      body: Stack(
+        children: [
+          // === Ana icerik — arka plan ile birlikte ===
+          background,
+
+          // === FAB — Yıldız Tozu kazan (Settings hariç) ===
+          if (_currentIndex != 4 && _buildEarnGoldFab(authProvider) != null)
+            Positioned(
+              right: 16,
+              bottom: 90,
+              child: _buildEarnGoldFab(authProvider)!,
+            ),
+        ],
+      ),
+      bottomNavigationBar: BottomNav(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
       ),
     );
   }
