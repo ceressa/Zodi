@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -27,16 +25,10 @@ import 'theme/app_theme.dart'; // Yeni tema
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Global error handlers — catch everything so app never crashes silently
+  // Global Flutter error handler — Crashlytics is chained in FirebaseService.initialize()
   FlutterError.onError = (FlutterErrorDetails details) {
     debugPrint('🔴 FlutterError: ${details.exceptionAsString()}');
-    debugPrint('🔴 Stack: ${details.stack}');
     FlutterError.presentError(details);
-  };
-  PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('🔴 PlatformError: $error');
-    debugPrint('🔴 Stack: $stack');
-    return true; // Handled — don't crash
   };
 
   // Initialize Firebase (critical — must not fail)
