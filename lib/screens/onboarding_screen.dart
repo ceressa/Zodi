@@ -1805,7 +1805,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       if (mounted) {
         setState(() => _isLoading = false);
 
-        String errorMsg = 'Apple ile giriş başarısız oldu. Tekrar dene.';
+        // TODO: Remove debug error after Apple Sign-In is fixed
+        String errorMsg = 'Apple hata: ${e.toString()}';
         final errStr = e.toString();
         if (errStr.contains('network')) {
           errorMsg = 'İnternet bağlantını kontrol et.';
@@ -1813,9 +1814,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMsg),
+            content: Text(errorMsg, maxLines: 5, overflow: TextOverflow.ellipsis),
             backgroundColor: AppColors.primaryPink,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 10),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
