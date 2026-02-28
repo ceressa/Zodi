@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:confetti/confetti.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
 import '../services/firebase_service.dart';
 import '../services/activity_log_service.dart';
@@ -1801,23 +1802,25 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      debugPrint('Apple sign-in error: $e');
+      debugPrint('Apple sign-in error: ${e.runtimeType}: $e');
       if (mounted) {
         setState(() => _isLoading = false);
 
         // TODO: Remove debug error after Apple Sign-In is fixed
-        String errorMsg = 'Apple hata: ${e.toString()}';
-        final errStr = e.toString();
-        if (errStr.contains('network')) {
-          errorMsg = 'İnternet bağlantını kontrol et.';
+        // Show detailed error to diagnose the issue
+        String errorMsg;
+        if (e is FirebaseAuthException) {
+          errorMsg = 'Firebase Auth hata: [${e.code}] ${e.message}';
+        } else {
+          errorMsg = 'Apple hata (${e.runtimeType}): ${e.toString()}';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMsg, maxLines: 5, overflow: TextOverflow.ellipsis),
+            content: Text(errorMsg, maxLines: 8, overflow: TextOverflow.ellipsis),
             backgroundColor: AppColors.primaryPink,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 10),
+            duration: const Duration(seconds: 15),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),

@@ -136,10 +136,12 @@ class FirebaseService {
   Future<UserCredential?> signInWithApple() async {
     try {
       // Nonce oluştur — replay attack'leri önlemek için
+      debugPrint('🍎 [Apple Sign-In] Step 1: Generating nonce...');
       final rawNonce = _generateNonce();
       final nonce = _sha256ofString(rawNonce);
 
       // Apple Sign In akışını başlat
+      debugPrint('🍎 [Apple Sign-In] Step 2: Requesting Apple credential...');
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
@@ -148,14 +150,31 @@ class FirebaseService {
         nonce: nonce,
       );
 
+      debugPrint('🍎 [Apple Sign-In] Step 3: Got Apple credential');
+      debugPrint('🍎   - email: ${appleCredential.email}');
+      debugPrint('🍎   - identityToken null? ${appleCredential.identityToken == null}');
+      debugPrint('🍎   - identityToken length: ${appleCredential.identityToken?.length ?? 0}');
+      debugPrint('🍎   - authorizationCode null? ${appleCredential.authorizationCode == null}');
+
+      // identityToken null kontrolü
+      if (appleCredential.identityToken == null) {
+        throw Exception(
+          'Apple identityToken null döndü. '
+          'Bundle ID veya Sign In with Apple capability kontrol edin.',
+        );
+      }
+
       // Firebase credential oluştur
+      debugPrint('🍎 [Apple Sign-In] Step 4: Creating Firebase OAuthCredential...');
       final oauthCredential = OAuthProvider('apple.com').credential(
         idToken: appleCredential.identityToken,
         rawNonce: rawNonce,
       );
 
       // Firebase'e giriş yap
+      debugPrint('🍎 [Apple Sign-In] Step 5: Signing in to Firebase...');
       final userCredential = await _auth.signInWithCredential(oauthCredential);
+      debugPrint('🍎 [Apple Sign-In] Step 6: Firebase sign-in SUCCESS! uid=${userCredential.user?.uid}');
 
       // Apple ilk girişte isim veriyor, sonraki girişlerde vermiyor
       // İlk girişte displayName güncelle
@@ -181,14 +200,20 @@ class FirebaseService {
 
       return userCredential;
     } on SignInWithAppleAuthorizationException catch (e) {
+      debugPrint('🍎 [Apple Sign-In] AuthorizationException: code=${e.code}, message=${e.message}');
       if (e.code == AuthorizationErrorCode.canceled) {
         // Kullanıcı iptal etti
         return null;
       }
       await _crashlytics.recordError(e, StackTrace.current);
       rethrow;
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
+      debugPrint('🍎 [Apple Sign-In] FirebaseAuthException: code=${e.code}, message=${e.message}');
       await _crashlytics.recordError(e, StackTrace.current);
+      rethrow;
+    } catch (e, stackTrace) {
+      debugPrint('🍎 [Apple Sign-In] Unexpected error: ${e.runtimeType}: $e');
+      await _crashlytics.recordError(e, stackTrace);
       rethrow;
     }
   }
