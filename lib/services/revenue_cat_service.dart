@@ -9,7 +9,7 @@ import '../config/membership_config.dart';
 
 /// RevenueCat SDK entegrasyonu — abonelik ve satın alma yönetimi
 ///
-/// Entitlement: "Astro Dozi Premium"
+/// Entitlement: "Dozi Premium"
 /// Ürünler: altin_monthly, elmas_monthly, platinyum_monthly, lifetime
 /// API Key: RevenueCat Dashboard'dan alınır (platform-specific)
 class RevenueCatService {
@@ -19,7 +19,7 @@ class RevenueCatService {
 
   static const String _googleApiKey = 'goog_lqGgYaZSYFbfjsrSMIKjqqHMifC';
   static const String _appleApiKey = 'appl_KKyQlEFlGXvSuJDBEfjvHejpzPN';
-  static const String entitlementId = 'Astro Dozi Premium';
+  static const String entitlementId = 'Dozi Premium';
 
   /// Ürün tanımlayıcıları — Google Play Console'daki subscription/product IDs
   static const String productAltinMonthly = 'altin_monthly';
