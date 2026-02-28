@@ -2192,11 +2192,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         }
       }
     } catch (e) {
-      debugPrint('Already member error: $e');
+      debugPrint('Already member error: ${e.runtimeType}: $e');
       if (mounted) {
         setState(() => _isLoading = false);
 
-        String errorMsg = 'Giriş başarısız oldu. Tekrar dene.';
+        // TODO: Remove debug error after sign-in is fixed
+        // Show detailed error to diagnose the issue
+        String errorMsg;
         final errStr = e.toString();
         if (errStr.contains('ApiException: 10')) {
           errorMsg = 'Giriş yapılandırma hatası. Lütfen başka bir yöntemle dene.';
@@ -2205,13 +2207,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         } else if (errStr.contains('canceled') ||
             errStr.contains('cancelled')) {
           errorMsg = 'Giriş iptal edildi.';
+        } else if (e is FirebaseAuthException) {
+          errorMsg = 'Firebase Auth hata: [${e.code}] ${e.message}';
+        } else {
+          errorMsg = '$provider hata (${e.runtimeType}): $errStr';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMsg),
+            content: Text(errorMsg, maxLines: 8, overflow: TextOverflow.ellipsis),
             backgroundColor: AppColors.primaryPink,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 15),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
           ),
