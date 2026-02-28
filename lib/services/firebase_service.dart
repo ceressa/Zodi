@@ -166,9 +166,12 @@ class FirebaseService {
 
       // Firebase credential oluştur
       debugPrint('🍎 [Apple Sign-In] Step 4: Creating Firebase OAuthCredential...');
+      debugPrint('🍎   - authorizationCode null? ${appleCredential.authorizationCode == null}');
+      debugPrint('🍎   - authorizationCode length: ${appleCredential.authorizationCode?.length ?? 0}');
       final oauthCredential = OAuthProvider('apple.com').credential(
         idToken: appleCredential.identityToken,
         rawNonce: rawNonce,
+        accessToken: appleCredential.authorizationCode,
       );
 
       // Firebase'e giriş yap
