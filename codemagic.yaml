@@ -225,9 +225,9 @@ workflows:
           if [ "$TF_LATEST" -gt "$LATEST" ] 2>/dev/null; then
             LATEST=$TF_LATEST
           fi
-          # Absolute minimum fallback
-          if [ "$LATEST" -lt 18 ]; then
-            LATEST=18
+          # Absolute minimum fallback (bumped: builds 1-21 already exist in ASC)
+          if [ "$LATEST" -lt 25 ]; then
+            LATEST=25
           fi
           BUILD_NUMBER=$((LATEST + 1))
           echo "=== Build Number Resolution ==="
