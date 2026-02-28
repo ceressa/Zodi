@@ -1806,21 +1806,23 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       if (mounted) {
         setState(() => _isLoading = false);
 
-        // TODO: Remove debug error after Apple Sign-In is fixed
-        // Show detailed error to diagnose the issue
         String errorMsg;
         if (e is FirebaseAuthException) {
-          errorMsg = 'Firebase Auth hata: [${e.code}] ${e.message}';
+          if (e.code == 'network-request-failed') {
+            errorMsg = 'İnternet bağlantını kontrol et.';
+          } else {
+            errorMsg = 'Giriş başarısız oldu. Lütfen tekrar dene.';
+          }
         } else {
-          errorMsg = 'Apple hata (${e.runtimeType}): ${e.toString()}';
+          errorMsg = 'Apple ile giriş yapılamadı. Lütfen tekrar dene.';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMsg, maxLines: 8, overflow: TextOverflow.ellipsis),
+            content: Text(errorMsg),
             backgroundColor: AppColors.primaryPink,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 15),
+            duration: const Duration(seconds: 5),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -2196,29 +2198,26 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       if (mounted) {
         setState(() => _isLoading = false);
 
-        // TODO: Remove debug error after sign-in is fixed
-        // Show detailed error to diagnose the issue
         String errorMsg;
         final errStr = e.toString();
         if (errStr.contains('ApiException: 10')) {
-          errorMsg = 'Giriş yapılandırma hatası. Lütfen başka bir yöntemle dene.';
+          errorMsg =
+              'Giriş yapılandırma hatası. Lütfen başka bir yöntemle dene.';
         } else if (errStr.contains('network')) {
           errorMsg = 'İnternet bağlantını kontrol et.';
         } else if (errStr.contains('canceled') ||
             errStr.contains('cancelled')) {
           errorMsg = 'Giriş iptal edildi.';
-        } else if (e is FirebaseAuthException) {
-          errorMsg = 'Firebase Auth hata: [${e.code}] ${e.message}';
         } else {
-          errorMsg = '$provider hata (${e.runtimeType}): $errStr';
+          errorMsg = 'Giriş başarısız oldu. Lütfen tekrar dene.';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMsg, maxLines: 8, overflow: TextOverflow.ellipsis),
+            content: Text(errorMsg),
             backgroundColor: AppColors.primaryPink,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 15),
+            duration: const Duration(seconds: 5),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
           ),
